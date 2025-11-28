@@ -59,7 +59,7 @@ class PyshaApp(object):
     notification_text = None
     notification_time = 0
 
-    # fixing issue with 2 lumis and alternating channel pressure values
+    # fixing issue with 2 alternating channel pressure values
     last_cp_value_recevied = 0
     last_cp_value_recevied_time = 0
 
@@ -384,12 +384,6 @@ class PyshaApp(object):
                 for mode in self.active_modes:
                     if mode == self.melodic_mode or mode == self.rhyhtmic_mode:
                         mode.on_midi_in(msg, source=self.notes_midi_in.name)
-                        if mode.lumi_midi_out is not None:
-                            mode.lumi_midi_out.send(msg)
-                        else:
-                            # If midi not properly initialized try to re-initialize but don't do it too ofter
-                            if time.time() - mode.last_time_tried_initialize_lumi > 5:
-                                mode.init_lumi_midi_out()
 
     def add_display_notification(self, text):
         self.notification_text = text
