@@ -5,22 +5,24 @@ import time
 import traceback
 
 import cairo
-import definitions
 import mido
 import numpy
 import push2_python
 
-from melodic_mode import MelodicMode
-from track_selection_mode import TrackSelectionMode
-from pyramid_track_triggering_mode import PyramidTrackTriggeringMode
-from rhythmic_mode import RhythmicMode
-from slice_notes_mode import SliceNotesMode
-from settings_mode import SettingsMode
-from main_controls_mode import MainControlsMode
-from midi_cc_mode import MIDICCMode
-from preset_selection_mode import PresetSelectionMode
-
+import definitions
 from display_utils import show_notification
+from modes.clip_edit_mode import ClipEditMode
+from modes.clip_triggering_mode import ClipTriggeringMode
+from modes.generator_algorithms import GeneratorAlgorithms
+from modes.main_controls_mode import MainControlsMode
+from modes.melodic_mode import MelodicMode
+from modes.midi_cc_mode import MIDICCMode
+from modes.preset_selection_mode import PresetSelectionMode
+from modes.pyramid_track_triggering_mode import PyramidTrackTriggeringMode
+from modes.rhythmic_mode import RhythmicMode
+from modes.settings_mode import SettingsMode
+from modes.slice_notes_mode import SliceNotesMode
+from modes.track_selection_mode import TrackSelectionMode
 
 
 class PyshaApp(object):
@@ -90,11 +92,21 @@ class PyshaApp(object):
         self.slice_notes_mode = SliceNotesMode(self, settings=settings)
         self.set_melodic_mode()
 
+        self.clip_triggering_mode = ClipTriggeringMode(self, settings=settings)
+        self.clip_edit_mode = ClipEditMode(self, settings=settings)
+        self.generator_algorithms = GeneratorAlgorithms(self, settings=settings)
         self.track_selection_mode = TrackSelectionMode(self, settings=settings)
         self.pyramid_track_triggering_mode = PyramidTrackTriggeringMode(self, settings=settings)
         self.preset_selection_mode = PresetSelectionMode(self, settings=settings)
-        self.midi_cc_mode = MIDICCMode(self, settings=settings)  # Must be initialized after track selection mode so it gets info about loaded tracks
-        self.active_modes += [self.track_selection_mode, self.midi_cc_mode]
+        # MIDI CC mode must be inited after track selection mode so it gets info about loaded tracks
+        self.midi_cc_mode = MIDICCMode(self, settings=settings)
+        self.active_modes += [
+            self.clip_edit_mode,
+            self.clip_triggering_mode,
+            self.generator_algorithms,
+            self.track_selection_mode,
+            self.midi_cc_mode
+        ]
         self.track_selection_mode.select_track(self.track_selection_mode.selected_track)
 
         self.settings_mode = SettingsMode(self, settings=settings)
@@ -391,7 +403,13 @@ class PyshaApp(object):
 
     def init_push(self):
         print('Configuring Push...')
-        self.push = push2_python.Push2()
+        real_push_available = any(['Ableton Push' in port_name for port_name in mido.get_output_names()])
+        self.using_push_simulator = not real_push_available
+        simulator_port = 6128
+        if self.using_push_simulator:
+            print('Using Push2 simulator at http://localhost:{}'.format(simulator_port))
+        self.push = push2_python.Push2(run_simulator=self.using_push_simulator, simulator_port=simulator_port,
+                                       simulator_use_virtual_midi_out=self.using_push_simulator)
         if platform.system() == "Linux":
             # When this app runs in Linux is because it is running on the Raspberrypi
             #  I've overved problems trying to reconnect many times withotu success on the Raspberrypi, resulting in

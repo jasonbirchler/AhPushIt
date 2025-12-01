@@ -1,6 +1,8 @@
-import definitions
-import push2_python
 import time
+
+import push2_python
+
+import definitions
 
 TOGGLE_DISPLAY_BUTTON = push2_python.constants.BUTTON_USER
 SETTINGS_BUTTON = push2_python.constants.BUTTON_SETUP

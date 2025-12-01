@@ -1,6 +1,8 @@
 import push2_python
 import colorsys
 
+from push2_python.constants import ANIMATION_STATIC
+
 VERSION = '0.25'
 
 DELAYED_ACTIONS_APPLY_TIME = 1.0  # Encoder changes won't be applied until this time has passed since last moved
@@ -94,6 +96,7 @@ class PyshaMode(object):
 
     name = ''
     xor_group = None
+    buttons_used = []
 
     def __init__(self, app, settings=None):
         self.app = app
@@ -137,6 +140,32 @@ class PyshaMode(object):
 
     def update_display(self, ctx, w, h):
         pass
+
+    # Some update helper methods
+    def set_button_color(self, button_name, color=WHITE, animation=ANIMATION_STATIC, animation_end_color=BLACK):
+        self.push.buttons.set_button_color(button_name, color, animation=animation, animation_end_color=animation_end_color)
+
+    def set_button_color_if_pressed(self, button_name, color=WHITE, off_color=OFF_BTN_COLOR, animation=ANIMATION_STATIC, animation_end_color=BLACK):
+        if not self.app.is_button_being_pressed(button_name):
+            self.push.buttons.set_button_color(button_name, off_color)
+        else:
+            self.push.buttons.set_button_color(button_name, color, animation=animation, animation_end_color=animation_end_color)
+
+    def set_button_color_if_expression(self, button_name, expression, color=WHITE, false_color=OFF_BTN_COLOR, animation=ANIMATION_STATIC, animation_end_color=BLACK, also_include_is_pressed=False):
+        if also_include_is_pressed:
+            expression = expression or self.app.is_button_being_pressed(button_name)
+        if not expression:
+            self.push.buttons.set_button_color(button_name, false_color)
+        else:
+            self.push.buttons.set_button_color(button_name, color, animation=animation, animation_end_color=animation_end_color)
+
+    def set_buttons_to_color(self, button_names, color=WHITE, animation=ANIMATION_STATIC, animation_end_color=BLACK):
+        for button_name in button_names:
+            self.push.buttons.set_button_color(button_name, color, animation=animation, animation_end_color=animation_end_color)
+
+    def set_buttons_need_update_if_button_used(self, button_name):
+        if button_name in self.buttons_used:
+            self.app.buttons_need_update = True
 
     # Push2 action callbacks (these methods should return True if some action was carried out, otherwise return None)
     def on_encoder_rotated(self, encoder_name, increment):
