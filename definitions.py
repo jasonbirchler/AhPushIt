@@ -167,6 +167,10 @@ class PyshaMode(object):
         if button_name in self.buttons_used:
             self.app.buttons_need_update = True
 
+    # Getter methods
+    def get_element_with_uuid(self, uuid):
+        return self.elements_uuids_map[uuid]
+
     # Push2 action callbacks (these methods should return True if some action was carried out, otherwise return None)
     def on_encoder_rotated(self, encoder_name, increment):
         pass

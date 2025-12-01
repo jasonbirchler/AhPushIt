@@ -1,5 +1,8 @@
-from clip import Clip
+from typing import TYPE_CHECKING
 from base_class import BaseClass
+
+if TYPE_CHECKING:
+    from clip import Clip
 
 class SequenceEvent(BaseClass):
 
@@ -15,7 +18,7 @@ class SequenceEvent(BaseClass):
     utime: float
 
     @property
-    def clip(self) -> Clip:
+    def clip(self) -> 'Clip':
         return self._parent
 
     def is_type_note(self):

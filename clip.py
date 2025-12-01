@@ -1,11 +1,13 @@
 import json
-from typing import List
+from typing import List, TYPE_CHECKING
 from base_class import BaseClass
-from sequence_event import SequenceEvent
-from track import Track
+
+if TYPE_CHECKING:
+    from sequence_event import SequenceEvent
+    from track import Track
 
 class Clip(BaseClass):
-    sequence_events: List[SequenceEvent] = []
+    sequence_events: List['SequenceEvent'] = []
 
     bpm_multiplier: float
     clip_length_in_beats: float
@@ -21,14 +23,14 @@ class Clip(BaseClass):
     wrap_events_across_clip_loop: bool
 
     @property
-    def track(self) -> Track():
+    def track(self) -> 'Track':
         return self._parent
 
     def __init__(self, *args, **kwargs):
         self.sequence_events = []
         super().__init__(*args, **kwargs)
 
-    def _add_sequence_event(self, sequence_event: SequenceEvent, position=None):
+    def _add_sequence_event(self, sequence_event: 'SequenceEvent', position=None):
         # Note this method adds a SequenceEvent object in the local Clip object but does not create a sequence event
         # in the backend
         if position is None:

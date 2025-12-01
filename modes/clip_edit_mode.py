@@ -5,8 +5,8 @@ import push2_python
 
 import definitions
 from utils import clamp, clamp01, draw_clip, show_title, show_value
-from .clip import Clip
-from ..sequence_event import SequenceEvent
+from clip import Clip
+from sequence_event import SequenceEvent
 
 from .generator_algorithms import RandomGeneratorAlgorithm, RandomGeneratorAlgorithmPlus
 
@@ -218,7 +218,7 @@ class ClipEditMode(definitions.PyshaMode):
         self.adjust_pads_to_sequence()
 
     def update_display(self, ctx, w, h):
-        if not self.app.is_mode_active(self.app.settings_mode) and not self.app.is_mode_active(self.app.ddrm_tone_selector_mode):
+        if not self.app.is_mode_active(self.app.settings_mode):
             part_w = w // 8
             track_color = self.app.track_selection_mode.get_track_color(self.clip.track)
             track_color_rgb = definitions.get_color_rgb_float(track_color)

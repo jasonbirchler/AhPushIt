@@ -13,7 +13,6 @@ import definitions
 from display_utils import show_notification
 from modes.clip_edit_mode import ClipEditMode
 from modes.clip_triggering_mode import ClipTriggeringMode
-from modes.generator_algorithms import GeneratorAlgorithms
 from modes.main_controls_mode import MainControlsMode
 from modes.melodic_mode import MelodicMode
 from modes.midi_cc_mode import MIDICCMode
@@ -24,6 +23,7 @@ from modes.settings_mode import SettingsMode
 from modes.slice_notes_mode import SliceNotesMode
 from modes.track_selection_mode import TrackSelectionMode
 
+buttons_pressed_state = {}
 
 class PyshaApp(object):
 
@@ -56,6 +56,7 @@ class PyshaApp(object):
     previously_active_mode_for_xor_group = {}
     pads_need_update = True
     buttons_need_update = True
+    elements_uuids_map = {}
 
     # notifications
     notification_text = None
@@ -83,6 +84,17 @@ class PyshaApp(object):
 
         self.init_modes(settings)
 
+    # UUID Management
+    def _add_element_to_uuid_map(self, element):
+        self.elements_uuids_map[element.uuid] = element
+
+    def _remove_element_from_uuid_map(self, uuid):
+        del self.elements_uuids_map[uuid]
+
+    def get_element_with_uuid(self, uuid):
+        return self.elements_uuids_map[uuid]
+
+    # Mode-related functions
     def init_modes(self, settings):
         self.main_controls_mode = MainControlsMode(self, settings=settings)
         self.active_modes.append(self.main_controls_mode)
@@ -94,7 +106,6 @@ class PyshaApp(object):
 
         self.clip_triggering_mode = ClipTriggeringMode(self, settings=settings)
         self.clip_edit_mode = ClipEditMode(self, settings=settings)
-        self.generator_algorithms = GeneratorAlgorithms(self, settings=settings)
         self.track_selection_mode = TrackSelectionMode(self, settings=settings)
         self.pyramid_track_triggering_mode = PyramidTrackTriggeringMode(self, settings=settings)
         self.preset_selection_mode = PresetSelectionMode(self, settings=settings)
@@ -103,7 +114,6 @@ class PyshaApp(object):
         self.active_modes += [
             self.clip_edit_mode,
             self.clip_triggering_mode,
-            self.generator_algorithms,
             self.track_selection_mode,
             self.midi_cc_mode
         ]
@@ -220,6 +230,7 @@ class PyshaApp(object):
                 settings.update(mode_settings)
         json.dump(settings, open('settings.json', 'w'))
 
+    # MIDI-related functions
     def init_midi_in(self, device_name=None):
         print('Configuring MIDI in to {}...'.format(device_name))
         self.available_midi_in_device_names = [name for name in mido.get_input_names() if 'Ableton Push' not in name and 'RtMidi' not in name and 'Through' not in name]
@@ -361,7 +372,6 @@ class PyshaApp(object):
         if self.midi_out is not None:
             self.midi_out.send(msg)
 
-
     def send_midi_to_pyramid(self, msg):
         # When sending to Pyramid, don't replace the MIDI channel because msg is already prepared with pyramidi chanel
         self.send_midi(msg, use_original_msg_channel=True)
@@ -397,6 +407,7 @@ class PyshaApp(object):
                     if mode == self.melodic_mode or mode == self.rhyhtmic_mode:
                         mode.on_midi_in(msg, source=self.notes_midi_in.name)
 
+    # Push2-related functions
     def add_display_notification(self, text):
         self.notification_text = text
         self.notification_time = time.time()
@@ -465,6 +476,10 @@ class PyshaApp(object):
         if self.buttons_need_update:
             self.update_push2_buttons()
             self.buttons_need_update = False
+
+    def is_button_being_pressed(self, button_name):
+        # global buttons_pressed_state
+        return buttons_pressed_state.get(button_name, False)
 
     def run_loop(self):
         print('Pysha is runnnig...')

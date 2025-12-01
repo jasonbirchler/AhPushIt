@@ -1,10 +1,12 @@
-from typing import List, Optional, Any
+from typing import List, Optional, Any, TYPE_CHECKING
 from base_class import BaseClass
-from clip import Clip
+
+if TYPE_CHECKING:
+    from clip import Clip
 # from hardware_device import HardwareDevice  # Import commented out - file doesn't exist
 
 class Track(BaseClass):
-    clips: List[Clip] = []
+    clips: List['Clip'] = []
 
     input_monitoring: bool
     name: str
@@ -19,7 +21,7 @@ class Track(BaseClass):
         # TODO: Implement actual message sending to app
         print(f"Message to app: {message} with parameters: {parameters}")
 
-    def _add_clip(self, clip: Clip, position=None):
+    def _add_clip(self, clip: 'Clip', position=None):
         # Note this method adds a Clip object in the local Trck object but does not create a clip in the backend
         if position is None:
             self.clips.append(clip)
