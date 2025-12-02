@@ -22,10 +22,15 @@ from modes.rhythmic_mode import RhythmicMode
 from modes.settings_mode import SettingsMode
 from modes.slice_notes_mode import SliceNotesMode
 from modes.track_selection_mode import TrackSelectionMode
+from sequencer_interface import SeqencerInterface
+from session import Session
 
 buttons_pressed_state = {}
 
 class PyshaApp(object):
+
+    seqencer_interface = None
+    session = None
 
     # midi
     midi_out = None
@@ -72,6 +77,8 @@ class PyshaApp(object):
         else:
             settings = {}
 
+        self.seqencer_interface = SeqencerInterface(app=self)
+        self.session = Session()
         self.set_midi_in_channel(settings.get('midi_in_default_channel', 0))
         self.set_midi_out_channel(settings.get('midi_out_default_channel', 0))
         self.target_frame_rate = settings.get('target_frame_rate', 60)
@@ -107,7 +114,6 @@ class PyshaApp(object):
         self.clip_triggering_mode = ClipTriggeringMode(self, settings=settings)
         self.clip_edit_mode = ClipEditMode(self, settings=settings)
         self.track_selection_mode = TrackSelectionMode(self, settings=settings)
-        self.pyramid_track_triggering_mode = PyramidTrackTriggeringMode(self, settings=settings)
         self.preset_selection_mode = PresetSelectionMode(self, settings=settings)
         # MIDI CC mode must be inited after track selection mode so it gets info about loaded tracks
         self.midi_cc_mode = MIDICCMode(self, settings=settings)

@@ -47,27 +47,27 @@ class ClipTriggeringMode(definitions.PyshaMode):
         Each clip tuple contains following information: (clip_num, clip_length, playhead_position)
         """
         playing_clips_info = {}
-        for track_num in range(0, len(self.session.tracks)):
+        for track_num in range(0, len(self.app.session.tracks)):
             current_track_playing_clips_info = []
             current_track_will_play_clips_info = []
-            track = self.session.get_track_by_idx(track_num)
+            track = self.app.session.get_track_by_idx(track_num)
             for clip_num in range(0, len(track.clips)):
-                clip = self.session.get_clip_by_idx(track_num, clip_num)
+                clip = self.app.session.get_clip_by_idx(track_num, clip_num)
                 clip_state = clip.get_status()
-                if 'p' in clip_state or 'C' in clip_state:
-                    clip_length = float(clip_state.split('|')[1])
+                if clip_state.play_status in ('p', 'C'):
+                    clip_length = clip_state.clip_length
                     playhead_position = clip.playhead_position_in_beats
                     current_track_playing_clips_info.append((clip_num, clip_length, playhead_position, clip))
-                if 'c' in clip_state:
-                    clip_length = float(clip_state.split('|')[1])
+                if clip_state.play_status == 'c':
+                    clip_length = clip_state.clip_length
                     playhead_position = clip.playhead_position_in_beats
                     current_track_will_play_clips_info.append((clip_num, clip_length, playhead_position, clip))
             if current_track_playing_clips_info:
-                if not track_num in playing_clips_info:
+                if track_num not in playing_clips_info:
                     playing_clips_info[track_num] = {}
                 playing_clips_info[track_num]['playing'] = current_track_playing_clips_info
             if current_track_will_play_clips_info:
-                if not track_num in playing_clips_info:
+                if track_num not in playing_clips_info:
                     playing_clips_info[track_num] = {}
                 playing_clips_info[track_num]['will_play'] = current_track_will_play_clips_info
         return playing_clips_info
@@ -137,7 +137,7 @@ class ClipTriggeringMode(definitions.PyshaMode):
         '''
         if not self.app.is_mode_active(self.app.settings_mode):
             # If settings mode is active, don't update the upper buttons as these are also used by settings
-            for count, track in enumerate(self.session.tracks):
+            for count, track in enumerate(self.app.session.tracks):
                 clip_from_selected_scene = track.clips[self.selected_scene]
                 if not clip_from_selected_scene.is_empty():
                     self.push.buttons.set_button_color(self.upper_row_buttons[count], definitions.WHITE)
@@ -152,33 +152,33 @@ class ClipTriggeringMode(definitions.PyshaMode):
             row_colors = []
             row_animation = []
             for j in range(0, 8):
-                clip = self.session.get_clip_by_idx(j, i)
-                state = clip.get_status()
+                clip = self.app.session.get_clip_by_idx(j, i)
+                state = clip.get_status() if clip is not None else None
 
-                track_color = self.app.track_selection_mode.get_track_color(self.session.tracks[j])
+                track_color = self.app.track_selection_mode.get_track_color(self.app.session.tracks[j])
                 cell_animation = 0
 
-                if 'E' in state:
+                if state is None or state.empty_status == 'E':
                     # Is empty
                     cell_color = definitions.BLACK
                 else:
                     cell_color = track_color + '_darker1'
 
-                if 'p' in state:
+                if state and state.play_status == 'p':
                     # Is playing
                     cell_color = track_color
 
-                if 'c' in state or 'C' in state:
+                if state and state.play_status in ('c', 'C'):
                     # Will start or will stop playing
                     cell_color = track_color
                     cell_animation = definitions.DEFAULT_ANIMATION
 
-                if 'w' in state or 'W' in state:
+                if state and state.record_status in ('w', 'W'):
                     # Will start or will stop recording
                     cell_color = definitions.RED
                     cell_animation = definitions.DEFAULT_ANIMATION
 
-                if 'r' in state:
+                if state and state.record_status == 'r':
                     # Is recording
                     cell_color = definitions.RED
 
@@ -191,7 +191,7 @@ class ClipTriggeringMode(definitions.PyshaMode):
     def on_button_pressed(self, button_name, shift=False, select=False, long_press=False, double_press=False):
         if button_name in self.scene_trigger_buttons:
             triggered_scene_row = self.scene_trigger_buttons.index(button_name)
-            self.session.scene_play(triggered_scene_row)
+            self.app.session.scene_play(triggered_scene_row)
             self.selected_scene = triggered_scene_row
             self.app.buttons_need_update = True
             return True
@@ -199,7 +199,7 @@ class ClipTriggeringMode(definitions.PyshaMode):
         elif button_name == self.duplicate_button:
             if self.selected_scene < self.num_scenes - 1:
                 # Do not duplicate scene if we're at the last one (no more space!)
-                self.session.scene_duplicate(self.selected_scene)
+                self.app.session.scene_duplicate(self.selected_scene)
                 self.selected_scene += 1
                 self.app.buttons_need_update = True
                 self.app.add_display_notification("Duplicated scene: {0}".format(self.selected_scene + 1))
@@ -208,7 +208,7 @@ class ClipTriggeringMode(definitions.PyshaMode):
     def on_pad_pressed(self, pad_n, pad_ij, velocity, shift=False, select=False, long_press=False, double_press=False):
         track_num = pad_ij[1]
         clip_num = pad_ij[0]
-        clip = self.session.get_clip_by_idx(track_num, clip_num)
+        clip = self.app.session.get_clip_by_idx(track_num, clip_num)
 
         action_buttons_to_check = [
             self.app.main_controls_mode.record_button,
@@ -309,6 +309,6 @@ class ClipTriggeringMode(definitions.PyshaMode):
                 if new_length < 1.0:
                     new_length = 1.0
 
-                clip = self.session.get_clip_by_idx(track_num, clip_num)
+                clip = self.app.session.get_clip_by_idx(track_num, clip_num)
                 if clip is not None and not clip.is_empty():
                     clip.set_length(new_length)

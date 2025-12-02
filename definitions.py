@@ -1,6 +1,7 @@
-import push2_python
 import colorsys
+import os
 
+import push2_python
 from push2_python.constants import ANIMATION_STATIC
 
 VERSION = '0.25'
@@ -87,6 +88,12 @@ NOTE_ON_COLOR = GREEN
 
 DEFAULT_ANIMATION = push2_python.constants.ANIMATION_PULSING_QUARTER
 
+USER_DOCUMENTS_PATH = os.path.expanduser('~/Documents/')
+BASE_DATA_DIR = os.path.join(USER_DOCUMENTS_PATH, 'Shepherd')
+os.makedirs(BASE_DATA_DIR, exist_ok=True)
+SETTINGS_FILE_PATH = os.path.join(BASE_DATA_DIR, 'controllerSettings.json')
+DEVICE_DEFINITION_FOLDER = os.path.join(BASE_DATA_DIR, 'device_definitions')
+os.makedirs(DEVICE_DEFINITION_FOLDER, exist_ok=True)
 INSTRUMENT_DEFINITION_FOLDER = 'instrument_definitions'
 TRACK_LISTING_PATH = 'track_listing.json'
 

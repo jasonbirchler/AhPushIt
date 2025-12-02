@@ -1,5 +1,6 @@
 import json
-from typing import List, TYPE_CHECKING
+import uuid
+from typing import List, TYPE_CHECKING, NamedTuple
 from base_class import BaseClass
 
 if TYPE_CHECKING:
@@ -17,8 +18,8 @@ class Clip(BaseClass):
     playing: bool
     recording: bool
     will_play_at: float
-    will_start_recording_at: float
     will_stop_at: float
+    will_start_recording_at: float
     will_stop_recording_at: float
     wrap_events_across_clip_loop: bool
 
@@ -28,7 +29,22 @@ class Clip(BaseClass):
 
     def __init__(self, *args, **kwargs):
         self.sequence_events = []
+        # Generate UUID for the clip
+        self.uuid = str(uuid.uuid4())
         super().__init__(*args, **kwargs)
+        self.playing = False
+        self.recording = False
+        self.will_play_at = -1.0
+        self.will_stop_at = -1.0
+        self.will_start_recording_at = -1.0
+        self.will_stop_recording_at = -1.0
+        # Initialize attributes that are used in get_status()
+        self.clip_length_in_beats = 0.0
+        self.current_quantization_step = 0.0
+        self.playhead_position_in_beats = 0.0
+        self.bpm_multiplier = 1.0
+        self.name = ""
+        self.wrap_events_across_clip_loop = False
 
     def _add_sequence_event(self, sequence_event: 'SequenceEvent', position=None):
         # Note this method adds a SequenceEvent object in the local Clip object but does not create a sequence event
@@ -44,7 +60,14 @@ class Clip(BaseClass):
         self.sequence_events = [sequence_event for sequence_event in self.sequence_events
                                 if sequence_event.uuid != sequence_event_uuid]
 
-    def get_status(self) -> str:
+    class ClipStatus(NamedTuple):
+        play_status: str
+        record_status: str
+        empty_status: str
+        clip_length: float
+        quantization_step: float
+
+    def get_status(self) -> ClipStatus:
         CLIP_STATUS_PLAYING = "p"
         CLIP_STATUS_STOPPED = "s"
         CLIP_STATUS_CUED_TO_PLAY = "c"
@@ -73,15 +96,22 @@ class Clip(BaseClass):
             play_status = CLIP_STATUS_PLAYING
         else:
             play_status = CLIP_STATUS_STOPPED
-    
+
         if self.clip_length_in_beats == 0.0:
             empty_status = CLIP_STATUS_IS_EMPTY
         else:
             empty_status = CLIP_STATUS_IS_NOT_EMPTY
-        return f'{play_status}{record_status}{empty_status}|{self.clip_length_in_beats:.3f}|{self.current_quantization_step}'
+
+        return self.ClipStatus(
+            play_status=play_status,
+            record_status=record_status,
+            empty_status=empty_status,
+            clip_length=self.clip_length_in_beats,
+            quantization_step=self.current_quantization_step
+        )
 
     def is_empty(self):
-        return 'E' in self.get_status()
+        return self.get_status().empty_status == 'E'
 
     def play_stop(self):
         print(f'play_stop on clip {self.uuid} of track {self.track.uuid}')

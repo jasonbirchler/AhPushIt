@@ -1,3 +1,4 @@
+import uuid
 from typing import TYPE_CHECKING
 from base_class import BaseClass
 
@@ -16,6 +17,11 @@ class SequenceEvent(BaseClass):
     timestamp: float
     type: int
     utime: float
+
+    def __init__(self, *args, **kwargs):
+        # Generate UUID for the sequence event
+        self.uuid = str(uuid.uuid4())
+        super().__init__(*args, **kwargs)
 
     @property
     def clip(self) -> 'Clip':

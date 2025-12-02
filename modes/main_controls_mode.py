@@ -44,13 +44,6 @@ class MainControlsMode(definitions.PyshaMode):
         else:
             self.push.buttons.set_button_color(SETTINGS_BUTTON, definitions.OFF_BTN_COLOR)
 
-        # Pyramid track triggering mode
-        if self.app.is_mode_active(self.app.pyramid_track_triggering_mode):
-            self.push.buttons.set_button_color(PYRAMID_TRACK_TRIGGERING_BUTTON, definitions.BLACK)
-            self.push.buttons.set_button_color(PYRAMID_TRACK_TRIGGERING_BUTTON, definitions.WHITE, animation=definitions.DEFAULT_ANIMATION)
-        else:
-            self.push.buttons.set_button_color(PYRAMID_TRACK_TRIGGERING_BUTTON, definitions.OFF_BTN_COLOR)
-
         # Preset selection mode
         if self.app.is_mode_active(self.app.preset_selection_mode):
             self.push.buttons.set_button_color(PRESET_SELECTION_MODE_BUTTON, definitions.BLACK)

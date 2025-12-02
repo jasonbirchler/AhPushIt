@@ -1,20 +1,27 @@
+import uuid
 from typing import List, Optional, Any, TYPE_CHECKING
 from base_class import BaseClass
 
-if TYPE_CHECKING:
-    from clip import Clip
+# if TYPE_CHECKING:
+from clip import Clip
 # from hardware_device import HardwareDevice  # Import commented out - file doesn't exist
 
 class Track(BaseClass):
-    clips: List['Clip'] = []
+    clips: List[Clip] = []
 
     input_monitoring: bool
     name: str
     output_hardware_device_name: str
     
     def __init__(self, *args, **kwargs):
-        self.clips = []
+        self.clips = [Clip()]
+        # Generate UUID for the track
+        self.uuid = str(uuid.uuid4())
         super().__init__(*args, **kwargs)
+        # Initialize attributes that are used by other code
+        self.output_hardware_device_name = ""
+        self.input_monitoring = False
+        self.name = ""
 
     def _send_msg_to_app(self, message, parameters):
         """Send message to the app - placeholder implementation"""
@@ -46,7 +53,7 @@ class Track(BaseClass):
 
     def get_output_hardware_device(self) -> Optional[Any]:
         """Get output hardware device by name"""
-        session = self.session
+        session = self.session  # Use the session property instead of self.app.session
         if session and hasattr(session, 'state'):
             return session.state.get_output_hardware_device_by_name(
                 self.output_hardware_device_name

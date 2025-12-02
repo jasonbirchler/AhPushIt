@@ -1,5 +1,6 @@
 import math
 from typing import Optional
+import uuid
 
 import push2_python
 
@@ -218,10 +219,13 @@ class ClipEditMode(definitions.PyshaMode):
         self.adjust_pads_to_sequence()
 
     def update_display(self, ctx, w, h):
-        if not self.app.is_mode_active(self.app.settings_mode):
+        if self.clip is not None and not self.app.is_mode_active(self.app.settings_mode):
             part_w = w // 8
-            track_color = self.app.track_selection_mode.get_track_color(self.clip.track)
-            track_color_rgb = definitions.get_color_rgb_float(track_color)
+            track_color_rgb = None
+
+            if self.clip is not None:
+                track_color = self.app.track_selection_mode.get_track_color(self.clip.track)
+                track_color_rgb = definitions.get_color_rgb_float(track_color)
 
             if self.mode == self.MODE_CLIP:
                 if self.selected_clip_uuid is not None:
@@ -288,7 +292,7 @@ class ClipEditMode(definitions.PyshaMode):
 
             # For all modes, slots 6-8 show clip preview
             if self.mode != self.MODE_GENERATOR or (self.mode == self.MODE_GENERATOR and len(self.generator_algorithm.get_algorithm_parameters()) <= 3):
-                if self.clip.clip_length_in_beats > 0.0:
+                if self.clip and self.clip.clip_length_in_beats > 0.0:
                     highglight_notes_beat_frame = (
                         self.pads_min_note_offset,
                         self.pads_min_note_offset + 8,
@@ -297,8 +301,8 @@ class ClipEditMode(definitions.PyshaMode):
                     )
                     draw_clip(ctx, self.clip, frame=(5.0/8.0, 0.0, 3.0/8.0, 0.87), highglight_notes_beat_frame=highglight_notes_beat_frame, event_color=track_color + '_darker1', highlight_color=track_color)
                 
-            beas_to_pad = self.beats_to_pad(self.clip.playhead_position_in_beats)
-            if 0 <= beas_to_pad <= 7 and beas_to_pad is not self.last_beats_to_pad:
+            beats_to_pad = self.beats_to_pad(self.clip.playhead_position_in_beats)
+            if 0 <= beats_to_pad <= 7 and beats_to_pad is not self.last_beats_to_pad:
                 # If clip is playing, trigger re-drawing pads when playhead position advances enough
                 self.update_pads()
 
@@ -307,7 +311,7 @@ class ClipEditMode(definitions.PyshaMode):
         self.update_pads()
 
         self.available_clips = []
-        for track in self.session.tracks:
+        for track in self.app.session.tracks:
             for clip in track.clips:
                 self.available_clips.append(clip.uuid)
 
@@ -332,22 +336,23 @@ class ClipEditMode(definitions.PyshaMode):
             self.set_button_color_if_pressed(push2_python.constants.BUTTON_QUANTIZE, animation=definitions.DEFAULT_ANIMATION)
             self.set_button_color_if_pressed(push2_python.constants.BUTTON_DELETE, animation=definitions.DEFAULT_ANIMATION)
 
-            if self.clip.recording or self.clip.will_start_recording_at > -1.0:
-                if self.clip.recording:
-                    self.push.buttons.set_button_color(push2_python.constants.BUTTON_RECORD, definitions.RED)
+            if self.clip is not None:
+                if self.clip.recording or self.clip.will_start_recording_at > -1.0:
+                    if self.clip.recording:
+                        self.push.buttons.set_button_color(push2_python.constants.BUTTON_RECORD, definitions.RED)
+                    else:
+                        self.push.buttons.set_button_color(push2_python.constants.BUTTON_RECORD, definitions.RED, animation=definitions.DEFAULT_ANIMATION)
                 else:
-                    self.push.buttons.set_button_color(push2_python.constants.BUTTON_RECORD, definitions.RED, animation=definitions.DEFAULT_ANIMATION)
-            else:
-                self.push.buttons.set_button_color(push2_python.constants.BUTTON_RECORD, definitions.WHITE)
+                    self.push.buttons.set_button_color(push2_python.constants.BUTTON_RECORD, definitions.WHITE)
 
-            track_color = self.app.track_selection_mode.get_track_color(self.clip.track)
-            if self.clip.playing or self.clip.will_play_at > -1.0:
-                if self.clip.playing:
-                    self.push.buttons.set_button_color(push2_python.constants.BUTTON_UPPER_ROW_1, track_color)
+                track_color = self.app.track_selection_mode.get_track_color(self.clip.track)
+                if self.clip.playing or self.clip.will_play_at > -1.0:
+                    if self.clip.playing:
+                        self.push.buttons.set_button_color(push2_python.constants.BUTTON_UPPER_ROW_1, track_color)
+                    else:
+                        self.push.buttons.set_button_color(push2_python.constants.BUTTON_UPPER_ROW_1, track_color, animation=definitions.DEFAULT_ANIMATION)
                 else:
-                    self.push.buttons.set_button_color(push2_python.constants.BUTTON_UPPER_ROW_1, track_color, animation=definitions.DEFAULT_ANIMATION)
-            else:
-                self.push.buttons.set_button_color(push2_python.constants.BUTTON_UPPER_ROW_1, track_color + '_darker1')
+                    self.push.buttons.set_button_color(push2_python.constants.BUTTON_UPPER_ROW_1, track_color + '_darker1')
         
         elif self.mode == self.MODE_EVENT:
             self.push.buttons.set_button_color(push2_python.constants.BUTTON_UPPER_ROW_1, definitions.BLACK)
@@ -380,14 +385,17 @@ class ClipEditMode(definitions.PyshaMode):
             self.push.buttons.set_button_color(push2_python.constants.BUTTON_DELETE, definitions.BLACK)
 
             self.push.buttons.set_button_color(push2_python.constants.BUTTON_CLIP, definitions.WHITE)
-            
+
         if self.mode == self.MODE_CLIP or self.mode == self.MODE_EVENT:
             self.push.buttons.set_button_color(push2_python.constants.BUTTON_UP, definitions.WHITE)
             self.push.buttons.set_button_color(push2_python.constants.BUTTON_DOWN, definitions.WHITE)
             self.push.buttons.set_button_color(push2_python.constants.BUTTON_LEFT, definitions.WHITE)
             self.push.buttons.set_button_color(push2_python.constants.BUTTON_RIGHT, definitions.WHITE)
-            
+
     def update_pads(self):
+        if self.clip is None:
+            return
+
         color_matrix, animation_matrix = self.notes_to_pads() 
         if self.clip.playing:
             # If clip is playing, draw playhead
@@ -550,9 +558,9 @@ class ClipEditMode(definitions.PyshaMode):
                     return True  # Don't trigger this encoder moving in any other mode
                 elif encoder_name == push2_python.constants.ENCODER_TRACK2_ENCODER:
                     if not shift:
-                        new_timestamp = round(1000.0 * (self.event.timestamp + increment/(self.session.meter)))/1000.0
+                        new_timestamp = round(1000.0 * (self.event.timestamp + increment/(self.app.session.meter)))/1000.0
                     else:
-                        new_timestamp = round(1000.0 * (self.event.timestamp + increment/(self.session.meter*2)))/1000.0
+                        new_timestamp = round(1000.0 * (self.event.timestamp + increment/(self.app.session.meter*2)))/1000.0
                     new_timestamp = clamp(new_timestamp, 0.0, self.clip.clip_length_in_beats)
                     if new_timestamp == self.clip.clip_length_in_beats:
                         new_timestamp = 0.0
