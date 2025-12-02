@@ -1,0 +1,39 @@
+{
+    "midi_cc": [
+      {
+        "section": "A",
+        "controls": {
+          "Chance": 16,
+          "Zoom": 17,
+          "Range": 18,
+          "Midpoint": 19
+        }
+      },
+      {
+        "section": "B",
+        "controls": {
+          "Pitch": 20,
+          "Crush": 21,
+          "Crop": 22,
+          "Drop": 23
+        }
+      },
+      {
+        "section": "C",
+        "controls": {
+          "Drone": 24,
+          "Modulate": 25,
+          "Tuning": 26,
+          "Note": 27
+        }
+      },
+      {
+        "section": "D",
+        "controls": {
+          "Beats": 28,
+          "Beats/Bar": 29,
+          "Swing": 30
+        }
+      }
+    ]
+}

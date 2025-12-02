@@ -18,7 +18,7 @@ class Track(BaseClass):
         self.uuid = str(uuid.uuid4())
         super().__init__(*args, **kwargs)
         # Initialize attributes that are used by other code
-        self.output_hardware_device_name = ""
+        self.output_hardware_device_name = "empty"
         self.input_monitoring = False
         self.name = ""
 

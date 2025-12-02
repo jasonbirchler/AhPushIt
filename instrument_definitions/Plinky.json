@@ -1,0 +1,109 @@
+{
+  "midi_cc": [
+    {
+      "section": "OSC",
+      "controls": {
+        "Shape": 13,
+        "Dist": 4,
+        "Pitch": 9,
+        "Interval": 14,
+        "Noise": 2,
+        "Glide": 5,
+        "Res": 71
+      }
+    },
+    {
+      "section": "ARP",
+      "controls": {
+        "Latch": 101,
+        "On/off": 102,
+        "Order": 103,
+        "Clock div": 104,
+        "Chance": 105,
+        "Euclid length": 106,
+        "Octaves": 107
+      }
+    },
+    {
+      "section": "SEQ",
+      "controls": {
+        "Order": 108,
+        "Clock division": 109,
+        "Chance": 110,
+        "Euclid length": 111,
+        "Gate length": 11,
+        "Pattern": 83,
+        "Steps": 85
+      }
+    },
+    {
+      "section": "Envelopes",
+      "controls": {
+        "E1 Sens (LPF amt)": 3,
+        "E1 Attack": 73,
+        "E1 Decay": 75,
+        "E1 Sustain": 74,
+        "E1 Release": 72,
+        "E2 Level": 19,
+        "E2 Attack": 20,
+        "E2 Decay": 21,
+        "E2 Sustain": 22,
+        "E2 Release": 23
+      }
+    },
+    {
+      "section": "Modulation",
+      "controls": {
+        "A Rate": 24,
+        "A Depth": 25,
+        "A Offset": 26,
+        "B Rate": 27,
+        "B Depth": 28,
+        "B Offset": 29,
+        "X Rate": 76,
+        "X Depth": 77,
+        "X Offset": 78,
+        "Y Rate": 79,
+        "Y Depth": 80,
+        "Y Offset": 81
+      }
+    },
+    {
+      "section": "Sampler",
+      "controls": {
+        "Scrub": 15,
+        "Grain size": 16,
+        "Play speed": 17,
+        "Timestretch": 18,
+        "Sample": 82,
+        "Jitter pos": 116,
+        "Jitter size": 117,
+        "Jitter rate": 118
+      }
+    },
+    {
+      "section": "FX",
+      "controls": {
+        "RVRB Send": 91,
+        "RVRB Time": 92,
+        "RVRB Shimmer": 93,
+        "RVRB Wobble": 114,
+        "DEL send": 94,
+        "DEL time": 12,
+        "DEL pingpong": 112,
+        "DEL wobble": 113,
+        "DEL fdbk": 95
+      }
+    },
+    {
+      "section": "Mixer",
+      "controls": {
+        "In Volume": 89,
+        "In Wet/Dry": 90,
+        "HPF amount": 31,
+        "Synth Level": 7,
+        "Wet/Dry": 8
+      }
+    }
+  ]
+}

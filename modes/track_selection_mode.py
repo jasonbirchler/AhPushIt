@@ -41,10 +41,10 @@ class TrackSelectionMode(definitions.PyshaMode):
         """
         print('Loading hardware device definitions...')
         try:
-            for filename in os.listdir(definitions.DEVICE_DEFINITION_FOLDER):
+            for filename in os.listdir(definitions.INSTRUMENT_DEFINITION_FOLDER):
                 if filename.endswith('.json'):
                     device_short_name = filename.replace('.json', '')
-                    json_file_path = os.path.join(definitions.DEVICE_DEFINITION_FOLDER, filename)
+                    json_file_path = os.path.join(definitions.INSTRUMENT_DEFINITION_FOLDER, filename)
                     with open(json_file_path, 'r', encoding='utf-8') as file:
                         self.devices_info[device_short_name] = json.load(file)
                     print('- {}'.format(device_short_name))

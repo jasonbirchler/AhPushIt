@@ -1,0 +1,58 @@
+{
+    "midi_cc": [
+        {
+            "section": "Env + Filt",
+            "controls": {
+                "EG TYPE": 14,
+                "ATTACK": 16,
+                "RELEASE": 19,
+                "FILT TYPE": 42,
+                "CUTOFF": 43,
+                "RESONANCE": 44,
+                "DEPTH": 45,
+                "RATE": 46
+            }
+            },{
+            "section": "Tremolo",
+            "controls": {
+                "RATE": 20,
+                "DEPTH": 21
+            }
+        },{
+            "section": "LFO",
+            "controls": {
+                "RATE": 24,
+                "DEPTH": 26
+            }
+        },{
+            "section": "MOD",
+            "controls": {
+                "TYPE": 88,
+                "TIME": 28,
+                "DEPTH": 29
+            }
+        },{
+            "section": "Rev+Del",
+            "controls": {
+                "R TYPE": 90,
+                "R TIME": 34,
+                "R DEPTH": 35,
+                "R MIX": 36,
+                "D TYPE": 89,
+                "D TIME": 30,
+                "D FDBK": 31,
+                "D MIX:": 33
+            }
+        },{
+            "section": "OSC + ARP",
+            "controls": {
+                "TYPE": 53,
+                "SHAPE": 54,
+                "ALT": 55,
+                "PATTERN": 117,
+                "INTERVALS": 118,
+                "LENGTH": 119
+            }
+        }   
+    ]
+}
