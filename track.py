@@ -4,7 +4,6 @@ from base_class import BaseClass
 
 # if TYPE_CHECKING:
 from clip import Clip
-# from hardware_device import HardwareDevice  # Import commented out - file doesn't exist
 
 class Track(BaseClass):
     clips: List[Clip] = []

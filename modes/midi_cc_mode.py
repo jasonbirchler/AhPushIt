@@ -150,7 +150,7 @@ class MIDICCMode(PyshaMode):
         return self.app.track_selection_mode.get_current_track_color()
 
     def get_current_track_instrument_short_name_helper(self):
-        return self.app.track_selection_mode.get_current_track_instrument_short_name()
+        return self.app.track_selection_mode.get_current_track_device_short_name()
 
     def get_current_track_midi_cc_sections(self):
         section_names = []
