@@ -47,6 +47,7 @@ class SettingsMode(definitions.PyshaMode):
     current_page = 0
     n_pages = len(Pages)
     encoders_state = {}
+    setup_button_pressing_time = None
 
     current_preset_save_number = 0
     current_preset_load_number = 0
@@ -54,17 +55,6 @@ class SettingsMode(definitions.PyshaMode):
     # Track selection state for hardware devices page
     track_selection_states = {}  # track_idx: 0=device, 1=channel
     encoder_accumulators = {}  # encoder_name: accumulated_value
-
-    buttons_used = [
-        push2_python.constants.BUTTON_UPPER_ROW_1,
-        push2_python.constants.BUTTON_UPPER_ROW_2,
-        push2_python.constants.BUTTON_UPPER_ROW_3,
-        push2_python.constants.BUTTON_UPPER_ROW_4,
-        push2_python.constants.BUTTON_UPPER_ROW_5,
-        push2_python.constants.BUTTON_UPPER_ROW_6,
-        push2_python.constants.BUTTON_UPPER_ROW_7,
-        push2_python.constants.BUTTON_UPPER_ROW_8
-    ]
 
     def move_to_next_page(self):
         self.app.buttons_need_update = True
@@ -101,6 +91,8 @@ class SettingsMode(definitions.PyshaMode):
         self.push.buttons.set_button_color(push2_python.constants.BUTTON_UPPER_ROW_8, definitions.BLACK)
         self.push.buttons.set_button_color(push2_python.constants.BUTTON_UP, definitions.BLACK)
         self.push.buttons.set_button_color(push2_python.constants.BUTTON_DOWN, definitions.BLACK)
+        self.current_page = 0
+        self.setup_button_pressing_time = None
 
     def update_buttons(self):
         if self.current_page == Pages.PERFORMANCE:
@@ -434,12 +426,12 @@ class SettingsMode(definitions.PyshaMode):
         return True  # Always return True because encoder should not be used in any other mode if this is first active
 
     def on_button_pressed(self, button_name, shift=False, select=False, long_press=False, double_press=False):
-        if button_name == push2_python.constants.BUTTON_SETUP and long_press:
-            # Exit settings mode
-            # set current_page to the length of Pages
-            # this tells toggle_and_rotate_settings_mode to exit settings
-            self.current_page = len(Pages)
+        if button_name == push2_python.constants.BUTTON_SETUP:
+            self.setup_button_pressing_time = time.time()
+            # If we're not in settings mode, activate it on press
+            # if not self.app.is_mode_active(self):
             self.app.toggle_and_rotate_settings_mode()
+            self.app.buttons_need_update = True
             return True
         if self.current_page == Pages.PERFORMANCE:
             if button_name == push2_python.constants.BUTTON_UPPER_ROW_1:
@@ -576,6 +568,36 @@ class SettingsMode(definitions.PyshaMode):
                 except Exception as e:
                     print(e)
                 return True
+
+    def on_button_released(self, button_name):
+
+        if button_name == push2_python.constants.BUTTON_SETUP:
+            # Decide if short press or long press
+            pressing_time = self.setup_button_pressing_time
+            is_long_press = False
+            if pressing_time is None:
+                # Consider quick press (this should not happen pressing time should have been set before)
+                pass
+            else:
+                if time.time() - pressing_time > definitions.BUTTON_QUICK_PRESS_TIME:
+                    # Consider this is a long press
+                    is_long_press = True
+                self.setup_button_pressing_time = None
+
+            if is_long_press:
+                # If long press, exit settings mode back to the previously active mode
+                if self.app.is_mode_active(self):
+                    # Set current page to last page to trigger exiting settings
+                    self.current_page = len(Pages)
+                    self.app.toggle_and_rotate_settings_mode()
+                    self.app.buttons_need_update = True
+            # else:
+                # Short press: cycle through settings pages only if we're already in settings mode
+                # if self.app.is_mode_active(self):
+                #     self.app.toggle_and_rotate_settings_mode()
+                #     self.app.buttons_need_update = True
+
+            return True
 
 
     def set_device_midi_channel(self, device_name, new_channel):

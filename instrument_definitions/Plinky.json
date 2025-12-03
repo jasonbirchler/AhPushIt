@@ -1,4 +1,9 @@
 {
+  "type": "output",
+  "instrument_name": "PlinkySynth MIDI",
+  "instrument_short_name": "Plinky",
+  "illuminate_local_notes": false,
+  "midi_channel": 1,
   "midi_cc": [
     {
       "section": "OSC",

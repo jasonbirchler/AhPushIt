@@ -14,7 +14,6 @@ RECORD_BUTTON = push2_python.constants.BUTTON_RECORD
 class MainControlsMode(definitions.PyshaMode):
 
     preset_selection_button_pressing_time = None
-    button_quick_press_time = 0.400
 
     # Button constants
     record_button = RECORD_BUTTON
@@ -52,7 +51,7 @@ class MainControlsMode(definitions.PyshaMode):
         else:
             self.push.buttons.set_button_color(PRESET_SELECTION_MODE_BUTTON, definitions.OFF_BTN_COLOR)
 
-    def on_button_pressed(self, button_name):
+    def on_button_pressed(self, button_name, shift=False, select=False, long_press=False, double_press=False):
         if button_name == MELODIC_RHYTHMIC_TOGGLE_BUTTON:
             self.app.toggle_melodic_rhythmic_slice_modes()
             self.app.pads_need_update = True
@@ -90,7 +89,7 @@ class MainControlsMode(definitions.PyshaMode):
                 # Consider quick press (this should not happen pressing time should have been set before)
                 pass
             else:
-                if time.time() - pressing_time > self.button_quick_press_time:
+                if time.time() - pressing_time > definitions.BUTTON_QUICK_PRESS_TIME:
                     # Consider this is a long press
                     is_long_press = True
                 self.preset_selection_button_pressing_time = None

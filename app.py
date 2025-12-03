@@ -132,12 +132,18 @@ class PyshaApp(object):
         self.preset_selection_mode = PresetSelectionMode(self, settings=settings)
         # MIDI CC mode must be inited after track selection mode so it gets info about loaded tracks
         self.midi_cc_mode = MIDICCMode(self, settings=settings)
+
+        # Add modes to active_modes, but exclude clip_triggering_mode since it's in the same XOR group as melodic_mode
+        # and melodic_mode should be the default active mode for pads
         self.active_modes += [
             self.clip_edit_mode,
-            self.clip_triggering_mode,
             self.track_selection_mode,
             self.midi_cc_mode
         ]
+
+        # Note: clip_triggering_mode is intentionally NOT added to active_modes here
+        # because it's in the same XOR group as melodic_mode and melodic_mode is the default
+
         self.track_selection_mode.select_track(self.track_selection_mode.selected_track)
 
         self.settings_mode = SettingsMode(self, settings=settings)
@@ -220,6 +226,18 @@ class PyshaApp(object):
 
     def set_slice_notes_mode(self):
         self.set_mode_for_xor_group(self.slice_notes_mode)
+    
+    def set_clip_triggering_mode(self):
+        self.set_mode_for_xor_group(self.clip_triggering_mode)
+
+    def unset_clip_triggering_mode(self):
+        self.unset_mode_for_xor_group(self.clip_triggering_mode)
+
+    def set_clip_edit_mode(self):
+        self.set_mode_for_xor_group(self.clip_edit_mode)
+
+    def unset_clip_edit_mode(self):
+        self.unset_mode_for_xor_group(self.clip_edit_mode)
 
     def set_preset_selection_mode(self):
         self.set_mode_for_xor_group(self.preset_selection_mode)
@@ -628,7 +646,6 @@ class PyshaApp(object):
         try:
             while True:
                 before_draw_time = time.time()
-
                 # Draw ui
                 self.update_push2_display()
 
