@@ -47,7 +47,7 @@ class Session(BaseClass):
         try:
             return self.tracks[track_idx].clips[clip_idx]
         except Exception as e:
-            print('ERROR selecting track: {}'.format(e))
+            print('ERROR selecting clip track: {}'.format(e))
         return None
 
     def save(self, save_session_name):

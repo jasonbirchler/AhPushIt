@@ -76,6 +76,35 @@ class TrackSelectionMode(definitions.PyshaMode):
 
     def get_current_track_color_rgb(self):
         return definitions.get_color_rgb_float(self.get_current_track_color())
+
+    def get_current_track_info(self):
+        """
+        Returns information about the currently selected track.
+        This includes MIDI channel, device info, and other track-specific settings.
+        """
+        track = self.get_selected_track()
+        if track is None:
+            return {
+                'midi_channel': 0,
+                'illuminate_local_notes': True,
+                'n_banks': 0,
+                'bank_names': []
+            }
+
+        # Get device info for this track
+        device_info = self.get_current_track_device_info()
+
+        # Use default MIDI channel 0 if track doesn't have midi_channel attribute
+        midi_channel = getattr(track, 'midi_channel', 0)
+
+        return {
+            'midi_channel': midi_channel,
+            'illuminate_local_notes': device_info.get('illuminate_local_notes', True),
+            'n_banks': device_info.get('n_banks', 0),
+            'bank_names': device_info.get('bank_names', []),
+            'midi_cc_parameters': device_info.get('midi_cc_parameters', []),
+            'default_layout': device_info.get('default_layout', definitions.LAYOUT_MELODIC)
+        }
         
     def load_current_default_layout(self):
         if self.get_current_track_device_info().get('default_layout', definitions.LAYOUT_MELODIC) == definitions.LAYOUT_MELODIC:

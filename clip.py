@@ -39,7 +39,7 @@ class Clip(BaseClass):
         self.will_start_recording_at = -1.0
         self.will_stop_recording_at = -1.0
         # Initialize attributes that are used in get_status()
-        self.clip_length_in_beats = 0.0
+        self.clip_length_in_beats = 8.0
         self.current_quantization_step = 0.0
         self.playhead_position_in_beats = 0.0
         self.bpm_multiplier = 1.0
@@ -114,7 +114,11 @@ class Clip(BaseClass):
         return self.get_status().empty_status == 'E'
 
     def play_stop(self):
-        print(f'play_stop on clip {self.uuid} of track {self.track.uuid}')
+        if self.track is None:
+            print(f'ERROR: play_stop called on clip {self.uuid} but track is None!')
+            print(f'Clip parent: {self._parent}')
+        else:
+            print(f'play_stop on clip {self.uuid} of track {self.track.uuid}')
 
     def play(self):
         print(f'play on clip {self.uuid} of track {self.track.uuid}')

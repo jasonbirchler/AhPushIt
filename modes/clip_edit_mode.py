@@ -138,9 +138,12 @@ class ClipEditMode(definitions.PyshaMode):
         return note, beat
 
     def notes_in_pad(self, pad_ij):
+        if self.clip is None:
+            return []
+
         midi_note, start_time = self.pad_ij_to_note_beat(pad_ij)
         end_time = start_time + self.pads_pad_beat_scale
-        notes = [event for event in self.clip.sequence_events if event.is_type_note() and 
+        notes = [event for event in self.clip.sequence_events if event.is_type_note() and
                                                                  start_time <= event.rendered_start_timestamp <= end_time and
                                                                  event.midi_note == midi_note]
         return notes
@@ -149,7 +152,10 @@ class ClipEditMode(definitions.PyshaMode):
         return int(math.floor(8 * (beats - self.start_displayed_time)/(self.end_displayed_time - self.start_displayed_time)))
 
     def notes_to_pads(self):
-        notes = [event for event in self.clip.sequence_events if event.is_type_note() and 
+        if self.clip is None:
+            return [], []
+
+        notes = [event for event in self.clip.sequence_events if event.is_type_note() and
                                                                  (event.rendered_start_timestamp < self.end_displayed_time or event.rendered_end_timestamp > self.start_displayed_time) and
                                                                  self.pads_min_note_offset <= event.midi_note < self.pads_min_note_offset + 8]
         notes_to_display = []
@@ -466,6 +472,9 @@ class ClipEditMode(definitions.PyshaMode):
             return True
         
     def on_pad_pressed(self, pad_n, pad_ij, velocity, shift=False, select=False, long_press=False, double_press=False):
+        if self.clip is None:
+            return True
+
         notes_in_pad = self.notes_in_pad(pad_ij)
         if notes_in_pad:
             if not long_press:

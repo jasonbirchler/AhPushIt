@@ -8,12 +8,16 @@ TOGGLE_DISPLAY_BUTTON = push2_python.constants.BUTTON_USER
 SETTINGS_BUTTON = push2_python.constants.BUTTON_SETUP
 MELODIC_RHYTHMIC_TOGGLE_BUTTON = push2_python.constants.BUTTON_NOTE
 PRESET_SELECTION_MODE_BUTTON = push2_python.constants.BUTTON_ADD_DEVICE
+RECORD_BUTTON = push2_python.constants.BUTTON_RECORD
 
 
 class MainControlsMode(definitions.PyshaMode):
 
     preset_selection_button_pressing_time = None
     button_quick_press_time = 0.400
+
+    # Button constants
+    record_button = RECORD_BUTTON
 
     def activate(self):
         self.update_buttons()

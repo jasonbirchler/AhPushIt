@@ -161,7 +161,22 @@ class MIDICCMode(PyshaMode):
         return section_names
 
     def get_currently_selected_midi_cc_section_and_page(self):
-        return self.current_selected_section_and_page[self.get_current_track_instrument_short_name_helper()]
+        current_short_name = self.get_current_track_instrument_short_name_helper()
+        # Ensure the current device has proper MIDI CC mappings initialized
+        if current_short_name not in self.current_selected_section_and_page:
+            # Initialize default mappings for this device
+            self.current_selected_section_and_page[current_short_name] = ('0 to 15', 0)
+            # Also ensure instrument_midi_control_ccs has mappings for this device
+            if current_short_name not in self.instrument_midi_control_ccs:
+                self.instrument_midi_control_ccs[current_short_name] = []
+                for i in range(0, 128):
+                    section_s = (i // 16) * 16
+                    section_e = section_s + 15
+                    control = MIDICCControl(i, 'CC {0}'.format(i), '{0} to {1}'.format(section_s, section_e), self.get_current_track_color_helper, self.app.send_midi)
+                    self.instrument_midi_control_ccs[current_short_name].append(control)
+                print('Initialized default MIDI cc mappings for new device {0}'.format(current_short_name))
+
+        return self.current_selected_section_and_page[current_short_name]
 
     def get_midi_cc_controls_for_current_track_and_section(self):
         section, _ = self.get_currently_selected_midi_cc_section_and_page()

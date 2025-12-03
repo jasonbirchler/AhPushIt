@@ -392,12 +392,29 @@ class SettingsMode(definitions.PyshaMode):
                     if selection_state == 0:  # Device selection only
                         available_devices = self.app.get_available_output_hardware_device_names()
                         current_hw_device_name = track.output_hardware_device_name
-                        if current_hw_device_name in available_devices:
-                            current_hw_device_index = available_devices.index(current_hw_device_name)
-                        else:
-                            current_hw_device_index = -1
-                        next_device_name = available_devices[(current_hw_device_index + actual_increment) % len(available_devices)]
+
+                        # Find the current device index, trying both full name and short name
+                        current_hw_device_index = -1
+                        for i, device_name in enumerate(available_devices):
+                            if device_name == current_hw_device_name:
+                                current_hw_device_index = i
+                                break
+                            # Also check if the current device name contains this device name (for short names)
+                            elif current_hw_device_name.startswith(device_name) or current_hw_device_name.endswith(device_name):
+                                current_hw_device_index = i
+                                break
+
+                        # If current device not found, start from beginning
+                        if current_hw_device_index == -1:
+                            current_hw_device_index = 0
+
+                        # Calculate next device index with wrap-around
+                        next_device_index = (current_hw_device_index + actual_increment) % len(available_devices)
+                        next_device_name = available_devices[next_device_index]
+
+                        # Update the track's device
                         track.set_output_hardware_device(next_device_name)
+                        print(f"Track {track_num + 1}: Changed device from '{current_hw_device_name}' to '{next_device_name}'")
                         
                     elif selection_state == 1:  # Channel selection only
                         hw_device = track.get_output_hardware_device()
@@ -526,9 +543,29 @@ class SettingsMode(definitions.PyshaMode):
                     if selection_state == 0:  # Device selection only
                         available_devices = self.app.get_available_output_hardware_device_names()
                         current_hw_device_name = track.output_hardware_device_name
-                        current_hw_device_index = available_devices.index(current_hw_device_name)
-                        next_device_name = available_devices[(current_hw_device_index + 1) % len(available_devices)]
+
+                        # Find the current device index, trying both full name and short name
+                        current_hw_device_index = -1
+                        for i, device_name in enumerate(available_devices):
+                            if device_name == current_hw_device_name:
+                                current_hw_device_index = i
+                                break
+                            # Also check if the current device name contains this device name (for short names)
+                            elif current_hw_device_name.startswith(device_name) or current_hw_device_name.endswith(device_name):
+                                current_hw_device_index = i
+                                break
+
+                        # If current device not found, start from beginning
+                        if current_hw_device_index == -1:
+                            current_hw_device_index = 0
+
+                        # Calculate next device index with wrap-around
+                        next_device_index = (current_hw_device_index + 1) % len(available_devices)
+                        next_device_name = available_devices[next_device_index]
+
+                        # Update the track's device
                         track.set_output_hardware_device(next_device_name)
+                        print(f"Track {track_num + 1}: Changed device from '{current_hw_device_name}' to '{next_device_name}'")
                     elif selection_state == 1:  # Channel selection only
                         hw_device = track.get_output_hardware_device()
                         if hw_device:

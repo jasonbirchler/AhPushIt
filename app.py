@@ -95,6 +95,9 @@ class PyshaApp(object):
         # Try to initialize real MIDI devices (non-blocking)
         self.try_initialize_midi_devices(settings)
 
+        # Initial device-to-track assignment
+        self.assign_devices_to_tracks()
+
         self.init_push()
         self.init_modes(settings)
 
@@ -265,12 +268,75 @@ class PyshaApp(object):
 
             if new_in_devices or new_out_devices:
                 print("New MIDI devices detected!")
-                # Notify user or auto-connect logic could go here
+                # Auto-assign devices to tracks
+                self.assign_devices_to_tracks()
 
             self._last_seen_in_devices = current_in_devices
             self._last_seen_out_devices = current_out_devices
         except Exception as e:
             print(f"Error checking for new MIDI devices: {e}")
+
+    def assign_devices_to_tracks(self):
+        """
+        Assign detected MIDI devices to tracks starting from track 1.
+        If fewer than 8 devices are detected, assign null devices to remaining tracks.
+        """
+        try:
+            print("Starting device-to-track assignment...")
+
+            # Get all available MIDI output devices (excluding system devices)
+            all_output_devices = [name for name in mido.get_output_names()
+                                if 'Ableton Push' not in name and 'RtMidi' not in name and 'Through' not in name]
+            all_output_devices = [name for name in all_output_devices if name != 'Virtual']
+
+            print(f"Detected {len(all_output_devices)} MIDI output devices: {all_output_devices}")
+
+            # Assign devices to tracks starting from track 1
+            for track_idx in range(8):
+                track = self.session.get_track_by_idx(track_idx)
+                if track is None:
+                    print(f"Track {track_idx + 1} not found, skipping...")
+                    continue
+
+                if track_idx < len(all_output_devices):
+                    # Assign real device to this track
+                    device_name = all_output_devices[track_idx]
+                    print(f"Assigning device '{device_name}' to track {track_idx + 1}")
+                    track.output_hardware_device_name = device_name
+
+                    # Create and store hardware device object
+                    hardware_device = HardwareDevice()
+                    hardware_device.name = device_name
+                    hardware_device.short_name = device_name.split(' ')[0] if ' ' in device_name else device_name
+                    hardware_device.type = 1  # Output device
+                    hardware_device.midi_output_device_name = device_name
+                    hardware_device.midi_channel = track_idx + 1  # MIDI channels 1-8
+
+                    # Add to hardware devices list
+                    self.hardware_devices.append(hardware_device)
+                else:
+                    # Assign null device to remaining tracks
+                    null_device_name = f"Null Device {track_idx + 1}"
+                    print(f"Assigning null device '{null_device_name}' to track {track_idx + 1}")
+                    track.output_hardware_device_name = null_device_name
+
+                    # Create null hardware device
+                    hardware_device = HardwareDevice()
+                    hardware_device.name = null_device_name
+                    hardware_device.short_name = "Null"
+                    hardware_device.type = 1  # Output device
+                    hardware_device.midi_output_device_name = null_device_name
+                    hardware_device.midi_channel = track_idx + 1  # MIDI channels 1-8
+
+                    # Add to hardware devices list
+                    self.hardware_devices.append(hardware_device)
+
+            print("Device-to-track assignment completed")
+
+        except Exception as e:
+            print(f"Error in device-to-track assignment: {e}")
+            import traceback
+            traceback.print_exc()
 
     def init_midi_in(self, device_name=None):
         print('Configuring MIDI in to {}...'.format(device_name))
@@ -630,7 +696,16 @@ class PyshaApp(object):
         return None
 
     def get_available_output_hardware_device_names(self) -> List[str]:
-        return [device.short_name for device in self.hardware_devices if device.is_type_output()]
+        # Return both full names and short names to ensure proper matching
+        device_names = []
+        for device in self.hardware_devices:
+            if device.is_type_output():
+                # Add both full name and short name to ensure matching works
+                if device.name not in device_names:
+                    device_names.append(device.name)
+                if device.short_name not in device_names and device.short_name != device.name:
+                    device_names.append(device.short_name)
+        return device_names
 
 
 # Bind push action handlers with class methods
