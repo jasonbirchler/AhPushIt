@@ -8,6 +8,7 @@ TOGGLE_DISPLAY_BUTTON = push2_python.constants.BUTTON_USER
 SETTINGS_BUTTON = push2_python.constants.BUTTON_SETUP
 MELODIC_RHYTHMIC_TOGGLE_BUTTON = push2_python.constants.BUTTON_NOTE
 PRESET_SELECTION_MODE_BUTTON = push2_python.constants.BUTTON_ADD_DEVICE
+CLIP_TRIGGERING_MODE_BUTTON = push2_python.constants.BUTTON_SESSION
 RECORD_BUTTON = push2_python.constants.BUTTON_RECORD
 
 
@@ -44,6 +45,13 @@ class MainControlsMode(definitions.PyshaMode):
         else:
             self.push.buttons.set_button_color(SETTINGS_BUTTON, definitions.OFF_BTN_COLOR)
 
+        # Clip triggering mode button
+        if self.app.is_mode_active(self.app.clip_triggering_mode):
+            self.push.buttons.set_button_color(CLIP_TRIGGERING_MODE_BUTTON, definitions.BLACK)
+            self.push.buttons.set_button_color(CLIP_TRIGGERING_MODE_BUTTON, definitions.WHITE, animation=definitions.DEFAULT_ANIMATION)
+        else:
+            self.push.buttons.set_button_color(CLIP_TRIGGERING_MODE_BUTTON, definitions.WHITE)
+
         # Preset selection mode
         if self.app.is_mode_active(self.app.preset_selection_mode):
             self.push.buttons.set_button_color(PRESET_SELECTION_MODE_BUTTON, definitions.BLACK)
@@ -65,6 +73,13 @@ class MainControlsMode(definitions.PyshaMode):
             self.app.use_push2_display = not self.app.use_push2_display
             if not self.app.use_push2_display:
                 self.push.display.send_to_display(self.push.display.prepare_frame(self.push.display.make_black_frame()))
+            self.app.buttons_need_update = True
+            return True
+        elif button_name == CLIP_TRIGGERING_MODE_BUTTON:
+            if self.app.is_mode_active(self.app.clip_triggering_mode):
+                self.app.unset_clip_triggering_mode()
+            else:
+                self.app.set_clip_triggering_mode()
             self.app.buttons_need_update = True
             return True
         elif button_name == PRESET_SELECTION_MODE_BUTTON:
