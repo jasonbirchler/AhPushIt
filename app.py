@@ -173,13 +173,23 @@ class PyshaApp(object):
         if not self.is_mode_active(mode_to_set):
 
             # First deactivate all existing modes for that xor group
+            # Store the FIRST mode we find as the previous mode (not the last)
+            # This ensures we restore the primary mode that was active, not just the last one processed
+            previous_mode_found = None
             new_active_modes = []
             for mode in self.active_modes:
                 if mode.xor_group is not None and mode.xor_group == mode_to_set.xor_group:
+                    if previous_mode_found is None:
+                        # Store the first mode we find as the previous mode
+                        previous_mode_found = mode
                     mode.deactivate()
-                    self.previously_active_mode_for_xor_group[mode.xor_group] = mode  # Store last mode that was active for the group
                 else:
                     new_active_modes.append(mode)
+
+            # Store the previous mode if we found one
+            if previous_mode_found is not None:
+                self.previously_active_mode_for_xor_group[mode_to_set.xor_group] = previous_mode_found
+
             self.active_modes = new_active_modes
 
             # Now add the mode to set to the active modes list and activate it
@@ -190,6 +200,7 @@ class PyshaApp(object):
         '''This deactivates the mode_to_unset and reactivates the previous mode that was active for this xor_group.
         This allows to make sure that one (and onyl one) mode will be always active for a given xor_group.
         '''
+
         if self.is_mode_active(mode_to_unset):
 
             # Deactivate the mode to unset
