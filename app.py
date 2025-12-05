@@ -28,6 +28,7 @@ from null_midi_devices import null_midi
 from hardware_device import HardwareDevice
 
 buttons_pressed_state = {}
+pads_pressed_state = {}  # Track pad press times for long press detection
 
 class PyshaApp(object):
 
@@ -86,7 +87,9 @@ class PyshaApp(object):
         self.notes_midi_in = null_midi.get_null_notes_input()
 
         self.seqencer_interface = SeqencerInterface(app=self)
-        self.session = Session()
+        self.session = Session(parent=self)
+        # Register initial clips after session is properly initialized
+        self.session._register_initial_clips()
         self.set_midi_in_channel(settings.get('midi_in_default_channel', 0))
         self.set_midi_out_channel(settings.get('midi_out_default_channel', 0))
         self.target_frame_rate = settings.get('target_frame_rate', 60)
@@ -688,7 +691,7 @@ class PyshaApp(object):
         print('Doing initial Push config...')
 
         # Force configure MIDI out (in case it wasn't...)
-        app.push.configure_midi_out()
+        self.push.configure_midi_out()
 
         # Configure custom color palette
         app.push.color_palette = {}
@@ -752,6 +755,9 @@ def on_encoder_rotated(_, encoder_name, increment):
 @push2_python.on_pad_pressed()
 def on_pad_pressed(_, pad_n, pad_ij, velocity):
     try:
+        # Track pad press time for long press detection
+        pads_pressed_state[pad_n] = time.time()
+        
         for mode in app.active_modes[::-1]:
             action_performed = mode.on_pad_pressed(pad_n, pad_ij, velocity)
             if action_performed:
@@ -764,10 +770,29 @@ def on_pad_pressed(_, pad_n, pad_ij, velocity):
 @push2_python.on_pad_released()
 def on_pad_released(_, pad_n, pad_ij, velocity):
     try:
-        for mode in app.active_modes[::-1]:
-            action_performed = mode.on_pad_released(pad_n, pad_ij, velocity)
-            if action_performed:
-                break  # If mode took action, stop event propagation
+        # Determine if this was a long press
+        press_time = pads_pressed_state.get(pad_n, None)
+        is_long_press = False
+        if press_time is not None:
+            if time.time() - press_time > definitions.BUTTON_QUICK_PRESS_TIME:
+                is_long_press = True
+            # Clean up the press state
+            del pads_pressed_state[pad_n]
+        
+        # If it was a long press, call the long press handler
+        if is_long_press:
+            for mode in app.active_modes[::-1]:
+                # Check if mode has a long press handler
+                if hasattr(mode, 'on_pad_long_pressed'):
+                    action_performed = mode.on_pad_long_pressed(pad_n, pad_ij, velocity)
+                    if action_performed:
+                        break  # If mode took action, stop event propagation
+        else:
+            # Regular pad release handling
+            for mode in app.active_modes[::-1]:
+                action_performed = mode.on_pad_released(pad_n, pad_ij, velocity)
+                if action_performed:
+                    break  # If mode took action, stop event propagation
     except NameError as e:
        print('Error:  {}'.format(str(e)))
        traceback.print_exc()

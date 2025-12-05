@@ -86,7 +86,7 @@ class ClipTriggeringMode(definitions.PyshaMode):
         return playing_clips_info
 
     def update_display(self, ctx, w, h):
-        if not self.app.is_mode_active(self.app.settings_mode):
+        if not self.app.is_mode_active(self.app.settings_mode) and not self.app.is_mode_active(self.app.clip_edit_mode):
             # Draw clip progress bars
             playing_clips_info = self.get_playing_clips_info()
             for track_num, playing_clips_info in playing_clips_info.items():
@@ -211,7 +211,16 @@ class ClipTriggeringMode(definitions.PyshaMode):
             row_colors = []
             row_animation = []
             for j in range(0, 8):
-                clip = self.app.session.get_clip_by_idx(j, i)
+                # Get clip more safely - check if track and clip exist first
+                clip = None
+                try:
+                    track = self.app.session.get_track_by_idx(j)
+                    if track is not None and i < len(track.clips):
+                        clip = track.clips[i]
+                except Exception:
+                    # If any error occurs, clip remains None
+                    pass
+
                 state = clip.get_status() if clip is not None else None
 
                 track_color = self.app.track_selection_mode.get_track_color(
@@ -275,19 +284,9 @@ class ClipTriggeringMode(definitions.PyshaMode):
                 )
             return True
 
-    def on_pad_pressed(
-        self,
-        pad_n,
-        pad_ij,
-        velocity,
-        shift=False,
-        select=False,
-        long_press=False,
-        double_press=False,
-    ):
+    def on_pad_pressed(self, pad_n, pad_ij, velocity):
         track_num = pad_ij[1]
         clip_num = pad_ij[0]
-        clip = self.app.session.get_clip_by_idx(track_num, clip_num)
 
         action_buttons_to_check = [
             self.app.main_controls_mode.record_button,
@@ -303,12 +302,9 @@ class ClipTriggeringMode(definitions.PyshaMode):
             ]
         )
 
+        # Handle regular press (short press)
+        clip = self.app.session.get_clip_by_idx(track_num, clip_num)
         if clip is not None:
-            if long_press and not action_button_being_pressed:
-                self.app.clip_edit_mode.set_clip_mode(clip.uuid)
-                self.app.set_clip_edit_mode()
-                return True
-            else:
                 if self.app.is_button_being_pressed(
                     self.app.main_controls_mode.record_button
                 ):
@@ -375,6 +371,58 @@ class ClipTriggeringMode(definitions.PyshaMode):
                     else:
                         # No "option" button pressed, do play/stop
                         clip.play_stop()
+                        return True  # Return True to indicate the action was handled
+
+    def on_pad_long_pressed(self, pad_n, pad_ij, velocity):
+        """Handle long press events on pads to enter clip edit mode"""
+        track_num = pad_ij[1]
+        clip_num = pad_ij[0]
+
+        # Check if any action buttons are being pressed - if so, ignore long press
+        action_buttons_to_check = [
+            self.app.main_controls_mode.record_button,
+            self.clear_clip_button,
+            self.double_clip_button,
+            self.quantize_button,
+            self.undo_button,
+        ]
+        action_button_being_pressed = any(
+            [
+                self.app.is_button_being_pressed(button_name)
+                for button_name in action_buttons_to_check
+            ]
+        )
+
+        if action_button_being_pressed:
+            return False  # Don't handle long press if action buttons are pressed
+
+        try:
+            track = self.app.session.get_track_by_idx(track_num)
+            if track is None:
+                print(f"ERROR: Track {track_num} not found")
+                return False
+
+            # Ensure we have enough clips in the track
+            while len(track.clips) <= clip_num:
+                from clip import Clip
+                new_clip = Clip(parent=track)
+                track._add_clip(new_clip)
+
+            # Get the clip (which should now exist)
+            clip = self.app.session.get_clip_by_idx(track_num, clip_num)
+            if clip is not None:
+                # Enter clip edit mode for both existing and newly created clips
+                self.app.clip_edit_mode.set_clip_mode(clip.uuid)
+                self.app.set_clip_edit_mode()
+                return True  # Return True to indicate success
+            else:
+                print(f"ERROR: Could not get clip at position {track_num}, {clip_num}")
+                return False
+        except Exception as e:
+            print(f"ERROR in long press handling: {e}")
+            import traceback
+            traceback.print_exc()
+            return False
 
     def on_encoder_rotated(self, encoder_name, increment):
         try:

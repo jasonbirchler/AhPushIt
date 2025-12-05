@@ -21,7 +21,12 @@ class Track(BaseClass):
         self.input_monitoring = False
         self.name = ""
         # Create initial clip with this track as parent
-        self.clips = [Clip(parent=self)]
+        initial_clip = Clip(parent=self)
+        self.clips = [initial_clip]
+        # Debug: Print parent information
+        print(f"DEBUG: Track {self.uuid} created with parent: {getattr(self, '_parent', None)}")
+        # Register the initial clip with the sequencer interface
+        self._register_initial_clip(initial_clip)
 
     def _send_msg_to_app(self, message, parameters):
         """Send message to the app - placeholder implementation"""
@@ -36,6 +41,25 @@ class Track(BaseClass):
             self.clips.append(clip)
         else:
             self.clips.insert(position, clip)
+
+        # Register the clip with the sequencer interface's UUID map
+        app = self._get_app()
+        if app and hasattr(app, 'seqencer_interface'):
+            app.seqencer_interface._add_element_to_uuid_map(clip)
+            print(f"DEBUG: Registered clip {clip.uuid} with sequencer interface")
+        else:
+            print(f"DEBUG: Could not register clip {clip.uuid} - app or sequencer_interface not available")
+
+    def _register_initial_clip(self, clip):
+        """Register the initial clip created in constructor with sequencer interface"""
+        # This method can be called after the track has been properly initialized
+        # and has a parent relationship established
+        app = self._get_app()
+        if app and hasattr(app, 'seqencer_interface'):
+            app.seqencer_interface._add_element_to_uuid_map(clip)
+            print(f"DEBUG: Registered initial clip {clip.uuid} with sequencer interface")
+        else:
+            print(f"DEBUG: Could not register initial clip {clip.uuid} - app or sequencer_interface not available")
 
     def _remove_clip_with_uuid(self, clip_uuid):
         # Note this method removes a Clip object from the local Track object but does not remove a clip from the backend

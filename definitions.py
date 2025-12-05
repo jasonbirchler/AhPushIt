@@ -196,6 +196,9 @@ class PyshaMode(object):
     def on_pad_released(self, pad_n, pad_ij, velocity):
         pass
 
+    def on_pad_long_pressed(self, pad_n, pad_ij, velocity):
+        pass
+
     def on_pad_aftertouch(self, pad_n, pad_ij, velocity):
         pass
 

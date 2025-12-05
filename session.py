@@ -21,7 +21,9 @@ class Session(BaseClass):
 
     def __init__(self, *args, **kwargs):
         # Initialize with 8 empty Track objects to match the 8 track buttons
-        self.tracks = [Track() for _ in range(8)]
+        self.tracks = [Track(parent=self) for _ in range(8)]
+        # Register initial clips after tracks are created
+        self._register_initial_clips()
         super().__init__(*args, **kwargs)
 
     def _add_track(self, track: Track, position=None):
@@ -45,9 +47,42 @@ class Session(BaseClass):
 
     def get_clip_by_idx(self, track_idx=None, clip_idx=None) -> Optional[Clip]:
         try:
-            return self.tracks[track_idx].clips[clip_idx]
+            # First check if track exists
+            if track_idx is None or track_idx >= len(self.tracks):
+                return None
+
+            track = self.tracks[track_idx]
+
+            # Check if clip exists in this track
+            if clip_idx is None or clip_idx >= len(track.clips):
+                return None
+
+            return track.clips[clip_idx]
         except Exception as e:
+            # Only print error for unexpected exceptions, not for normal index issues
             print('ERROR selecting clip track: {}'.format(e))
+        return None
+
+    def _register_initial_clips(self):
+        """Register all initial clips with the sequencer interface after session is properly initialized"""
+        # This method should be called after the session has a proper parent relationship
+        app = self._get_app()
+        if app and hasattr(app, 'seqencer_interface'):
+            for track_idx, track in enumerate(self.tracks):
+                for clip_idx, clip in enumerate(track.clips):
+                    app.seqencer_interface._add_element_to_uuid_map(clip)
+                    print(f"DEBUG: Registered initial clip {clip.uuid} from track {track_idx} with sequencer interface")
+        else:
+            print("DEBUG: Could not register initial clips - app or sequencer_interface not available")
+
+    def _get_app(self):
+        """Access to the app through the parent hierarchy"""
+        # Navigate up the parent hierarchy to find the app
+        current = self._parent
+        while current is not None:
+            if hasattr(current, 'hardware_devices'):
+                return current
+            current = getattr(current, '_parent', None)
         return None
 
     def save(self, save_session_name):

@@ -87,7 +87,7 @@ class ClipEditMode(definitions.PyshaMode):
     @property
     def clip(self) -> Optional[Clip]:
         if self.selected_clip_uuid is not None:
-            return self.app.shepherd_interface.get_element_with_uuid(self.selected_clip_uuid)
+            return self.app.seqencer_interface.get_element_with_uuid(self.selected_clip_uuid)
         else:
             return None
 
@@ -95,7 +95,7 @@ class ClipEditMode(definitions.PyshaMode):
     def event(self) -> Optional[SequenceEvent]:
         if self.selected_event_uuid is not None:
             try:
-                return self.app.shepherd_interface.get_element_with_uuid(self.selected_event_uuid)
+                return self.app.seqencer_interface.get_element_with_uuid(self.selected_event_uuid)
             except KeyError:
                 return None
         else:
@@ -225,6 +225,11 @@ class ClipEditMode(definitions.PyshaMode):
         self.adjust_pads_to_sequence()
 
     def update_display(self, ctx, w, h):
+        # Clear the entire display first
+        ctx.set_source_rgb(0, 0, 0)
+        ctx.rectangle(0, 0, w, h)
+        ctx.fill()
+        
         if self.clip is not None and not self.app.is_mode_active(self.app.settings_mode):
             part_w = w // 8
             track_color_rgb = None
@@ -313,6 +318,10 @@ class ClipEditMode(definitions.PyshaMode):
                 self.update_pads()
 
     def activate(self):
+        # Clear the display to hide previous interface
+        if self.app.use_push2_display:
+            self.push.display.send_to_display(self.push.display.prepare_frame(self.push.display.make_black_frame()))
+        
         self.update_buttons()
         self.update_pads()
 
