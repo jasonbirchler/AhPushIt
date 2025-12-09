@@ -116,16 +116,35 @@ class Clip(BaseClass):
     def play_stop(self):
         if self.track is None:
             print(f'ERROR: play_stop called on clip {self.uuid} but track is None!')
-            print(f'Clip parent: {self._parent}')
+            return
+
+        if self.playing:
+            self.stop()
         else:
-            print(f'play_stop on clip {self.uuid} of track {self.track.uuid}')
+            self.play()
 
     def play(self):
-        print(f'play on clip {self.uuid} of track {self.track.uuid}')
+        if self.track is None:
+            return
+
+        # Get app and MIDI manager
+        app = self.track._get_app()
+        if app and hasattr(app, 'midi_manager'):
+            app.midi_manager.schedule_clip(self.track.uuid, self)
+            self.playing = True
+            print(f'Playing clip {self.uuid} on track {self.track.uuid}')
 
     def stop(self):
-        print(f'stop on clip {self.uuid} of track {self.track.uuid}')
-    
+        if self.track is None:
+            return
+
+        # Get app and MIDI manager
+        app = self.track._get_app()
+        if app and hasattr(app, 'midi_manager'):
+            app.midi_manager.unschedule_clip(self.track.uuid)
+            self.playing = False
+            print(f'Stopped clip {self.uuid} on track {self.track.uuid}')
+
     def record_on_off(self):
         print(f'record_on_off on clip {self.uuid} of track {self.track.uuid}')
 
@@ -194,7 +213,7 @@ class Clip(BaseClass):
                 'duration': duration,
                 'chance': chance,
                 'utime': utime
-            }, 
+            },
         })
 
     def add_sequence_midi_event(self, eventMidiBytes, timestamp):
@@ -204,7 +223,7 @@ class Clip(BaseClass):
                 'type': 0,  # type 0 = midi event
                 'eventMidiBytes': eventMidiBytes,
                 'timestamp': timestamp, 
-            }, 
+            },
         })
 
     def edit_sequence_event(self, event_uuid, midi_note=None, midi_velocity=None, timestamp=None, duration=None,

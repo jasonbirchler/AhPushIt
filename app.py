@@ -26,6 +26,7 @@ from sequencer_interface import SeqencerInterface
 from session import Session
 from null_midi_devices import null_midi
 from hardware_device import HardwareDevice
+from midi_manager import MidiManager
 
 buttons_pressed_state = {}
 pads_pressed_state = {}  # Track pad press times for long press detection
@@ -47,7 +48,7 @@ class PyshaApp(object):
     midi_in_channel = 0  # 0-15
     midi_in_tmp_device_idx = None  # This is to store device names while rotating encoders
 
-    notes_midi_in = None  # MIDI input device only used to receive note messages and illuminate pads/keys
+    notes_midi_in = None
     notes_midi_in_tmp_device_idx = None  # This is to store device names while rotating encoders
 
     # push
@@ -90,6 +91,10 @@ class PyshaApp(object):
         self.session = Session(parent=self)
         # Register initial clips after session is properly initialized
         self.session._register_initial_clips()
+
+        # Initialize MIDI manager with isobar
+        self.midi_manager = MidiManager(self)
+        self.midi_manager.initialize_devices()
         self.set_midi_in_channel(settings.get('midi_in_default_channel', 0))
         self.set_midi_out_channel(settings.get('midi_out_default_channel', 0))
         self.target_frame_rate = settings.get('target_frame_rate', 60)

@@ -10,6 +10,7 @@ MELODIC_RHYTHMIC_TOGGLE_BUTTON = push2_python.constants.BUTTON_NOTE
 PRESET_SELECTION_MODE_BUTTON = push2_python.constants.BUTTON_ADD_DEVICE
 CLIP_TRIGGERING_MODE_BUTTON = push2_python.constants.BUTTON_SESSION
 RECORD_BUTTON = push2_python.constants.BUTTON_RECORD
+PLAY_BUTTON = push2_python.constants.BUTTON_PLAY
 
 
 class MainControlsMode(definitions.PyshaMode):
@@ -59,6 +60,12 @@ class MainControlsMode(definitions.PyshaMode):
         else:
             self.push.buttons.set_button_color(PRESET_SELECTION_MODE_BUTTON, definitions.OFF_BTN_COLOR)
 
+        # Play button
+        if self.app.midi_manager.timeline.running:
+            self.push.buttons.set_button_color(PLAY_BUTTON, definitions.GREEN, animation=definitions.DEFAULT_ANIMATION)
+        else:
+            self.push.buttons.set_button_color(PLAY_BUTTON, definitions.WHITE)
+
     def on_button_pressed(self, button_name, shift=False, select=False, long_press=False, double_press=False):
         if button_name == MELODIC_RHYTHMIC_TOGGLE_BUTTON:
             self.app.toggle_melodic_rhythmic_slice_modes()
@@ -91,6 +98,13 @@ class MainControlsMode(definitions.PyshaMode):
                 # Activate preset selection mode and store time button pressed
                 self.app.set_preset_selection_mode()
                 self.preset_selection_button_pressing_time = time.time()
+            self.app.buttons_need_update = True
+            return True
+        elif button_name == PLAY_BUTTON:
+            if self.app.midi_manager.timeline.running:
+                self.app.midi_manager.stop_timeline()
+            else:
+                self.app.midi_manager.start_timeline()
             self.app.buttons_need_update = True
             return True
 
