@@ -275,6 +275,7 @@ class MelodicMode(definitions.PyshaMode):
 
     def on_pad_pressed(self, pad_n, pad_ij, velocity):
         midi_note = self.pad_ij_to_midi_note(pad_ij)
+        print(f"PAD PRESSED: note={midi_note}, velocity={velocity}")
         if midi_note is not None:
             self.latest_velocity_value = (time.time(), velocity)
             if (
@@ -290,12 +291,19 @@ class MelodicMode(definitions.PyshaMode):
                 # light the currently presed pad). However, if "notes_midi_in" input is not configured, we do want to liht the pad as we won't have
                 # notes info comming from any other source
                 self.add_note_being_played(midi_note, "push")
-            msg = mido.Message(
-                "note_on",
-                note=midi_note,
-                velocity=velocity if not self.fixed_velocity_mode else 127,
-            )
-            self.app.send_midi(msg)
+            velocity_to_send = velocity if not self.fixed_velocity_mode else 127
+            print(f"Sending note ON via MIDI manager: note={midi_note}, vel={velocity_to_send}")
+            
+            # Send via MIDI manager to selected track's output device
+            if hasattr(self.app, 'midi_manager'):
+                track = self.app.track_selection_mode.get_selected_track()
+                if track:
+                    self.app.midi_manager.send_note(
+                        track.output_hardware_device_name,
+                        midi_note,
+                        velocity_to_send
+                    )
+            
             # Directly calling update pads method
             # because we want user to feel feedback as quick as possible
             self.update_pads()
@@ -303,6 +311,7 @@ class MelodicMode(definitions.PyshaMode):
 
     def on_pad_released(self, pad_n, pad_ij, velocity):
         midi_note = self.pad_ij_to_midi_note(pad_ij)
+        print(f"PAD RELEASED: note={midi_note}")
         if midi_note is not None:
             if (
                 self.app.track_selection_mode.get_current_track_info().get(
@@ -313,9 +322,16 @@ class MelodicMode(definitions.PyshaMode):
                 # see comment in "on_pad_pressed" above
                 self.remove_note_being_played(midi_note, "push")
             
-            msg = mido.Message("note_off", note=midi_note, velocity=velocity)
-            self.app.send_midi(msg)
-
+            # Send via MIDI manager to selected track's output device
+            if hasattr(self.app, 'midi_manager'):
+                track = self.app.track_selection_mode.get_selected_track()
+                if track:
+                    self.app.midi_manager.send_note(
+                        track.output_hardware_device_name,
+                        midi_note,
+                        0  # velocity 0 = note off
+                    )
+            
             # Directly calling update pads method because we want user to feel feedback as quick as possible
             self.update_pads()
             return True

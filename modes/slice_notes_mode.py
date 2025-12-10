@@ -5,6 +5,7 @@ from modes.melodic_mode import MelodicMode
 
 
 class SliceNotesMode(MelodicMode):
+    xor_group = "pads"
 
     start_note = 0
     color_groups = [

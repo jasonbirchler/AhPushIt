@@ -15,21 +15,10 @@ class MidiManager:
     def initialize_devices(self):
         """Scan and initialize all MIDI devices"""
         # Get available MIDI devices (excluding Push and system devices)
-        input_names = [name for name in iso.get_midi_input_names()
-                      if 'Push2Simulator' not in name and'Ableton Push' not in name and 'RtMidi' not in name and 'Through' not in name]
         output_names = [name for name in iso.get_midi_output_names() 
                        if 'Ableton Push' not in name and 'RtMidi' not in name and 'Through' not in name]
 
-        # Create isobar input devices
-        for name in input_names:
-            try:
-                device = iso.MidiInputDevice(name)
-                self.input_devices[name] = device
-                print(f"Initialized MIDI input: {name}")
-            except Exception as e:
-                print(f"Failed to initialize input {name}: {e}")
-
-        # Create isobar output devices
+        # Create isobar output devices only (input devices disabled to prevent auto-recording)
         for name in output_names:
             try:
                 device = iso.MidiOutputDevice(name)
@@ -107,3 +96,16 @@ class MidiManager:
             schedule = self.track_schedules[track_uuid]
             self.timeline.unschedule(schedule)
             del self.track_schedules[track_uuid]
+    
+    def send_note(self, device_name: str, note: int, velocity: int, channel: int = 0):
+        """Send a MIDI note on/off to an output device"""
+        output_device = self.get_output_device(device_name)
+        if output_device:
+            if velocity > 0:
+                print(f"Sending note ON: {note} vel={velocity} to {device_name}")
+                output_device.note_on(note, velocity, channel)
+            else:
+                print(f"Sending note OFF: {note} to {device_name}")
+                output_device.note_off(note, channel)
+        else:
+            print(f"No output device found: {device_name}")

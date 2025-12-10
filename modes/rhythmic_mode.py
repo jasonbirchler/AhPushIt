@@ -5,6 +5,7 @@ from modes.melodic_mode import MelodicMode
 
 
 class RhythmicMode(MelodicMode):
+    xor_group = "pads"
 
     rhythmic_notes_matrix = [
         [64, 65, 66, 67, 96, 97, 98, 99],

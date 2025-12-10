@@ -141,16 +141,16 @@ class PyshaApp(object):
         # MIDI CC mode must be inited after track selection mode so it gets info about loaded tracks
         self.midi_cc_mode = MIDICCMode(self, settings=settings)
 
-        # Add modes to active_modes, but exclude clip_triggering_mode since it's in the same XOR group as melodic_mode
+        # Add modes to active_modes, but exclude clip_triggering_mode and clip_edit_mode
+        # since they're in the same XOR group as melodic_mode
         # and melodic_mode should be the default active mode for pads
         self.active_modes += [
-            self.clip_edit_mode,
             self.track_selection_mode,
             self.midi_cc_mode
         ]
 
-        # Note: clip_triggering_mode is intentionally NOT added to active_modes here
-        # because it's in the same XOR group as melodic_mode and melodic_mode is the default
+        # Note: clip_triggering_mode and clip_edit_mode are intentionally NOT added to active_modes here
+        # because they're in the same XOR group as melodic_mode and melodic_mode is the default
 
         self.track_selection_mode.select_track(self.track_selection_mode.selected_track)
 
@@ -245,7 +245,7 @@ class PyshaApp(object):
 
     def set_slice_notes_mode(self):
         self.set_mode_for_xor_group(self.slice_notes_mode)
-    
+
     def set_clip_triggering_mode(self):
         self.set_mode_for_xor_group(self.clip_triggering_mode)
 
@@ -544,6 +544,17 @@ class PyshaApp(object):
                         self.last_cp_value_recevied_time = time.time()
 
                     if not skip_message:
+                        # Route note messages to selected track's output device
+                        if msg.type in ('note_on', 'note_off') and hasattr(self, 'midi_manager'):
+                            track = self.track_selection_mode.get_selected_track()
+                            if track:
+                                velocity = msg.velocity if msg.type == 'note_on' else 0
+                                self.midi_manager.send_note(
+                                    track.output_hardware_device_name,
+                                    msg.note,
+                                    velocity
+                                )
+
                         # Forward message to the main MIDI out
                         self.send_midi(msg)
 
@@ -715,7 +726,7 @@ class PyshaApp(object):
         # Update buttons and pads (just in case something was missing!)
         app.update_push2_buttons()
         app.update_push2_pads()
-    
+
     # Hardware devices
     def get_input_hardware_device_by_name(self, hardware_device_name):
         for hardware_device in self.hardware_devices:
@@ -762,10 +773,13 @@ def on_pad_pressed(_, pad_n, pad_ij, velocity):
     try:
         # Track pad press time for long press detection
         pads_pressed_state[pad_n] = time.time()
-        
+        print(f"Pad pressed event: pad_n={pad_n}, velocity={velocity}, active_modes={[type(m).__name__ for m in app.active_modes[::-1]]}")
+
         for mode in app.active_modes[::-1]:
             action_performed = mode.on_pad_pressed(pad_n, pad_ij, velocity)
+            print(f"  Mode {type(mode).__name__} returned {action_performed}")
             if action_performed:
+                print(f"  -> {type(mode).__name__} handled the event")
                 break  # If mode took action, stop event propagation
     except NameError as e:
        print('Error:  {}'.format(str(e)))
@@ -781,23 +795,21 @@ def on_pad_released(_, pad_n, pad_ij, velocity):
         if press_time is not None:
             if time.time() - press_time > definitions.BUTTON_QUICK_PRESS_TIME:
                 is_long_press = True
-            # Clean up the press state
             del pads_pressed_state[pad_n]
-        
-        # If it was a long press, call the long press handler
+
+        # Always call regular release handler first (for note off, etc.)
+        for mode in app.active_modes[::-1]:
+            action_performed = mode.on_pad_released(pad_n, pad_ij, velocity)
+            if action_performed:
+                break
+
+        # Then call long press handler if applicable
         if is_long_press:
             for mode in app.active_modes[::-1]:
-                # Check if mode has a long press handler
                 if hasattr(mode, 'on_pad_long_pressed'):
                     action_performed = mode.on_pad_long_pressed(pad_n, pad_ij, velocity)
                     if action_performed:
-                        break  # If mode took action, stop event propagation
-        else:
-            # Regular pad release handling
-            for mode in app.active_modes[::-1]:
-                action_performed = mode.on_pad_released(pad_n, pad_ij, velocity)
-                if action_performed:
-                    break  # If mode took action, stop event propagation
+                        break
     except NameError as e:
        print('Error:  {}'.format(str(e)))
        traceback.print_exc()
