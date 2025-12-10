@@ -691,6 +691,10 @@ class PyshaApp(object):
                 # Check if any delayed actions need to be applied
                 self.check_for_delayed_actions()
 
+                # Update clip playheads
+                if hasattr(self, 'midi_manager'):
+                    self.midi_manager.update_playheads()
+
                 after_draw_time = time.time()
 
                 # Calculate sleep time to aproximate the target frame rate
@@ -772,7 +776,7 @@ def on_encoder_rotated(_, encoder_name, increment):
 def on_pad_pressed(_, pad_n, pad_ij, velocity):
     try:
         # Track pad press time for long press detection
-        pads_pressed_state[pad_n] = time.time()
+        pads_pressed_state[pad_n] = {'time': time.time(), 'handled': False}
         print(f"Pad pressed event: pad_n={pad_n}, velocity={velocity}, active_modes={[type(m).__name__ for m in app.active_modes[::-1]]}")
 
         for mode in app.active_modes[::-1]:
@@ -789,27 +793,28 @@ def on_pad_pressed(_, pad_n, pad_ij, velocity):
 @push2_python.on_pad_released()
 def on_pad_released(_, pad_n, pad_ij, velocity):
     try:
-        # Determine if this was a long press
-        press_time = pads_pressed_state.get(pad_n, None)
+        press_state = pads_pressed_state.get(pad_n, None)
         is_long_press = False
-        if press_time is not None:
+        if press_state is not None:
+            press_time = press_state.get('time', time.time())
             if time.time() - press_time > definitions.BUTTON_QUICK_PRESS_TIME:
                 is_long_press = True
             del pads_pressed_state[pad_n]
 
-        # Always call regular release handler first (for note off, etc.)
-        for mode in app.active_modes[::-1]:
-            action_performed = mode.on_pad_released(pad_n, pad_ij, velocity)
-            if action_performed:
-                break
-
-        # Then call long press handler if applicable
+        # Call long press handler first if applicable
         if is_long_press:
             for mode in app.active_modes[::-1]:
                 if hasattr(mode, 'on_pad_long_pressed'):
                     action_performed = mode.on_pad_long_pressed(pad_n, pad_ij, velocity)
                     if action_performed:
-                        break
+                        # Long press was handled, skip regular release
+                        return
+
+        # Call regular release handler only if not a long press or long press wasn't handled
+        for mode in app.active_modes[::-1]:
+            action_performed = mode.on_pad_released(pad_n, pad_ij, velocity)
+            if action_performed:
+                break
     except NameError as e:
        print('Error:  {}'.format(str(e)))
        traceback.print_exc()

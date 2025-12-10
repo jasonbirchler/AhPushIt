@@ -491,6 +491,7 @@ class ClipEditMode(definitions.PyshaMode):
                     # Remove all notes
                     for note in notes_in_pad:
                         self.clip.remove_sequence_event(note.uuid)
+                    self.update_pads()
                 else:
                     # Exit event edit mode
                     self.set_clip_mode(self.selected_clip_uuid)
@@ -507,6 +508,7 @@ class ClipEditMode(definitions.PyshaMode):
                 if timestamp + self.pads_pad_beat_scale > self.clip.clip_length_in_beats:
                     # If adding a not beyond current clip length
                     self.clip.set_length(math.ceil(timestamp + self.pads_pad_beat_scale))
+                self.update_pads()
             else:
                 # Exit event edit mode
                 self.set_clip_mode(self.selected_clip_uuid)
@@ -535,7 +537,7 @@ class ClipEditMode(definitions.PyshaMode):
                     else:
                         self.set_clip_mode(self.available_clips[0])
                 return True  # Don't trigger this encoder moving in any other mode
-                
+
             elif encoder_name == push2_python.constants.ENCODER_TRACK2_ENCODER:
                 new_length = self.clip.clip_length_in_beats + increment
                 if new_length < 1.0:

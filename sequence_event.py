@@ -19,9 +19,20 @@ class SequenceEvent(BaseClass):
     utime: float
 
     def __init__(self, *args, **kwargs):
-        # Generate UUID for the sequence event
         self.uuid = str(uuid.uuid4())
-        super().__init__(*args, **kwargs)
+        # Extract and set attributes before calling super
+        self.type = kwargs.pop('type', 1)
+        self.midi_note = kwargs.pop('midi_note', 60)
+        self.midi_velocity = kwargs.pop('midi_velocity', 0.8)
+        self.timestamp = kwargs.pop('timestamp', 0.0)
+        self.duration = kwargs.pop('duration', 1.0)
+        self.utime = kwargs.pop('utime', 0.0)
+        self.chance = kwargs.pop('chance', 1.0)
+        self.rendered_start_timestamp = kwargs.pop('rendered_start_timestamp', 0.0)
+        self.rendered_end_timestamp = kwargs.pop('rendered_end_timestamp', 1.0)
+        self.midi_bytes = kwargs.pop('midi_bytes', '')
+        parent = kwargs.pop('_parent', None)
+        super().__init__(parent=parent)
 
     @property
     def clip(self) -> 'Clip':

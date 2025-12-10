@@ -161,60 +161,49 @@ class Clip(BaseClass):
         print(f'undo on clip {self.uuid} of track {self.track.uuid}')
 
     def set_length(self, new_length):
-        print(f'set_length on clip {self.uuid} of track {self.track.uuid}')
+        self.clip_length_in_beats = new_length
+        print(f'Set clip length to {new_length} beats')
 
     def set_bpm_multiplier(self, new_bpm_multiplier):
         print(f'set_bpm_multiplier on clip {self.uuid} of track {self.track.uuid}')
 
     def set_sequence(self, new_sequence):
-        """new_sequence must be passed as a dictionary with this form:
-        {
-            "clipLength": 6,
-            "sequenceEvents": [
-                {"type": 1, "midiNote": 79, "midiVelocity": 1.0, "timestamp": 0.29, "duration": 0.65, ...},
-                {"type": 1, "midiNote": 73, "midiVelocity": 1.0, "timestamp": 2.99, "duration": 1.42, ...},
-                {"type": 0, "eventMidiBytes": "73,21,56", "timestamp": 2.99, ...},  # type 0 = generic midi message
-                ...
-            ]
-        }
-        """
         print(f'set_sequence on clip {self.uuid} of track {self.track.uuid} to {json.dumps(new_sequence)}')
 
     def edit_sequence(self, edit_sequence_data):
-        """edit_sequence_data should be a dictionary with this form:
-        {
-            "action": "removeEvent" | "editEvent" | "addEvent",  // One of these three options
-            "eventUUID":  "356cbbdjgf...", // Used by "removeEvent" and "editEvent" only
-            "eventProperties": {
-                "type": 1,
-                "midiNote": 79,
-                "midiVelocity": 1.0,
-                ... // All the event properties that should be updated or "added" (in case of a new event)
-        }
-        Note that there are more specialized methods that will call "edit_sequence" and will have easier interface
-        """
         print(f'edit_sequence on clip {self.uuid} of track {self.track.uuid} with {json.dumps(edit_sequence_data)}')
 
     def remove_sequence_event(self, event_uuid):
-        self.edit_sequence({
-            'action': 'removeEvent',
-            'eventUUID': event_uuid, 
-        })
+        self._remove_sequence_event_with_uuid(event_uuid)
+        print(f'Removed event: {event_uuid}')
+        # Reschedule if playing
+        if self.playing:
+            app = self.track._get_app()
+            if app and hasattr(app, 'midi_manager'):
+                app.midi_manager.reschedule_clip(self.track.uuid, self)
 
     def add_sequence_note_event(self, midi_note: int, midi_velocity: float, timestamp: float, duration: float,
                                 utime: float = 0.0, chance: float = 1.0):
-        self.edit_sequence({
-            'action': 'addEvent',
-            'eventData': {
-                'type': 1,  # type 1 = note event
-                'midiNote': midi_note, 
-                'midiVelocity': midi_velocity,  # 0.0 to 1.0 
-                'timestamp': timestamp, 
-                'duration': duration,
-                'chance': chance,
-                'utime': utime
-            },
-        })
+        from sequence_event import SequenceEvent
+        event = SequenceEvent(
+            type=1,
+            midi_note=midi_note,
+            midi_velocity=midi_velocity,
+            timestamp=timestamp,
+            duration=duration,
+            utime=utime,
+            chance=chance,
+            rendered_start_timestamp=timestamp + utime,
+            rendered_end_timestamp=timestamp + utime + duration,
+            _parent=self
+        )
+        self._add_sequence_event(event)
+        print(f'Added note event: note={midi_note}, vel={midi_velocity}, time={timestamp}, dur={duration}')
+        # Reschedule if playing
+        if self.playing:
+            app = self.track._get_app()
+            if app and hasattr(app, 'midi_manager'):
+                app.midi_manager.reschedule_clip(self.track.uuid, self)
 
     def add_sequence_midi_event(self, eventMidiBytes, timestamp):
         self.edit_sequence({
@@ -228,23 +217,28 @@ class Clip(BaseClass):
 
     def edit_sequence_event(self, event_uuid, midi_note=None, midi_velocity=None, timestamp=None, duration=None,
                             midi_bytes=None, utime=None, chance=None):
-        event_data = {}
-        if midi_note is not None:
-            event_data['midiNote'] = midi_note
-        if midi_velocity is not None:
-            event_data['midiVelocity'] = midi_velocity
-        if timestamp is not None:
-            event_data['timestamp'] = timestamp
-        if duration is not None:
-            event_data['duration'] = duration
-        if midi_bytes is not None:
-            event_data['eventMidiBytes'] = midi_bytes
-        if utime is not None:
-            event_data['utime'] = utime
-        if chance is not None:
-            event_data['chance'] = chance
-        self.edit_sequence({
-            'action': 'editEvent',
-            'eventUUID': event_uuid,
-            'eventData': event_data, 
-        })
+        event = next((e for e in self.sequence_events if e.uuid == event_uuid), None)
+        if event:
+            if midi_note is not None:
+                event.midi_note = midi_note
+            if midi_velocity is not None:
+                event.midi_velocity = midi_velocity
+            if timestamp is not None:
+                event.timestamp = timestamp
+            if duration is not None:
+                event.duration = duration
+            if midi_bytes is not None:
+                event.midi_bytes = midi_bytes
+            if utime is not None:
+                event.utime = utime
+            if chance is not None:
+                event.chance = chance
+            # Recalculate rendered timestamps
+            event.rendered_start_timestamp = event.timestamp + event.utime
+            event.rendered_end_timestamp = event.timestamp + event.utime + event.duration
+            print(f'Edited event {event_uuid}')
+            # Reschedule if playing
+            if self.playing:
+                app = self.track._get_app()
+                if app and hasattr(app, 'midi_manager'):
+                    app.midi_manager.reschedule_clip(self.track.uuid, self)

@@ -285,6 +285,10 @@ class ClipTriggeringMode(definitions.PyshaMode):
             return True
 
     def on_pad_pressed(self, pad_n, pad_ij, velocity):
+        # Just return True to indicate we handle pads, actual action happens on release
+        return True
+    
+    def on_pad_released(self, pad_n, pad_ij, velocity):
         track_num = pad_ij[1]
         clip_num = pad_ij[0]
 
@@ -302,13 +306,11 @@ class ClipTriggeringMode(definitions.PyshaMode):
             ]
         )
 
-        # Handle regular press (short press)
         clip = self.app.session.get_clip_by_idx(track_num, clip_num)
         if clip is not None:
                 if self.app.is_button_being_pressed(
                     self.app.main_controls_mode.record_button
                 ):
-                    # Toggle record on/off for that clip if record button is being pressed
                     clip.record_on_off()
                     self.app.set_button_ignore_next_action_if_not_yet_triggered(
                         self.app.main_controls_mode.record_button
@@ -371,7 +373,8 @@ class ClipTriggeringMode(definitions.PyshaMode):
                     else:
                         # No "option" button pressed, do play/stop
                         clip.play_stop()
-                        return True  # Return True to indicate the action was handled
+                        return True
+        return False
 
     def on_pad_long_pressed(self, pad_n, pad_ij, velocity):
         """Handle long press events on pads to enter clip edit mode"""
