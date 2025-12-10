@@ -12,6 +12,7 @@ class MidiManager:
         self.output_devices: Dict[str, iso.MidiOutputDevice] = {}
         self.track_schedules: Dict[str, object] = {}  # track_uuid -> schedule object
         self.track_clips: Dict[str, object] = {}  # track_uuid -> clip object
+        self.pending_actions: List[Dict] = []  # List of {beat, action, clip}
 
     def initialize_devices(self):
         """Scan and initialize all MIDI devices"""
@@ -52,15 +53,34 @@ class MidiManager:
             if clip.clip_length_in_beats > 0:
                 clip.playhead_position_in_beats = current_beat % clip.clip_length_in_beats
 
+        # Process pending actions
+        actions_to_remove = []
+        for action in self.pending_actions:
+            if current_beat >= action['beat']:
+                if action['action'] == 'start':
+                    clip = action['clip']
+                    clip.will_play_at = -1.0
+                    self.schedule_clip(clip.track.uuid, clip)
+                    clip.playing = True
+                elif action['action'] == 'stop':
+                    clip = action['clip']
+                    clip.will_stop_at = -1.0
+                    self.unschedule_clip(clip.track.uuid)
+                    clip.playing = False
+                actions_to_remove.append(action)
+
+        for action in actions_to_remove:
+            self.pending_actions.remove(action)
+
     def schedule_clip(self, track_uuid: str, clip):
         """Schedule a clip's events to the timeline"""
         self.unschedule_clip(track_uuid)
-        
+
         print(f"\n=== Scheduling clip {clip.uuid} ===")
         print(f"Track: {track_uuid}")
         print(f"Output device name: {clip.track.output_hardware_device_name}")
         print(f"Sequence events: {len(clip.sequence_events)}")
-        
+
         output_device = self.get_output_device(clip.track.output_hardware_device_name)
         if not output_device:
             print(f"ERROR: No output device found for {clip.track.output_hardware_device_name}")
@@ -72,26 +92,26 @@ class MidiManager:
         if not note_events:
             print(f"WARNING: No note events in clip")
             return
-        
+
         note_events.sort(key=lambda e: e.timestamp)
-        
+
         notes = [e.midi_note for e in note_events]
         velocities = [int(e.midi_velocity * 127) for e in note_events]
         durations = [e.duration for e in note_events]
         delays = [note_events[0].timestamp]
         for i in range(1, len(note_events)):
             delays.append(note_events[i].timestamp - note_events[i-1].timestamp)
-        
+
         print(f"Notes: {notes}")
         print(f"Velocities: {velocities}")
         print(f"Durations: {durations}")
         print(f"Delays: {delays}")
-        
+
         pattern = iso.PSequence(notes)
         velocity_pattern = iso.PSequence(velocities)
         duration_pattern = iso.PSequence(durations)
         delay_pattern = iso.PSequence(delays)
-        
+
         track = self.timeline.schedule({
             'note': pattern,
             'velocity': velocity_pattern,
@@ -111,12 +131,44 @@ class MidiManager:
             del self.track_schedules[track_uuid]
         if track_uuid in self.track_clips:
             del self.track_clips[track_uuid]
-    
+
     def reschedule_clip(self, track_uuid: str, clip):
         """Reschedule a clip that's already playing to reflect changes"""
         if track_uuid in self.track_schedules and clip.playing:
             self.schedule_clip(track_uuid, clip)
-    
+
+    def get_next_bar_boundary(self, bars_per_quantize: int = 1) -> float:
+        """Calculate the next bar boundary for quantized launching"""
+        if not self.timeline.running:
+            return 0.0
+        current_beat = self.timeline.current_time
+        beats_per_bar = 4.0  # Assuming 4/4 time
+        beats_per_quantize = beats_per_bar * bars_per_quantize
+        next_boundary = ((current_beat // beats_per_quantize) + 1) * beats_per_quantize
+        return next_boundary
+
+    def schedule_clip_start(self, clip, quantized: bool = True):
+        """Schedule a clip to start at the next bar boundary"""
+        if quantized and self.timeline.running:
+            next_beat = self.get_next_bar_boundary()
+            clip.will_play_at = next_beat
+            self.pending_actions.append({'beat': next_beat, 'action': 'start', 'clip': clip})
+            print(f"Clip will start at beat {next_beat}")
+        else:
+            self.schedule_clip(clip.track.uuid, clip)
+            clip.playing = True
+
+    def schedule_clip_stop(self, clip, quantized: bool = True):
+        """Schedule a clip to stop at the next bar boundary"""
+        if quantized and self.timeline.running:
+            next_beat = self.get_next_bar_boundary()
+            clip.will_stop_at = next_beat
+            self.pending_actions.append({'beat': next_beat, 'action': 'stop', 'clip': clip})
+            print(f"Clip will stop at beat {next_beat}")
+        else:
+            self.unschedule_clip(clip.track.uuid)
+            clip.playing = False
+
     def send_note(self, device_name: str, note: int, velocity: int, channel: int = 0):
         """Send a MIDI note on/off to an output device"""
         output_device = self.get_output_device(device_name)

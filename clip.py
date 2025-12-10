@@ -127,23 +127,19 @@ class Clip(BaseClass):
         if self.track is None:
             return
 
-        # Get app and MIDI manager
         app = self.track._get_app()
         if app and hasattr(app, 'midi_manager'):
-            app.midi_manager.schedule_clip(self.track.uuid, self)
-            self.playing = True
-            print(f'Playing clip {self.uuid} on track {self.track.uuid}')
+            app.midi_manager.schedule_clip_start(self, quantized=True)
+            print(f'Clip {self.uuid} cued to play')
 
     def stop(self):
         if self.track is None:
             return
 
-        # Get app and MIDI manager
         app = self.track._get_app()
         if app and hasattr(app, 'midi_manager'):
-            app.midi_manager.unschedule_clip(self.track.uuid)
-            self.playing = False
-            print(f'Stopped clip {self.uuid} on track {self.track.uuid}')
+            app.midi_manager.schedule_clip_stop(self, quantized=True)
+            print(f'Clip {self.uuid} cued to stop')
 
     def record_on_off(self):
         print(f'record_on_off on clip {self.uuid} of track {self.track.uuid}')
