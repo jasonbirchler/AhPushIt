@@ -112,7 +112,6 @@ class PyshaApp(object):
         self._last_seen_out_devices = set()
 
     # UUID Management
-    def _add_element_to_uuid_map(self, element):
     def add_element_to_uuid_map(self, element):
         self.elements_uuids_map[element.uuid] = element
 
