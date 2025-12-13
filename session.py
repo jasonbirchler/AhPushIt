@@ -67,10 +67,10 @@ class Session(BaseClass):
         """Register all initial clips with the sequencer interface after session is properly initialized"""
         # This method should be called after the session has a proper parent relationship
         app = self._get_app()
-        if app and hasattr(app, 'seqencer_interface'):
+        if app:
             for track_idx, track in enumerate(self.tracks):
                 for clip_idx, clip in enumerate(track.clips):
-                    app.seqencer_interface._add_element_to_uuid_map(clip)
+                    app.add_element_to_uuid_map(clip)
                     print(f"DEBUG: Registered initial clip {clip.uuid} from track {track_idx} with sequencer interface")
         else:
             print("DEBUG: Could not register initial clips - app or sequencer_interface not available")

@@ -44,8 +44,8 @@ class Track(BaseClass):
 
         # Register the clip with the sequencer interface's UUID map
         app = self._get_app()
-        if app and hasattr(app, 'seqencer_interface'):
-            app.seqencer_interface._add_element_to_uuid_map(clip)
+        if app:
+            app.add_element_to_uuid_map(clip)
             print(f"DEBUG: Registered clip {clip.uuid} with sequencer interface")
         else:
             print(f"DEBUG: Could not register clip {clip.uuid} - app or sequencer_interface not available")
@@ -55,8 +55,8 @@ class Track(BaseClass):
         # This method can be called after the track has been properly initialized
         # and has a parent relationship established
         app = self._get_app()
-        if app and hasattr(app, 'seqencer_interface'):
-            app.seqencer_interface._add_element_to_uuid_map(clip)
+        if app:
+            app.add_element_to_uuid_map(clip)
             print(f"DEBUG: Registered initial clip {clip.uuid} with sequencer interface")
         else:
             print(f"DEBUG: Could not register initial clip {clip.uuid} - app or sequencer_interface not available")
@@ -107,7 +107,8 @@ class Track(BaseClass):
     def set_output_hardware_device(self, device_name) -> None:
         # Update the track's output hardware device name
         self.output_hardware_device_name = device_name
-        print(f'Set output hardware device for track to {device_name}')
+        print(f'Set output hardware device for track {self.uuid} to "{device_name}"')
+        print(f'Verify: track.output_hardware_device_name = "{self.output_hardware_device_name}"')
 
         # Also update the hardware device in the app's hardware_devices list if it exists
         app = self._get_app()

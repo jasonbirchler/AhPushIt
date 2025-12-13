@@ -275,7 +275,6 @@ class MelodicMode(definitions.PyshaMode):
 
     def on_pad_pressed(self, pad_n, pad_ij, velocity):
         midi_note = self.pad_ij_to_midi_note(pad_ij)
-        print(f"PAD PRESSED: note={midi_note}, velocity={velocity}")
         if midi_note is not None:
             self.latest_velocity_value = (time.time(), velocity)
             if (
@@ -292,8 +291,7 @@ class MelodicMode(definitions.PyshaMode):
                 # notes info comming from any other source
                 self.add_note_being_played(midi_note, "push")
             velocity_to_send = velocity if not self.fixed_velocity_mode else 127
-            print(f"Sending note ON via MIDI manager: note={midi_note}, vel={velocity_to_send}")
-            
+
             # Send via MIDI manager to selected track's output device
             if hasattr(self.app, 'midi_manager'):
                 track = self.app.track_selection_mode.get_selected_track()
@@ -303,7 +301,7 @@ class MelodicMode(definitions.PyshaMode):
                         midi_note,
                         velocity_to_send
                     )
-            
+
             # Directly calling update pads method
             # because we want user to feel feedback as quick as possible
             self.update_pads()

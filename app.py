@@ -22,7 +22,6 @@ from modes.rhythmic_mode import RhythmicMode
 from modes.settings_mode import SettingsMode
 from modes.slice_notes_mode import SliceNotesMode
 from modes.track_selection_mode import TrackSelectionMode
-from sequencer_interface import SeqencerInterface
 from session import Session
 from null_midi_devices import null_midi
 from hardware_device import HardwareDevice
@@ -33,7 +32,6 @@ pads_pressed_state = {}  # Track pad press times for long press detection
 
 class PyshaApp(object):
 
-    seqencer_interface = None
     session = None
     hardware_devices: List[HardwareDevice] = []
 
@@ -87,7 +85,6 @@ class PyshaApp(object):
         self.midi_out = null_midi.get_null_output()
         self.notes_midi_in = null_midi.get_null_notes_input()
 
-        self.seqencer_interface = SeqencerInterface(app=self)
         self.session = Session(parent=self)
         # Register initial clips after session is properly initialized
         self.session._register_initial_clips()
@@ -116,6 +113,7 @@ class PyshaApp(object):
 
     # UUID Management
     def _add_element_to_uuid_map(self, element):
+    def add_element_to_uuid_map(self, element):
         self.elements_uuids_map[element.uuid] = element
 
     def _remove_element_from_uuid_map(self, uuid):

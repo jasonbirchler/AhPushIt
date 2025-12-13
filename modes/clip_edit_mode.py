@@ -87,7 +87,7 @@ class ClipEditMode(definitions.PyshaMode):
     @property
     def clip(self) -> Optional[Clip]:
         if self.selected_clip_uuid is not None:
-            return self.app.seqencer_interface.get_element_with_uuid(self.selected_clip_uuid)
+            return self.app.get_element_with_uuid(self.selected_clip_uuid)
         else:
             return None
 
@@ -95,7 +95,7 @@ class ClipEditMode(definitions.PyshaMode):
     def event(self) -> Optional[SequenceEvent]:
         if self.selected_event_uuid is not None:
             try:
-                return self.app.seqencer_interface.get_element_with_uuid(self.selected_event_uuid)
+                return self.app.get_element_with_uuid(self.selected_event_uuid)
             except KeyError:
                 return None
         else:
