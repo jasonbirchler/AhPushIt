@@ -7,16 +7,18 @@ class Session(BaseClass):
     tracks: List[Track] = []
 
     bar_count: int
-    bpm: float
+    bpm: float = 100
     count_in_playhead_position_in_beats: float
     doing_count_in: bool
     fixed_length_recording_bars: int
     fixed_velocity: bool
+    key: str = "C"
     meter: int
-    metronome_on: bool
+    metronome_on: bool = False
     name: str
-    playing: bool
+    playing: bool = False
     record_automation_enabled: bool
+    scale: str = "Chromatic"
     version: str
 
     def __init__(self, *args, **kwargs):
@@ -73,7 +75,7 @@ class Session(BaseClass):
                     app.add_element_to_uuid_map(clip)
                     print(f"DEBUG: Registered initial clip {clip.uuid} from track {track_idx} with sequencer interface")
         else:
-            print("DEBUG: Could not register initial clips - app or sequencer_interface not available")
+            print("DEBUG: Could not register initial clips - app not available")
 
     def _get_app(self):
         """Access to the app through the parent hierarchy"""
@@ -114,10 +116,19 @@ class Session(BaseClass):
 
     def set_bpm(self, new_bpm):
         print(f'Trying to set bpm to {new_bpm}')
+        self.bpm = new_bpm
+    
+    def set_scale(self, new_scale):
+        print(f'Trying to set scale to {new_scale}')
+        self.scale = new_scale
+    
+    def set_key(self, new_key):
+        print(f'Trying to set scale to {new_key}')
+        self.key = new_key
     
     def set_meter(self, new_meter):
         print(f'Trying to set meter to {new_meter}')
-
+    
     def set_fix_length_recording_bars(self, new_fixed_length_recording_bars):
         print(f'Trying to set fixed length recording bars to {new_fixed_length_recording_bars}')
 
@@ -126,3 +137,4 @@ class Session(BaseClass):
 
     def set_record_automation_on_off(self):
         print('Trying to toggle record automation')
+
