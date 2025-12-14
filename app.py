@@ -5,7 +5,7 @@ import time
 import traceback
 
 import cairo
-import mido
+import isobar as iso
 import numpy
 import push2_python
 from typing import List, Optional
@@ -23,7 +23,6 @@ from modes.settings_mode import SettingsMode
 from modes.slice_notes_mode import SliceNotesMode
 from modes.track_selection_mode import TrackSelectionMode
 from session import Session
-from null_midi_devices import null_midi
 from hardware_device import HardwareDevice
 from midi_manager import MidiManager
 
@@ -80,10 +79,10 @@ class PyshaApp(object):
         else:
             settings = {}
 
-        # Initialize with null devices first to ensure app can start
-        self.midi_in = null_midi.get_null_input()
-        self.midi_out = null_midi.get_null_output()
-        self.notes_midi_in = null_midi.get_null_notes_input()
+        # Initialize with dummy devices first to ensure app can start
+        self.midi_in = iso.MidiInputDevice()
+        self.midi_out = iso.DummyOutputDevice()
+        self.notes_midi_in = iso.MidiInputDevice()
 
         self.session = Session(parent=self)
         # Register initial clips after session is properly initialized
@@ -293,8 +292,8 @@ class PyshaApp(object):
     def check_for_new_midi_devices(self):
         """Periodically check for newly connected MIDI devices"""
         try:
-            current_in_devices = set(mido.get_input_names())
-            current_out_devices = set(mido.get_output_names())
+            current_in_devices = set(iso.get_midi_input_names())
+            current_out_devices = set(iso.get_midi_output_names())
 
             # Compare with previously seen devices
             new_in_devices = current_in_devices - self._last_seen_in_devices
@@ -319,7 +318,7 @@ class PyshaApp(object):
             print("Starting device-to-track assignment...")
 
             # Get all available MIDI output devices (excluding system devices)
-            all_output_devices = [name for name in mido.get_output_names()
+            all_output_devices = [name for name in iso.get_midi_output_names()
                                 if 'Ableton Push' not in name and 'RtMidi' not in name and 'Through' not in name]
             all_output_devices = [name for name in all_output_devices if name != 'Virtual']
 
@@ -374,8 +373,8 @@ class PyshaApp(object):
 
     def init_midi_in(self, device_name=None):
         print('Configuring MIDI in to {}...'.format(device_name))
-        self.available_midi_in_device_names = [name for name in mido.get_input_names() if 'Ableton Push' not in name and 'RtMidi' not in name and 'Through' not in name]
-        if device_name is not None:
+        self.available_midi_in_device_names = [name for name in iso.get_midi_input_names() if 'Ableton Push' not in name and 'RtMidi' not in name and 'Through' not in name]
+        if device_name is not None and device_name != '':
             try:
                 full_name = [name for name in self.available_midi_in_device_names if device_name in name][0]
             except IndexError:
@@ -384,7 +383,7 @@ class PyshaApp(object):
                 if self.midi_in is not None:
                     self.midi_in.callback = None  # Disable current callback (if any)
                 try:
-                    self.midi_in = mido.open_input(full_name)
+                    self.midi_in = iso.MidiInputDevice(full_name)
                     self.midi_in.callback = self.midi_in_handler
                     print('Receiving MIDI in from "{0}"'.format(full_name))
                 except IOError:
@@ -397,15 +396,11 @@ class PyshaApp(object):
             if self.midi_in is not None and not hasattr(self.midi_in, '_closed'):
                 self.midi_in.callback = None  # Disable current callback (if any)
                 self.midi_in.close()
-                self.midi_in = null_midi.get_null_input()
-
-        if self.midi_in is None or hasattr(self.midi_in, '_closed'):
-            print('Not receiving from any MIDI input')
-            self.midi_in = null_midi.get_null_input()
+                self.midi_in = iso.MidiInputDevice()
 
     def init_midi_out(self, device_name=None):
         print('Configuring MIDI out to {}...'.format(device_name))
-        self.available_midi_out_device_names = [name for name in mido.get_output_names() if 'Ableton Push' not in name  and 'RtMidi' not in name and 'Through' not in name]
+        self.available_midi_out_device_names = [name for name in iso.get_midi_output_names() if 'Ableton Push' not in name  and 'RtMidi' not in name and 'Through' not in name]
         self.available_midi_out_device_names += ['Virtual']
 
         if device_name is not None:
@@ -416,9 +411,9 @@ class PyshaApp(object):
             if full_name is not None:
                 try:
                     if full_name == 'Virtual':
-                        self.midi_out = mido.open_output(full_name, virtual=True)
+                        self.midi_out = iso.MidiOutputDevice(full_name, virtual=True)
                     else:
-                        self.midi_out = mido.open_output(full_name)
+                        self.midi_out = iso.MidiOutputDevice(full_name)
                     print('Will send MIDI to "{0}"'.format(full_name))
                 except IOError:
                     print('Could not connect to MIDI output port "{0}"\nAvailable device names:'.format(full_name))
@@ -429,17 +424,13 @@ class PyshaApp(object):
         else:
             if self.midi_out is not None and not hasattr(self.midi_out, '_closed'):
                 self.midi_out.close()
-                self.midi_out = null_midi.get_null_output()
-
-        if self.midi_out is None or hasattr(self.midi_out, '_closed'):
-            print('Won\'t send MIDI to any device')
-            self.midi_out = null_midi.get_null_output()
+                self.midi_out = iso.DummyOutputDevice()
 
     def init_notes_midi_in(self, device_name=None):
         print('Configuring notes MIDI in to {}...'.format(device_name))
-        self.available_midi_in_device_names = [name for name in mido.get_input_names() if 'Ableton Push' not in name and 'RtMidi' not in name and 'Through' not in name]
+        self.available_midi_in_device_names = [name for name in iso.get_midi_input_names() if 'Ableton Push' not in name and 'RtMidi' not in name and 'Through' not in name]
 
-        if device_name is not None:
+        if device_name is not None and device_name != '':
             try:
                 full_name = [name for name in self.available_midi_in_device_names if device_name in name][0]
             except IndexError:
@@ -448,7 +439,7 @@ class PyshaApp(object):
                 if self.notes_midi_in is not None:
                     self.notes_midi_in.callback = None  # Disable current callback (if any)
                 try:
-                    self.notes_midi_in = mido.open_input(full_name)
+                    self.notes_midi_in = iso.MidiInputDevice(full_name)
                     self.notes_midi_in.callback = self.notes_midi_in_handler
                     print('Receiving notes MIDI in from "{0}"'.format(full_name))
                 except IOError:
@@ -461,11 +452,7 @@ class PyshaApp(object):
             if self.notes_midi_in is not None and not hasattr(self.notes_midi_in, '_closed'):
                 self.notes_midi_in.callback = None  # Disable current callback (if any)
                 self.notes_midi_in.close()
-                self.notes_midi_in = null_midi.get_null_notes_input()
-
-        if self.notes_midi_in is None or hasattr(self.notes_midi_in, '_closed'):
-            print('Could not configures notes MIDI input')
-            self.notes_midi_in = null_midi.get_null_notes_input()
+                self.notes_midi_in = None
 
     def set_midi_in_channel(self, channel, wrap=False):
         self.midi_in_channel = channel
@@ -595,7 +582,7 @@ class PyshaApp(object):
 
     def init_push(self):
         print('Configuring Push...')
-        real_push_available = any(['Ableton Push' in port_name for port_name in mido.get_output_names()])
+        real_push_available = any(['Ableton Push' in port_name for port_name in iso.get_midi_output_names()])
         self.using_push_simulator = not real_push_available
         simulator_port = 6128
         if self.using_push_simulator:
@@ -642,7 +629,7 @@ class PyshaApp(object):
             self.push.display.display_frame(frame, input_format=push2_python.constants.FRAME_FORMAT_RGB565)
 
     def check_for_delayed_actions(self):
-        # Check for new MIDI devices periodically (every 5 seconds)
+        # Check for new MIDI devices periodically
         current_time = time.time()
         if current_time - self._last_midi_check_time > 5.0:
             self.check_for_new_midi_devices()

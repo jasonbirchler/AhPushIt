@@ -48,7 +48,7 @@ class Track(BaseClass):
             app.add_element_to_uuid_map(clip)
             print(f"DEBUG: Registered clip {clip.uuid} with sequencer interface")
         else:
-            print(f"DEBUG: Could not register clip {clip.uuid} - app or sequencer_interface not available")
+            print(f"DEBUG: Could not register clip {clip.uuid} - app not available")
 
     def _register_initial_clip(self, clip):
         """Register the initial clip created in constructor with sequencer interface"""
@@ -59,7 +59,7 @@ class Track(BaseClass):
             app.add_element_to_uuid_map(clip)
             print(f"DEBUG: Registered initial clip {clip.uuid} with sequencer interface")
         else:
-            print(f"DEBUG: Could not register initial clip {clip.uuid} - app or sequencer_interface not available")
+            print(f"DEBUG: Could not register initial clip {clip.uuid} - app not available")
 
     def _remove_clip_with_uuid(self, clip_uuid):
         # Note this method removes a Clip object from the local Track object but does not remove a clip from the backend
