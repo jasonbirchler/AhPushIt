@@ -8,6 +8,7 @@ import definitions
 from utils import draw_text_at, show_title, show_value
 
 is_running_sw_update = ''
+MAX_DEVICE_NAME_CHARS = 17
 
 """
 This enum determines the order in which the settings pages display
@@ -228,8 +229,17 @@ class SettingsMode(definitions.PyshaMode):
                     show_title(ctx, part_x, h, 'TRACK {}'.format(i+1))
                     
                     # Get device info
-                    device_name = track.output_hardware_device_name
-                    device_short_name = device_name if len(device_name) < 12 else '...{}'.format(device_name[-9:])
+                    track_device = track.get_output_hardware_device()
+                    # Format device name to fit available space
+                    device_short_name = ''
+                    print(len(track_device.name))
+                    if track_device.name and len(track_device.name) < MAX_DEVICE_NAME_CHARS:
+                        device_short_name = track_device.name
+                    else:
+                        if track_device.short_name and len(track_device.short_name) < MAX_DEVICE_NAME_CHARS:
+                            device_short_name = track_device.short_name
+                        else:
+                            device_short_name = f"{track_device.short_name[-9:]}..."
                     
                     # Get MIDI channel
                     hw_device = track.get_output_hardware_device()
@@ -385,6 +395,11 @@ class SettingsMode(definitions.PyshaMode):
                         available_devices = self.app.get_available_output_hardware_device_names()
                         current_hw_device_name = track.output_hardware_device_name
 
+                        # Check if there are any available devices
+                        if not available_devices:
+                            print(f"No available devices to select from for track {track_num + 1}")
+                            return
+
                         # Find the current device index, trying both full name and short name
                         current_hw_device_index = -1
                         for i, device_name in enumerate(available_devices):
@@ -535,6 +550,11 @@ class SettingsMode(definitions.PyshaMode):
                     if selection_state == 0:  # Device selection only
                         available_devices = self.app.get_available_output_hardware_device_names()
                         current_hw_device_name = track.output_hardware_device_name
+
+                        # Check if there are any available devices
+                        if not available_devices:
+                            print(f"No available devices to select from for track {track_num + 1}")
+                            return
 
                         # Find the current device index, trying both full name and short name
                         current_hw_device_index = -1

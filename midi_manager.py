@@ -98,25 +98,19 @@ class MidiManager:
         notes = [e.midi_note for e in note_events]
         velocities = [int(e.midi_velocity * 127) for e in note_events]
         durations = [e.duration for e in note_events]
-        delays = [note_events[0].timestamp]
-        for i in range(1, len(note_events)):
-            delays.append(note_events[i].timestamp - note_events[i-1].timestamp)
 
         print(f"Notes: {notes}")
         print(f"Velocities: {velocities}")
         print(f"Durations: {durations}")
-        print(f"Delays: {delays}")
 
         pattern = iso.PSequence(notes)
         velocity_pattern = iso.PSequence(velocities)
         duration_pattern = iso.PSequence(durations)
-        delay_pattern = iso.PSequence(delays)
 
         track = self.timeline.schedule({
             'note': pattern,
             'velocity': velocity_pattern,
             'duration': duration_pattern,
-            'delay': delay_pattern
         })
         track.output = output_device
         self.track_schedules[track_uuid] = track

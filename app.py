@@ -109,6 +109,7 @@ class PyshaApp(object):
         self._last_midi_check_time = 0
         self._last_seen_in_devices = set()
         self._last_seen_out_devices = set()
+        self._update_hardware_devices()
 
     # UUID Management
     def add_element_to_uuid_map(self, element):
@@ -300,9 +301,9 @@ class PyshaApp(object):
             new_out_devices = current_out_devices - self._last_seen_out_devices
 
             if new_in_devices or new_out_devices:
-                print("New MIDI devices detected!")
                 # Auto-assign devices to tracks
-                self.assign_devices_to_tracks()
+                print("New MIDI devices detected!")
+                self._update_hardware_devices()
 
             self._last_seen_in_devices = current_in_devices
             self._last_seen_out_devices = current_out_devices
@@ -318,11 +319,7 @@ class PyshaApp(object):
             print("Starting device-to-track assignment...")
 
             # Get all available MIDI output devices (excluding system devices)
-            all_output_devices = [name for name in iso.get_midi_output_names()
-                                if 'Ableton Push' not in name and 'RtMidi' not in name and 'Through' not in name]
-            all_output_devices = [name for name in all_output_devices if name != 'Virtual']
-
-            print(f"Detected {len(all_output_devices)} MIDI output devices: {all_output_devices}")
+            self._update_hardware_devices()
 
             # Assign devices to tracks starting from track 1
             for track_idx in range(8):
@@ -331,38 +328,24 @@ class PyshaApp(object):
                     print(f"Track {track_idx + 1} not found, skipping...")
                     continue
 
-                if track_idx < len(all_output_devices):
+                if track_idx < len(self.hardware_devices):
                     # Assign real device to this track
-                    device_name = all_output_devices[track_idx]
-                    print(f"Assigning device '{device_name}' to track {track_idx + 1}")
-                    track.output_hardware_device_name = device_name
-
-                    # Create and store hardware device object
-                    hardware_device = HardwareDevice()
-                    hardware_device.name = device_name
-                    hardware_device.short_name = device_name.split(' ')[0] if ' ' in device_name else device_name
-                    hardware_device.type = 1  # Output device
-                    hardware_device.midi_output_device_name = device_name
-                    hardware_device.midi_channel = track_idx + 1  # MIDI channels 1-8
-
-                    # Add to hardware devices list
-                    self.hardware_devices.append(hardware_device)
+                    device = self.hardware_devices[track_idx]
+                    print(f"Assigning device '{device}' to track {track_idx + 1}")
+                    track.output_hardware_device_name = device.name
                 else:
-                    # Assign null device to remaining tracks
-                    null_device_name = f"Null Device {track_idx + 1}"
-                    print(f"Assigning null device '{null_device_name}' to track {track_idx + 1}")
-                    track.output_hardware_device_name = null_device_name
+                    # remaining tracks have "unassigned devices"
+                    unassigned_device_name = f"unassigned"
+                    print(f"Assigning '{unassigned_device_name}' to track {track_idx + 1}")
+                    track.output_hardware_device_name = unassigned_device_name
 
                     # Create null hardware device
                     hardware_device = HardwareDevice()
-                    hardware_device.name = null_device_name
-                    hardware_device.short_name = "Null"
+                    hardware_device.name = unassigned_device_name
+                    hardware_device.short_name = "unass"
                     hardware_device.type = 1  # Output device
-                    hardware_device.midi_output_device_name = null_device_name
+                    hardware_device.midi_output_device_name = unassigned_device_name
                     hardware_device.midi_channel = track_idx + 1  # MIDI channels 1-8
-
-                    # Add to hardware devices list
-                    self.hardware_devices.append(hardware_device)
 
             print("Device-to-track assignment completed")
 
@@ -488,7 +471,7 @@ class PyshaApp(object):
             self.init_notes_midi_in(None)
 
     def send_midi(self, msg, use_original_msg_channel=False):
-        # Unless we specifically say we want to use the original msg mnidi channel, set it to global midi out channel or to the channel of the current track
+        # Unless we specifically say we want to use the original msg midi channel, set it to global midi out channel or to the channel of the current track
         if not use_original_msg_channel and hasattr(msg, 'channel'):
             midi_out_channel = self.midi_out_channel
             if self.midi_out_channel == -1:
@@ -504,7 +487,7 @@ class PyshaApp(object):
                     midi_out_channel = 0
             msg = msg.copy(channel=midi_out_channel)
 
-        # Safe MIDI sending - handle null devices gracefully
+        # Safe MIDI sending
         try:
             if hasattr(self.midi_out, 'send') and self.midi_out is not None:
                 self.midi_out.send(msg)
@@ -716,6 +699,37 @@ class PyshaApp(object):
         app.update_push2_pads()
 
     # Hardware devices
+    def _create_short_name(self, name):
+        tokens = name.split(' ')
+        if len(tokens) == 1:
+            return tokens[0]
+        else:
+            short_name = tokens[0] + " " + tokens[1]
+            return short_name
+
+
+    def _update_hardware_devices(self):
+        print("Updating hardware devices...")
+
+        # Get all available MIDI output devices (excluding system devices)
+        all_output_device_names = [name for name in iso.get_midi_output_names()
+                            if 'Ableton Push' not in name and 'RtMidi' not in name and 'Through' not in name]
+        all_output_device_names = [name for name in all_output_device_names if name != 'Virtual']
+
+        print(f"Detected {len(all_output_device_names)} MIDI output devices: {all_output_device_names}")
+
+        # Create and store hardware device objects
+        for device_name in all_output_device_names:
+            hardware_device = HardwareDevice()
+            hardware_device.name = device_name
+            hardware_device.short_name = self._create_short_name(device_name)
+            hardware_device.type = 1  # Output device
+            hardware_device.midi_output_device_name = device_name
+            hardware_device.midi_channel = 1  # default to MIDI channel 1
+
+            if hardware_device not in self.hardware_devices:
+                self.hardware_devices.append(hardware_device)
+
     def get_input_hardware_device_by_name(self, hardware_device_name):
         for hardware_device in self.hardware_devices:
             if hardware_device.name == hardware_device_name or hardware_device.short_name == hardware_device_name \
@@ -738,8 +752,6 @@ class PyshaApp(object):
                 # Add both full name and short name to ensure matching works
                 if device.name not in device_names:
                     device_names.append(device.name)
-                if device.short_name not in device_names and device.short_name != device.name:
-                    device_names.append(device.short_name)
         return device_names
 
 

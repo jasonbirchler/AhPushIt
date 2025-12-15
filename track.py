@@ -1,6 +1,7 @@
 import uuid
 from typing import List, Optional, Any, TYPE_CHECKING
 from base_class import BaseClass
+from hardware_device import HardwareDevice
 
 # if TYPE_CHECKING:
 from clip import Clip
@@ -89,9 +90,9 @@ class Track(BaseClass):
 
     def get_output_hardware_device(self) -> Optional[Any]:
         """Get output hardware device by name"""
-        session = self.session  # Use the session property instead of self.app.session
-        if session and hasattr(session, 'state'):
-            return session.state.get_output_hardware_device_by_name(
+        app = self._get_app()
+        if app:
+            return app.get_output_hardware_device_by_name(
                 self.output_hardware_device_name
             )
         return None
@@ -120,14 +121,8 @@ class Track(BaseClass):
                     existing_device = device
                     break
 
-            if existing_device:
-                # Update existing device
-                existing_device.name = device_name
-                existing_device.short_name = device_name.split(' ')[0] if ' ' in device_name else device_name
-                existing_device.midi_output_device_name = device_name
-            else:
-                # Create new hardware device
-                from hardware_device import HardwareDevice
+            if existing_device is None:
+                # Create new hardware device if existing device is non-existant
                 new_device = HardwareDevice()
                 new_device.name = device_name
                 new_device.short_name = device_name.split(' ')[0] if ' ' in device_name else device_name
