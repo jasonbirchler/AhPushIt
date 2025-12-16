@@ -178,22 +178,14 @@ class PyshaApp(object):
         if not self.is_mode_active(mode_to_set):
 
             # First deactivate all existing modes for that xor group
-            # Store the FIRST mode we find as the previous mode (not the last)
-            # This ensures we restore the primary mode that was active, not just the last one processed
-            previous_mode_found = None
             new_active_modes = []
             for mode in self.active_modes:
                 if mode.xor_group is not None and mode.xor_group == mode_to_set.xor_group:
-                    if previous_mode_found is None:
-                        # Store the first mode we find as the previous mode
-                        previous_mode_found = mode
                     mode.deactivate()
+                    self.previously_active_mode_for_xor_group[
+                        mode.xor_group] = mode  # Store last mode that was active for the group
                 else:
                     new_active_modes.append(mode)
-
-            # Store the previous mode if we found one
-            if previous_mode_found is not None:
-                self.previously_active_mode_for_xor_group[mode_to_set.xor_group] = previous_mode_found
 
             self.active_modes = new_active_modes
 
@@ -397,13 +389,13 @@ class PyshaApp(object):
                         self.midi_out = iso.MidiOutputDevice(full_name, virtual=True)
                     else:
                         self.midi_out = iso.MidiOutputDevice(full_name)
-                    print('Will send MIDI to "{0}"'.format(full_name))
+                    print(f'Will send MIDI to "{full_name}"')
                 except IOError:
-                    print('Could not connect to MIDI output port "{0}"\nAvailable device names:'.format(full_name))
+                    print(f'Could not connect to MIDI output port "{full_name}"\nAvailable device names:')
                     for name in self.available_midi_out_device_names:
                         print(' - {0}'.format(name))
             else:
-                print('No available device name found for {}'.format(device_name))
+                print(f'No available device name found for {device_name}')
         else:
             if self.midi_out is not None and not hasattr(self.midi_out, '_closed'):
                 self.midi_out.close()
@@ -572,6 +564,12 @@ class PyshaApp(object):
             print('Using Push2 simulator at http://localhost:{}'.format(simulator_port))
         self.push = push2_python.Push2(run_simulator=self.using_push_simulator, simulator_port=simulator_port,
                                        simulator_use_virtual_midi_out=self.using_push_simulator)
+        # Initialize MIDI in/out for Push's Live port_name
+        # This isn't treated as a device like other in/out ports
+        # because it's ports are used for communication with this app
+        if self.push and not self.push.midi_is_configured():
+            self.push.configure_midi()
+
         if platform.system() == "Linux":
             # When this app runs in Linux is because it is running on the Raspberrypi
             #  I've overved problems trying to reconnect many times withotu success on the Raspberrypi, resulting in
@@ -788,6 +786,7 @@ def on_pad_pressed(_, pad_n, pad_ij, velocity):
             print(f"  Mode {type(mode).__name__} returned {action_performed}")
             if action_performed:
                 print(f"  -> {type(mode).__name__} handled the event")
+                pads_pressed_state[pad_n]['handled'] = True
                 break  # If mode took action, stop event propagation
     except NameError as e:
        print('Error:  {}'.format(str(e)))
@@ -892,17 +891,24 @@ def on_midi_connected(_):
     try:
         app.on_midi_push_connection_established()
     except NameError as e:
-       global midi_connected_received_before_app
-       midi_connected_received_before_app = True
-       print('Error:  {}'.format(str(e)))
-       traceback.print_exc()
+        global midi_connected_received_before_app
+        midi_connected_received_before_app = True
+        print('Error:  {}'.format(str(e)))
+        traceback.print_exc()
 
 
 # Run app main loop
 if __name__ == "__main__":
-    app = PyshaApp()
-    if midi_connected_received_before_app:
-        # App received the "on_midi_connected" call before it was initialized. Do it now!
-        print('Missed MIDI initialization call, doing it now...')
-        app.on_midi_push_connection_established()
-    app.run_loop()
+    try:
+        app = PyshaApp()
+        if midi_connected_received_before_app:
+            # App received the "on_midi_connected" call before it was initialized. Do it now!
+            print('Missed MIDI initialization call, doing it now...')
+            app.on_midi_push_connection_established()
+        app.run_loop()
+    except KeyboardInterrupt:
+        print("exiting app...")
+        try:
+            app.push.f_stop.set()
+        except:
+            pass

@@ -78,12 +78,12 @@ class MidiManager:
 
         print(f"\n=== Scheduling clip {clip.uuid} ===")
         print(f"Track: {track_uuid}")
-        print(f"Output device name: {clip.track.output_hardware_device_name}")
+        print(f"Output device name: '{clip.track.output_hardware_device_name}'")
         print(f"Sequence events: {len(clip.sequence_events)}")
 
         output_device = self.get_output_device(clip.track.output_hardware_device_name)
         if not output_device:
-            print(f"ERROR: No output device found for {clip.track.output_hardware_device_name}")
+            print(f"ERROR: No output device found for '{clip.track.output_hardware_device_name}'")
             print(f"Available devices: {list(self.output_devices.keys())}")
             return
 
@@ -111,11 +111,12 @@ class MidiManager:
             'note': pattern,
             'velocity': velocity_pattern,
             'duration': duration_pattern,
-        })
-        track.output = output_device
+        }, output_device=output_device)
+
         self.track_schedules[track_uuid] = track
         self.track_clips[track_uuid] = clip
-        print(f"Successfully scheduled clip with {len(note_events)} notes")
+
+        print(f"Successfully scheduled clip with {len(note_events)} notes to {output_device.name}")
 
     def unschedule_clip(self, track_uuid: str):
         """Remove a clip's schedule from the timeline"""
