@@ -669,6 +669,8 @@ class PyshaApp(object):
 
         except KeyboardInterrupt:
             print('Exiting Pysha...')
+            self.push.buttons.set_all_buttons_color('black')
+            self.push.pads.set_all_pads_to_black()
             self.push.f_stop.set()
 
     def on_midi_push_connection_established(self):
@@ -899,16 +901,9 @@ def on_midi_connected(_):
 
 # Run app main loop
 if __name__ == "__main__":
-    try:
-        app = PyshaApp()
-        if midi_connected_received_before_app:
-            # App received the "on_midi_connected" call before it was initialized. Do it now!
-            print('Missed MIDI initialization call, doing it now...')
-            app.on_midi_push_connection_established()
-        app.run_loop()
-    except KeyboardInterrupt:
-        print("exiting app...")
-        try:
-            app.push.f_stop.set()
-        except:
-            pass
+    app = PyshaApp()
+    if midi_connected_received_before_app:
+        # App received the "on_midi_connected" call before it was initialized. Do it now!
+        print('Missed MIDI initialization call, doing it now...')
+        app.on_midi_push_connection_established()
+    app.run_loop()
