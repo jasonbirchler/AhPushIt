@@ -116,7 +116,7 @@ class MidiManager:
         self.track_schedules[track_uuid] = track
         self.track_clips[track_uuid] = clip
 
-        print(f"Successfully scheduled clip with {len(note_events)} notes to {output_device.name}")
+        print(f"Successfully scheduled clip with {len(note_events)} notes to {output_device.midi.name}")
 
     def unschedule_clip(self, track_uuid: str):
         """Remove a clip's schedule from the timeline"""
