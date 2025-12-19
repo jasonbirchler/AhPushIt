@@ -8,6 +8,7 @@ __pycache__/
 *$py.class
 
 .vscode/
+.kilocode/
 
 # C extensions
 *.so
