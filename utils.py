@@ -113,16 +113,16 @@ def show_notification(ctx, text, opacity=1.0):
 
 def draw_clip(ctx, 
               clip,
-              frame=(0.0, 0.0, 1.0, 1.0),  # (upper-left corner x, upper-left corner y, width, height)
-              highglight_notes_beat_frame=None,  # (min note, max note, min beat, max_beat)
-              event_color=definitions.WHITE, 
-              highlight_color=definitions.GREEN, 
-              highlight_active_notes=True, 
+              frame=(0.0, 0.0, 1.0, 1.0),  # (upper-left x, upper-left y, width, height)
+              highlight_notes_beat_frame=None,  # (min note, max note, min beat, max_beat)
+              event_color=definitions.WHITE,
+              highlight_color=definitions.GREEN,
+              highlight_active_notes=True,
               background_color=None
               ):
     xoffset_percentage = frame[0]
     yoffset_percentage = frame[1]
-    width_percentage = frame[2] 
+    width_percentage = frame[2]
     height_percentage = frame[3]
     display_w = push2_python.constants.DISPLAY_LINE_PIXELS
     display_h = push2_python.constants.DISPLAY_N_LINES
@@ -131,16 +131,53 @@ def draw_clip(ctx,
     width = display_w * width_percentage
     height = display_h * height_percentage
 
-    if highglight_notes_beat_frame is not None:
-        displaybeatslength = max(clip.clip_length_in_beats, highglight_notes_beat_frame[3])
+    if highlight_notes_beat_frame is not None:
+        displaybeatslength = max(clip.clip_length_in_beats, highlight_notes_beat_frame[3])
     else:
         displaybeatslength = clip.clip_length_in_beats
 
     if background_color is not None:
         show_rectangle(ctx, xoffset_percentage, yoffset_percentage, width_percentage, height_percentage, background_color=background_color)
-    
-    rendered_notes = [event for event in clip.sequence_events if event.is_type_note() and event.rendered_start_timestamp >= 0.0]
-    all_midinotes = [int(note.midi_note) for note in rendered_notes]
+
+    # Use PSequence directly instead of legacy sequence_events
+    rendered_notes = []
+    notes_length = len(clip.notes)
+    durations_length = len(clip.durations)
+    amplitudes_length = len(clip.amplitudes)
+
+    print(f"DEBUG: draw_clip - notes: {notes_length}, durations: {durations_length}, amplitudes: {amplitudes_length}")
+    print(f"DEBUG: frame: {frame}, highlight_notes_beat_frame: {highlight_notes_beat_frame}")
+
+    # Use the minimum length to avoid index errors, but limit to reasonable maximum
+    max_pos = min(notes_length, durations_length, amplitudes_length, 1000)  # Hard limit of 1000 notes
+
+    print(f"DEBUG: Processing max {max_pos} notes (limited from {notes_length})")
+
+    try:
+        # Convert PSequences to lists first to avoid potential issues
+        # Use the actual length of each PSequence, not the sliced length
+        notes_list = list(clip.notes)
+        durations_list = list(clip.durations)
+        amplitudes_list = list(clip.amplitudes)
+
+        # Use the minimum length to avoid index errors
+        actual_max_pos = min(len(notes_list), len(durations_list), len(amplitudes_list))
+
+        print(f"DEBUG: Converted to lists: notes={len(notes_list)}, durations={len(durations_list)}, amplitudes={len(amplitudes_list)}")
+        print(f"DEBUG: Using actual_max_pos={actual_max_pos} (min of all arrays)")
+
+        for i in range(actual_max_pos):
+            rendered_notes.append({
+                'midi_note': notes_list[i],
+                'rendered_start_timestamp': i * 0.5,  # Position-based timing
+                'rendered_end_timestamp': i * 0.5 + (durations_list[i] if i < len(durations_list) else 0.5),
+                'chance': 1.0  # Default chance
+            })
+    except Exception as e:
+        print(f"ERROR in draw_clip loop: {e}")
+        import traceback
+        traceback.print_exc()
+    all_midinotes = [int(note['midi_note']) for note in rendered_notes]
     playhead_position_percentage = clip.playhead_position_in_beats/displaybeatslength
 
     if len(all_midinotes) > 0:
@@ -148,9 +185,9 @@ def draw_clip(ctx,
         max_midinote = max(all_midinotes) + 1  # Add 1 to highest note does not fall outside of screen
         note_height = height / (max_midinote - min_midinote)
         for note in rendered_notes:
-            note_height_percentage =  (int(note.midi_note) - min_midinote) / (max_midinote - min_midinote)
-            note_start_percentage = float(note.rendered_start_timestamp) / displaybeatslength
-            note_end_percentage = float(note.rendered_end_timestamp) / displaybeatslength
+            note_height_percentage =  (int(note['midi_note']) - min_midinote) / (max_midinote - min_midinote)
+            note_start_percentage = float(note['rendered_start_timestamp']) / displaybeatslength
+            note_end_percentage = float(note['rendered_end_timestamp']) / displaybeatslength
             if note_start_percentage <= note_end_percentage:  
                 # Note does not wrap across clip boundaries, draw 1 rectangle  
                 if (note_start_percentage <= playhead_position_percentage <= note_end_percentage + 0.05) and clip.playhead_position_in_beats != 0.0: 
@@ -158,7 +195,7 @@ def draw_clip(ctx,
                     alpha = 1.0
                 else:
                     color = event_color
-                    alpha = note.chance
+                    alpha = note['chance']
                 x0_rel = (x + note_start_percentage * width) / display_w
                 y0_rel = (y - (note_height_percentage * height + note_height)) / display_h
                 width_rel = ((x + note_end_percentage * width) / display_w) - x0_rel
@@ -185,11 +222,11 @@ def draw_clip(ctx,
                 height_rel = note_height / display_h
                 show_rectangle(ctx, x0_rel, y0_rel, width_rel, height_rel, background_color=color, alpha=alpha)
 
-        if highglight_notes_beat_frame is not None:
-            y0 = y/display_h - (((highglight_notes_beat_frame[0] - min_midinote) * note_height))/display_h
-            h = note_height / display_h * (highglight_notes_beat_frame[1] - highglight_notes_beat_frame[0])
-            x0 = xoffset_percentage + highglight_notes_beat_frame[2]/displaybeatslength * width_percentage
-            w = (highglight_notes_beat_frame[3] - highglight_notes_beat_frame[2])/displaybeatslength* width_percentage
+        if highlight_notes_beat_frame is not None:
+            y0 = y/display_h - (((highlight_notes_beat_frame[0] - min_midinote) * note_height))/display_h
+            h = note_height / display_h * (highlight_notes_beat_frame[1] - highlight_notes_beat_frame[0])
+            x0 = xoffset_percentage + highlight_notes_beat_frame[2]/displaybeatslength * width_percentage
+            w = (highlight_notes_beat_frame[3] - highlight_notes_beat_frame[2])/displaybeatslength* width_percentage
             show_rectangle(ctx, x0, y0 - h, w, h, background_color=definitions.WHITE, alpha=0.25)
 
 

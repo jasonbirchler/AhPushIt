@@ -1,6 +1,7 @@
 import definitions
 import push2_python
 
+from definitions import ClipStates
 from utils import show_text, draw_clip
 
 
@@ -59,13 +60,13 @@ class ClipTriggeringMode(definitions.PyshaMode):
             for clip_num in range(0, len(track.clips)):
                 clip = self.app.session.get_clip_by_idx(track_num, clip_num)
                 clip_state = clip.get_status()
-                if clip_state.play_status in ("p", "C"):
+                if clip_state.play_status in (ClipStates.CLIP_STATUS_PLAYING, ClipStates.CLIP_STATUS_CUED_TO_STOP):
                     clip_length = clip_state.clip_length
                     playhead_position = clip.playhead_position_in_beats
                     current_track_playing_clips_info.append(
                         (clip_num, clip_length, playhead_position, clip)
                     )
-                if clip_state.play_status == "c":
+                if clip_state.play_status == ClipStates.CLIP_STATUS_CUED_TO_PLAY:
                     clip_length = clip_state.clip_length
                     playhead_position = clip.playhead_position_in_beats
                     current_track_will_play_clips_info.append(
@@ -228,27 +229,27 @@ class ClipTriggeringMode(definitions.PyshaMode):
                 )
                 cell_animation = 0
 
-                if state is None or state.empty_status == "E":
+                if state is None or state.empty_status == ClipStates.CLIP_STATUS_IS_EMPTY:
                     # Is empty
                     cell_color = definitions.BLACK
                 else:
                     cell_color = track_color + "_darker1"
 
-                if state and state.play_status == "p":
+                if state and state.play_status == ClipStates.CLIP_STATUS_PLAYING:
                     # Is playing
                     cell_color = track_color
 
-                if state and state.play_status in ("c", "C"):
+                if state and state.play_status in (ClipStates.CLIP_STATUS_CUED_TO_PLAY, ClipStates.CLIP_STATUS_CUED_TO_STOP):
                     # Will start or will stop playing
                     cell_color = track_color
                     cell_animation = definitions.DEFAULT_ANIMATION
 
-                if state and state.record_status in ("w", "W"):
+                if state and state.record_status in (ClipStates.CLIP_STATUS_CUED_TO_RECORD, ClipStates.CLIP_STATUS_CUED_TO_STOP_RECORDING):
                     # Will start or will stop recording
                     cell_color = definitions.RED
                     cell_animation = definitions.DEFAULT_ANIMATION
 
-                if state and state.record_status == "r":
+                if state and state.record_status == ClipStates.CLIP_STATUS_RECORDING:
                     # Is recording
                     cell_color = definitions.RED
 
@@ -381,6 +382,8 @@ class ClipTriggeringMode(definitions.PyshaMode):
         track_num = pad_ij[1]
         clip_num = pad_ij[0]
 
+        print(f"DEBUG: Long press on pad {pad_n}, position {pad_ij} -> track {track_num}, clip {clip_num}")
+
         # Check if any action buttons are being pressed - if so, ignore long press
         action_buttons_to_check = [
             self.app.main_controls_mode.record_button,
@@ -397,6 +400,7 @@ class ClipTriggeringMode(definitions.PyshaMode):
         )
 
         if action_button_being_pressed:
+            print(f"DEBUG: Action button pressed, ignoring long press")
             return False  # Don't handle long press if action buttons are pressed
 
         try:
@@ -405,19 +409,42 @@ class ClipTriggeringMode(definitions.PyshaMode):
                 print(f"ERROR: Track {track_num} not found")
                 return False
 
+            print(f"DEBUG: Track found, current clips: {len(track.clips)}, need clip {clip_num}")
+
             # Ensure we have enough clips in the track
             while len(track.clips) <= clip_num:
+                print(f"DEBUG: Creating new clip at position {len(track.clips)}")
                 from clip import Clip
                 new_clip = Clip(parent=track)
                 track._add_clip(new_clip)
+                print(f"DEBUG: Clip created, track now has {len(track.clips)} clips")
 
             # Get the clip (which should now exist)
             clip = self.app.session.get_clip_by_idx(track_num, clip_num)
             if clip is not None:
-                # Enter clip edit mode for both existing and newly created clips
-                self.app.clip_edit_mode.set_clip_mode(clip.uuid)
-                self.app.set_clip_edit_mode()
-                return True  # Return True to indicate success
+                print(f"DEBUG: Clip found, UUID: {clip.uuid}, entering edit mode")
+                try:
+                    # Enter clip edit mode for both existing and newly created clips
+                    print(f"DEBUG: About to call set_clip_mode({clip.uuid})")
+                    self.app.clip_edit_mode.set_clip_mode(clip.uuid)
+                    print(f"DEBUG: set_clip_mode completed")
+                    
+                    print(f"DEBUG: About to call set_clip_edit_mode()")
+                    self.app.set_clip_edit_mode()
+                    print(f"DEBUG: set_clip_edit_mode completed")
+                    
+                    # Debug: Check if mode was actually switched
+                    if hasattr(self.app, 'is_mode_active'):
+                        is_clip_edit_active = self.app.is_mode_active(self.app.clip_edit_mode)
+                        print(f"DEBUG: Is clip edit mode active? {is_clip_edit_active}")
+                    
+                    return True  # Return True to indicate success
+                    
+                except Exception as e:
+                    print(f"ERROR: Exception during mode switching: {e}")
+                    import traceback
+                    traceback.print_exc()
+                    return False
             else:
                 print(f"ERROR: Could not get clip at position {track_num}, {clip_num}")
                 return False

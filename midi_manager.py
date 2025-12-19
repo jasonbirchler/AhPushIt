@@ -7,7 +7,7 @@ class MidiManager:
 
     def __init__(self, app):
         self.app = app
-        self.timeline = iso.Timeline(tempo=120)
+        self.timeline = self.app.session.global_timeline
         self.input_devices: Dict[str, iso.MidiInputDevice] = {}
         self.output_devices: Dict[str, iso.MidiOutputDevice] = {}
         self.track_schedules: Dict[str, object] = {}  # track_uuid -> schedule object
@@ -36,7 +36,7 @@ class MidiManager:
     def start_timeline(self):
         """Start the global timeline"""
         print("Starting timeline")
-        self.timeline.start()
+        self.timeline.background()
     
     def stop_timeline(self):
         print("Stopping timeline")
@@ -79,7 +79,7 @@ class MidiManager:
         print(f"\n=== Scheduling clip {clip.uuid} ===")
         print(f"Track: {track_uuid}")
         print(f"Output device name: '{clip.track.output_hardware_device_name}'")
-        print(f"Sequence events: {len(clip.sequence_events)}")
+        print(f"Sequence length: {len(clip.notes)}")
 
         output_device = self.get_output_device(clip.track.output_hardware_device_name)
         if not output_device:
@@ -87,25 +87,18 @@ class MidiManager:
             print(f"Available devices: {list(self.output_devices.keys())}")
             return
 
-        note_events = [e for e in clip.sequence_events if e.is_type_note()]
-        print(f"Note events: {len(note_events)}")
-        if not note_events:
-            print(f"WARNING: No note events in clip")
+        if len(clip.notes) == 0:
+            print(f"WARNING: No notes in clip")
             return
 
-        note_events.sort(key=lambda e: e.timestamp)
+        # Use PSequence objects directly from clip
+        pattern = clip.notes
+        velocity_pattern = clip.amplitudes  # amplitudes are already in 0-127 range
+        duration_pattern = clip.durations
 
-        notes = [e.midi_note for e in note_events]
-        velocities = [int(e.midi_velocity * 127) for e in note_events]
-        durations = [e.duration for e in note_events]
-
-        print(f"Notes: {notes}")
-        print(f"Velocities: {velocities}")
-        print(f"Durations: {durations}")
-
-        pattern = iso.PSequence(notes)
-        velocity_pattern = iso.PSequence(velocities)
-        duration_pattern = iso.PSequence(durations)
+        print(f"Notes: {list(clip.notes)}")
+        print(f"Velocities: {list(clip.amplitudes)}")
+        print(f"Durations: {list(clip.durations)}")
 
         track = self.timeline.schedule({
             'note': pattern,
@@ -116,7 +109,7 @@ class MidiManager:
         self.track_schedules[track_uuid] = track
         self.track_clips[track_uuid] = clip
 
-        print(f"Successfully scheduled clip with {len(note_events)} notes to {output_device.midi.name}")
+        print(f"Successfully scheduled clip with {len(clip.notes)} notes to {output_device.midi.name}")
 
     def unschedule_clip(self, track_uuid: str):
         """Remove a clip's schedule from the timeline"""

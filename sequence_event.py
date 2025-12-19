@@ -1,3 +1,13 @@
+"""
+DEPRECATED: This file is no longer used.
+Clip sequencing now uses isobar.PSequence directly.
+Kept for historical reference only.
+
+The SequenceEvent class has been replaced with a simpler PSequence-based approach
+where clips maintain parallel PSequence objects for notes, durations, and amplitudes.
+All editing operations now work with integer positions rather than UUID-based events.
+"""
+
 import uuid
 from typing import TYPE_CHECKING
 from base_class import BaseClass

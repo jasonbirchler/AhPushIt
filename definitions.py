@@ -1,5 +1,6 @@
 import colorsys
 import os
+from enum import Enum
 
 import push2_python
 from push2_python.constants import ANIMATION_STATIC
@@ -97,6 +98,18 @@ DEVICE_DEFINITION_FOLDER = os.path.join(BASE_DATA_DIR, 'device_definitions')
 os.makedirs(DEVICE_DEFINITION_FOLDER, exist_ok=True)
 INSTRUMENT_DEFINITION_FOLDER = 'instrument_definitions'
 TRACK_LISTING_PATH = 'track_listing.json'
+
+class ClipStates(Enum):
+    CLIP_STATUS_PLAYING = "p"
+    CLIP_STATUS_STOPPED = "s"
+    CLIP_STATUS_CUED_TO_PLAY = "c"
+    CLIP_STATUS_CUED_TO_STOP = "C"
+    CLIP_STATUS_RECORDING = "r"
+    CLIP_STATUS_CUED_TO_RECORD = "w"
+    CLIP_STATUS_CUED_TO_STOP_RECORDING = "W"
+    CLIP_STATUS_NO_RECORDING = "n"
+    CLIP_STATUS_IS_EMPTY = "E"
+    CLIP_STATUS_IS_NOT_EMPTY = "e"
 
 class PyshaMode(object):
     """

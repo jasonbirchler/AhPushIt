@@ -47,6 +47,7 @@ class PyshaApp(object):
 
     notes_midi_in = None
     notes_midi_in_tmp_device_idx = None  # This is to store device names while rotating encoders
+    global_timeline = None
 
     # push
     push = None

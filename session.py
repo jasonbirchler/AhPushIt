@@ -2,6 +2,7 @@ from typing import List, Optional
 from base_class import BaseClass
 from track import Track
 from clip import Clip
+import isobar as iso
 
 class Session(BaseClass):
     tracks: List[Track] = []
@@ -12,13 +13,14 @@ class Session(BaseClass):
     doing_count_in: bool
     fixed_length_recording_bars: int
     fixed_velocity: bool
-    key: str = "C"
+    global_timeline: iso.Timeline
+    root: str = "C"
     meter: int
     metronome_on: bool = False
     name: str
     playing: bool = False
     record_automation_enabled: bool
-    scale: str = "Chromatic"
+    scale: iso.Scale = iso.Scale.major
     version: str
 
     def __init__(self, *args, **kwargs):
@@ -27,6 +29,9 @@ class Session(BaseClass):
         # Register initial clips after tracks are created
         self._register_initial_clips()
         super().__init__(*args, **kwargs)
+
+        self.global_timeline = iso.Timeline(self.bpm)
+        self.global_timeline.max_tracks = 8
 
     def _add_track(self, track: Track, position=None):
         # Note this method adds a Track object in the local Session object but does not create a track in the backend
