@@ -2,6 +2,8 @@ import uuid
 from typing import List, Optional, Any, TYPE_CHECKING
 from base_class import BaseClass
 from hardware_device import HardwareDevice
+from isobar.timelines import Timeline as isoTimeline
+from isobar.timelines.track import Track as isoTrack
 
 # if TYPE_CHECKING:
 from clip import Clip
@@ -12,6 +14,7 @@ class Track(BaseClass):
     input_monitoring: bool
     name: str
     output_hardware_device_name: str
+    timeline: isoTimeline
     
     def __init__(self, *args, **kwargs):
         # Generate UUID for the track first
@@ -28,6 +31,8 @@ class Track(BaseClass):
         print(f"DEBUG: Track {self.uuid} created with parent: {getattr(self, '_parent', None)}")
         # Register the initial clip with the sequencer interface
         self._register_initial_clip(initial_clip)
+        self.timeline = self.app.session.global_timeline
+        self.output_device = HardwareDevice()
 
     def _send_msg_to_app(self, message, parameters):
         """Send message to the app - placeholder implementation"""

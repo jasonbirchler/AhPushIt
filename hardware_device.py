@@ -13,10 +13,8 @@ class HardwareDevice(BaseClass):
     control_change_messages_are_relative: bool
     midi_cc_parameter_values_list: str
     midi_channel: int
-    midi_input_device_name: str
     midi_output_device_name: str
     name: str
-    notes_mapping: str
     short_name: str
     type: int
 
@@ -29,9 +27,6 @@ class HardwareDevice(BaseClass):
     def is_type_input(self):
         return self.type == 0
 
-    def send_midi(self, msg: mido.Message):
-        print(f'Trying to send {msg.bytes()} to {self.name}')
-
     def all_notes_off(self):
         print(f'Trying to send all notes off to {self.name}')
 
@@ -43,9 +38,6 @@ class HardwareDevice(BaseClass):
             self._midi_cc_parameter_values_list_used_for_splitting = self.midi_cc_parameter_values_list
             self._midi_cc_parameter_values_list_splitted = self.midi_cc_parameter_values_list.split(',')
         return int(self._midi_cc_parameter_values_list_splitted[midi_cc_num])
-
-    def set_notes_mapping(self, mapping):
-        print(f'Trying to set notes mapping to {mapping} on {self.name}')
 
     def set_control_change_mapping(self, mapping):
         print(f'Trying to set control change mapping to {mapping} on {self.name}')

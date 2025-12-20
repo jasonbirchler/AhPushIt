@@ -38,15 +38,12 @@ class PyshaApp(object):
     midi_out = None
     available_midi_out_device_names = []
     midi_out_channel = 0  # 0-15
-    midi_out_tmp_device_idx = None  # This is to store device names while rotating encoders
 
     midi_in = None
     available_midi_in_device_names = []
     midi_in_channel = 0  # 0-15
-    midi_in_tmp_device_idx = None  # This is to store device names while rotating encoders
 
     notes_midi_in = None
-    notes_midi_in_tmp_device_idx = None  # This is to store device names while rotating encoders
     global_timeline = None
 
     # push
@@ -79,11 +76,6 @@ class PyshaApp(object):
             settings = json.load(open('settings.json'))
         else:
             settings = {}
-
-        # Initialize with dummy devices first to ensure app can start
-        self.midi_in = iso.MidiInputDevice()
-        self.midi_out = iso.DummyOutputDevice()
-        self.notes_midi_in = iso.MidiInputDevice()
 
         self.session = Session(parent=self)
         # Register initial clips after session is properly initialized
@@ -259,9 +251,7 @@ class PyshaApp(object):
         # if different devices are connected 
         settings = {
             'midi_in_default_channel': self.midi_in_channel,
-            'midi_out_default_channel': self.midi_out_channel,
             'default_midi_in_device_name': self.midi_in.name[:-4] if self.midi_in is not None else None,
-            'default_midi_out_device_name': self.midi_out.name[:-4] if self.midi_out is not None else None,
             'default_notes_midi_in_device_name': self.notes_midi_in.name[:-4] if self.notes_midi_in is not None else None,
             'use_push2_display': self.use_push2_display,
             'target_frame_rate': self.target_frame_rate,
