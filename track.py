@@ -1,43 +1,42 @@
-import uuid
-from typing import List, Optional, Any, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, List, Optional
+
+import isobar as iso
+
 from base_class import BaseClass
-from hardware_device import HardwareDevice
-from isobar.timelines import Timeline as isoTimeline
-from isobar.timelines.track import Track as isoTrack
 
 # if TYPE_CHECKING:
 from clip import Clip
+from hardware_device import HardwareDevice
+
 
 class Track(BaseClass):
     clips: List[Clip] = []
 
+    channel: int
     input_monitoring: bool
-    name: str
+    isobar_track: iso.Track
     output_hardware_device_name: str
-    timeline: isoTimeline
-    
+    output_device: Optional[iso.MidiOutputDevice] = None
+    remove_when_done: bool = False
+    timeline: iso.Timeline
+
     def __init__(self, *args, **kwargs):
-        # Generate UUID for the track first
-        self.uuid = str(uuid.uuid4())
         super().__init__(*args, **kwargs)
         # Initialize attributes that are used by other code
-        self.output_hardware_device_name = "empty"
+        self.channel = 0
         self.input_monitoring = False
-        self.name = ""
+        self.output_hardware_device_name = None
         # Create initial clip with this track as parent
         initial_clip = Clip(parent=self)
         self.clips = [initial_clip]
-        # Debug: Print parent information
-        print(f"DEBUG: Track {self.uuid} created with parent: {getattr(self, '_parent', None)}")
         # Register the initial clip with the sequencer interface
         self._register_initial_clip(initial_clip)
-        self.timeline = self.app.session.global_timeline
-        self.output_device = HardwareDevice()
+        self.timeline = self.session.global_timeline
+        self._output_device = iso.MidiOutputDevice()
 
-    def _send_msg_to_app(self, message, parameters):
-        """Send message to the app - placeholder implementation"""
-        # TODO: Implement actual message sending to app
-        print(f"Message to app: {message} with parameters: {parameters}")
+    @property
+    def session(self):
+        return self._parent
 
     def _add_clip(self, clip: 'Clip', position=None):
         # Note this method adds a Clip object in the local Trck object but does not create a clip in the backend
@@ -48,40 +47,10 @@ class Track(BaseClass):
         else:
             self.clips.insert(position, clip)
 
-        # Register the clip with the sequencer interface's UUID map
-        app = self._get_app()
-        if app:
-            app.add_element_to_uuid_map(clip)
-            print(f"DEBUG: Registered clip {clip.uuid} with sequencer interface")
-        else:
-            print(f"DEBUG: Could not register clip {clip.uuid} - app not available")
-
     def _register_initial_clip(self, clip):
         """Register the initial clip created in constructor with sequencer interface"""
         # This method can be called after the track has been properly initialized
         # and has a parent relationship established
-        app = self._get_app()
-        if app:
-            app.add_element_to_uuid_map(clip)
-            print(f"DEBUG: Registered initial clip {clip.uuid} with sequencer interface")
-        else:
-            print(f"DEBUG: Could not register initial clip {clip.uuid} - app not available")
-
-    def _remove_clip_with_uuid(self, clip_uuid):
-        # Note this method removes a Clip object from the local Track object but does not remove a clip from the backend
-        self.clips = [clip for clip in self.clips if clip.uuid != clip_uuid]
-
-    @property
-    def session(self):
-        """Access to the session through the parent hierarchy"""
-        # Navigate up the parent hierarchy to find the session
-        # This assumes the Track is ultimately owned by an app that has a session
-        current = self._parent
-        while current is not None:
-            if hasattr(current, 'session'):
-                return current.session
-            current = getattr(current, '_parent', None)
-        return None
 
     def _get_app(self):
         """Access to the app through the parent hierarchy"""
@@ -103,35 +72,22 @@ class Track(BaseClass):
         return None
 
     def set_input_monitoring(self, enabled):
-        print("implement set_input_monitoring in a way that doesn't require WS")
-        # self._send_msg_to_app('/track/setInputMonitoring', [self.uuid, 1 if enabled else 0])
+        self.input_monitoring = enabled
 
     def set_active_ui_notes_monitoring(self):
         print("implement set_active_ui_notes_monitoring in a way that doesn't require WS")
-        # self._send_msg_to_app('/track/setActiveUiNotesMonitoringTrack', [self.uuid])
 
-    def set_output_hardware_device(self, device_name) -> None:
+    def set_output_device_by_name(self, device_name) -> None:
         # Update the track's output hardware device name
         self.output_hardware_device_name = device_name
-        print(f'Set output hardware device for track {self.uuid} to "{device_name}"')
-        print(f'Verify: track.output_hardware_device_name = "{self.output_hardware_device_name}"')
+        self.output_device = iso.MidiOutputDevice(device_name=device_name, send_clock=True)
 
-        # Also update the hardware device in the app's hardware_devices list if it exists
-        app = self._get_app()
-        if app:
-            # Check if this device already exists in hardware_devices
-            existing_device = None
-            for device in app.hardware_devices:
-                if device.name == device_name or device.short_name == device_name:
-                    existing_device = device
-                    break
+    @property
+    def output_device(self) -> iso.MidiOutputDevice:
+        """Get the output device"""
+        return self._output_device
 
-            if existing_device is None:
-                # Create new hardware device if existing device is non-existant
-                new_device = HardwareDevice()
-                new_device.name = device_name
-                new_device.short_name = device_name.split(' ')[0] if ' ' in device_name else device_name
-                new_device.type = 1  # Output device
-                new_device.midi_output_device_name = device_name
-                new_device.midi_channel = 1  # Default MIDI channel
-                app.hardware_devices.append(new_device)
+    @output_device.setter
+    def output_device(self, device: iso.MidiOutputDevice) -> None:
+        """Set the output device"""
+        self._output_device = device

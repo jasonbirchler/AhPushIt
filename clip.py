@@ -1,5 +1,4 @@
 import json
-import uuid
 from typing import TYPE_CHECKING, List, NamedTuple
 
 import isobar as iso
@@ -40,8 +39,6 @@ class Clip(BaseClass):
         return self._parent
 
     def __init__(self, *args, **kwargs):
-        # Generate UUID for the clip
-        self.uuid = str(uuid.uuid4())
         super().__init__(*args, **kwargs)
 
         # clip playback properties
@@ -170,7 +167,6 @@ class Clip(BaseClass):
 
     def play_stop(self):
         if self.track is None:
-            print(f'ERROR: play_stop called on clip {self.uuid} but track is None!')
             return
 
         if self.playing:
@@ -222,10 +218,7 @@ class Clip(BaseClass):
         self.amplitudes = iso.PSequence(list(self.amplitudes) + list(self.amplitudes))
 
     def quantize(self, quantization_step):
-        print(f'quantize on clip {self.uuid} of track {self.track.uuid}')
-
-    def undo(self):
-        print(f'undo on clip {self.uuid} of track {self.track.uuid}')
+        print(f'clip quantize TBD')
 
     def set_length(self, new_length):
         self.clip_length_in_beats = new_length
@@ -241,9 +234,6 @@ class Clip(BaseClass):
             self.notes = iso.PSequence(list(new_sequence))
         else:
             raise ValueError("new_sequence must be a list or iterable")
-
-    def edit_note_sequence(self, edit_sequence_data):
-        print(f'edit_sequence on clip {self.uuid} of track {self.track.uuid} with {json.dumps(edit_sequence_data)}')
 
     def remove_sequence_event(self, position: int):
         """Remove event at specific position"""
@@ -278,16 +268,6 @@ class Clip(BaseClass):
         if self.playing:
             self._reschedule_if_playing()
 
-    def add_sequence_midi_event(self, eventMidiBytes, timestamp):
-        self.edit_note_sequence({
-            'action': 'addEvent',
-            'eventData': {
-                'type': 0,  # type 0 = midi event
-                'eventMidiBytes': eventMidiBytes,
-                'timestamp': timestamp, 
-            },
-        })
-
     def edit_sequence_event(self, position: int, midi_note=None, midi_velocity=None, timestamp=None, duration=None,
                             midi_bytes=None, utime=None, chance=None):
         """Edit event at specific position"""
@@ -311,7 +291,7 @@ class Clip(BaseClass):
         if self.playing:
             app = self.track._get_app()
             if app and hasattr(app, 'midi_manager'):
-                app.midi_manager.reschedule_clip(self.track.uuid, self)
+                app.midi_manager.reschedule_clip(self.track, self)
 
     def get_sequence_data_for_timeline(self):
         """Get sequence data in the format expected by timeline scheduling"""

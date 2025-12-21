@@ -35,14 +35,12 @@ class ClipTriggeringMode(definitions.PyshaMode):
     clear_clip_button = push2_python.constants.BUTTON_DELETE
     double_clip_button = push2_python.constants.BUTTON_DOUBLE_LOOP
     quantize_button = push2_python.constants.BUTTON_QUANTIZE
-    undo_button = push2_python.constants.BUTTON_UNDO
     duplicate_button = push2_python.constants.BUTTON_DUPLICATE
 
     buttons_used = scene_trigger_buttons + [
         clear_clip_button,
         double_clip_button,
         quantize_button,
-        undo_button,
         duplicate_button,
     ]
 
@@ -190,9 +188,6 @@ class ClipTriggeringMode(definitions.PyshaMode):
         self.set_button_color_if_pressed(
             self.quantize_button, animation=definitions.DEFAULT_ANIMATION
         )
-        self.set_button_color_if_pressed(
-            self.undo_button, animation=definitions.DEFAULT_ANIMATION
-        )
         self.set_button_color(self.duplicate_button)
 
 
@@ -298,7 +293,6 @@ class ClipTriggeringMode(definitions.PyshaMode):
             self.clear_clip_button,
             self.double_clip_button,
             self.quantize_button,
-            self.undo_button,
         ]
         action_button_being_pressed = any(
             [
@@ -365,12 +359,6 @@ class ClipTriggeringMode(definitions.PyshaMode):
                             )
                         )
 
-                elif self.app.is_button_being_pressed(self.undo_button):
-                    clip.undo()
-                    self.app.add_display_notification(
-                        "Undo clip: {0}-{1}".format(track_num + 1, clip_num + 1)
-                    )
-
                 else:
                     # No "option" button pressed, do play/stop
                     clip.play_stop()
@@ -390,7 +378,6 @@ class ClipTriggeringMode(definitions.PyshaMode):
             self.clear_clip_button,
             self.double_clip_button,
             self.quantize_button,
-            self.undo_button,
         ]
         action_button_being_pressed = any(
             [
@@ -422,11 +409,9 @@ class ClipTriggeringMode(definitions.PyshaMode):
             # Get the clip (which should now exist)
             clip = self.app.session.get_clip_by_idx(track_num, clip_num)
             if clip is not None:
-                print(f"DEBUG: Clip found, UUID: {clip.uuid}, entering edit mode")
                 try:
                     # Enter clip edit mode for both existing and newly created clips
-                    print(f"DEBUG: About to call set_clip_mode({clip.uuid})")
-                    self.app.clip_edit_mode.set_clip_mode(clip.uuid)
+                    self.app.clip_edit_mode.set_clip_mode(clip)
                     print(f"DEBUG: set_clip_mode completed")
                     
                     print(f"DEBUG: About to call set_clip_edit_mode()")

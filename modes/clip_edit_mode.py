@@ -1,6 +1,5 @@
 import math
 from typing import Optional
-import uuid
 
 import push2_python
 
@@ -39,7 +38,7 @@ class ClipEditMode(definitions.PyshaMode):
     MODE_GENERATOR = 'mode_generator'
     mode = MODE_CLIP
 
-    selected_clip_uuid = None
+    selected_clip_idx = None
     available_clips = []
 
     selected_event_position = None
@@ -85,8 +84,8 @@ class ClipEditMode(definitions.PyshaMode):
 
     @property
     def clip(self) -> Optional[Clip]:
-        if self.selected_clip_uuid is not None:
-            return self.app.get_element_with_uuid(self.selected_clip_uuid)
+        if self.selected_clip_idx is not None:
+            return self.selected_clip_idx
         else:
             return None
 
@@ -154,12 +153,10 @@ class ClipEditMode(definitions.PyshaMode):
             self.pads_pad_beats_offset = 0.0
             self.pads_pad_beat_scale = 0.5
 
-    def set_clip_mode(self, new_clip_uuid):
-        print(f"DEBUG: set_clip_mode({new_clip_uuid}) called")
+    def set_clip_mode(self, new_clip_idx):
         try:
             self.selected_event_position = None
-            self.selected_clip_uuid = new_clip_uuid
-            print(f"DEBUG: selected_clip_uuid set to {new_clip_uuid}")
+            self.selected_clip_idx = new_clip_idx
             
             self.adjust_pads_to_sequence()
             print(f"DEBUG: adjust_pads_to_sequence() completed")
@@ -340,7 +337,7 @@ class ClipEditMode(definitions.PyshaMode):
                 track_color_rgb = definitions.get_color_rgb_float(track_color)
 
             if self.mode == self.MODE_CLIP:
-                if self.selected_clip_uuid is not None:
+                if self.selected_clip_idx is not None:
                     
                     # Slot 1, clip name
                     show_title(ctx, part_w * 0, h, 'CLIP', color=track_color_rgb)
@@ -430,12 +427,8 @@ class ClipEditMode(definitions.PyshaMode):
         self.available_clips = []
         for track in self.app.session.tracks:
             for clip in track.clips:
-                self.available_clips.append(clip.uuid)
+                self.available_clips.append(clip)
         
-        print(f"DEBUG: ClipEditMode activated with {len(self.available_clips)} available clips")
-        if self.selected_clip_uuid:
-            print(f"DEBUG: Selected clip UUID: {self.selected_clip_uuid}")
-
     def deactivate(self):
         self.app.push.pads.set_all_pads_to_color(color=definitions.BLACK)
         for button_name in self.buttons_used:
@@ -558,7 +551,7 @@ class ClipEditMode(definitions.PyshaMode):
                 return True
             elif button_name == push2_python.constants.BUTTON_CLIP:
                 # Go back to clip mode
-                self.set_clip_mode(self.selected_clip_uuid)
+                self.set_clip_mode(self.selected_clip_idx)
                 return True
         
         # For all modes
@@ -597,7 +590,7 @@ class ClipEditMode(definitions.PyshaMode):
         if notes_in_pad:
             if not long_press:
                 if self.mode != self.MODE_EVENT:
-                    # Remove all notes (using positions instead of UUIDs)
+                    # Remove all notes using positions
                     print(f"DEBUG: Removing {len(notes_in_pad)} notes")
                     for position in notes_in_pad:
                         print(f"DEBUG: Removing note at position {position}")
@@ -606,11 +599,11 @@ class ClipEditMode(definitions.PyshaMode):
                 else:
                     # Exit event edit mode
                     print(f"DEBUG: Exiting event edit mode")
-                    self.set_clip_mode(self.selected_clip_uuid)
+                    self.set_clip_mode(self.selected_clip_idx)
             else:
                 if self.mode == self.MODE_EVENT:
-                    self.set_clip_mode(self.selected_clip_uuid)
-                # Enter event edit mode (using position instead of UUID)
+                    self.set_clip_mode(self.selected_clip_idx)
+                # Enter event edit mode using position
                 print(f"DEBUG: Entering event edit mode for position {notes_in_pad[0]}")
                 self.set_event_mode(notes_in_pad[0])
         else:
@@ -626,7 +619,7 @@ class ClipEditMode(definitions.PyshaMode):
             else:
                 # Exit event edit mode
                 print(f"DEBUG: Exiting event edit mode (no notes in pad)")
-                self.set_clip_mode(self.selected_clip_uuid)
+                self.set_clip_mode(self.selected_clip_idx)
 
         return True
 
@@ -635,9 +628,9 @@ class ClipEditMode(definitions.PyshaMode):
         if self.mode == self.MODE_CLIP:
             if encoder_name == push2_python.constants.ENCODER_TRACK1_ENCODER:
                 if self.available_clips:
-                    if self.selected_clip_uuid is not None:
+                    if self.selected_clip_idx is not None:
                         try:
-                            current_clip_index = self.available_clips.index(self.selected_clip_uuid)
+                            current_clip_index = self.available_clips.index(self.selected_clip_idx)
                         except:
                             current_clip_index = None
                         if current_clip_index is None:

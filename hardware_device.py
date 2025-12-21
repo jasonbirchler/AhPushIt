@@ -3,14 +3,6 @@ from base_class import BaseClass
 
 class HardwareDevice(BaseClass):
 
-    allow_aftertouch_messages: bool
-    allow_channel_pressure_messages: bool
-    allow_controller_messages: bool
-    allow_note_messages: bool
-    allow_pitch_bend_messages: bool
-    allowed_midi_input_channel: int
-    control_change_mapping: str
-    control_change_messages_are_relative: bool
     midi_cc_parameter_values_list: str
     midi_channel: int
     midi_output_device_name: str
@@ -39,8 +31,5 @@ class HardwareDevice(BaseClass):
             self._midi_cc_parameter_values_list_splitted = self.midi_cc_parameter_values_list.split(',')
         return int(self._midi_cc_parameter_values_list_splitted[midi_cc_num])
 
-    def set_control_change_mapping(self, mapping):
-        print(f'Trying to set control change mapping to {mapping} on {self.name}')
-    
     def set_midi_channel(self, channel):
         print(f'Trying to set midi channel to {channel} on {self.name}')

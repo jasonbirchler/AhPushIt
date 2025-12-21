@@ -23,28 +23,22 @@ from modes.settings_mode import SettingsMode
 from modes.slice_notes_mode import SliceNotesMode
 from modes.track_selection_mode import TrackSelectionMode
 from session import Session
-from hardware_device import HardwareDevice
+from hardware_device import HardwareDevice ###
 from midi_manager import MidiManager
 
 buttons_pressed_state = {}
 pads_pressed_state = {}  # Track pad press times for long press detection
 
 class PyshaApp(object):
-
-    session = None
-    hardware_devices: List[HardwareDevice] = []
+    """
+    The App handles initializes everything at startup.
+    App manages Push interface.
+    Modes, MidiManger, Session are all children of App.
+    """
+    session: Session = None
 
     # midi
-    midi_out = None
-    available_midi_out_device_names = []
-    midi_out_channel = 0  # 0-15
-
-    midi_in = None
-    available_midi_in_device_names = []
-    midi_in_channel = 0  # 0-15
-
-    notes_midi_in = None
-    global_timeline = None
+    midi_manager: MidiManager = None
 
     # push
     push = None
@@ -61,7 +55,6 @@ class PyshaApp(object):
     previously_active_mode_for_xor_group = {}
     pads_need_update = True
     buttons_need_update = True
-    elements_uuids_map = {}
 
     # notifications
     notification_text = None
@@ -77,42 +70,16 @@ class PyshaApp(object):
         else:
             settings = {}
 
-        self.session = Session(parent=self)
-        # Register initial clips after session is properly initialized
-        self.session._register_initial_clips()
-
-        # Initialize MIDI manager with isobar
+        self.global_timeline = iso.Timeline(tempo=120)
+        self.session = Session(self)
         self.midi_manager = MidiManager(self)
-        self.midi_manager.initialize_devices()
-        self.set_midi_in_channel(settings.get('midi_in_default_channel', 0))
-        self.set_midi_out_channel(settings.get('midi_out_default_channel', 0))
+
         self.target_frame_rate = settings.get('target_frame_rate', 60)
         self.use_push2_display = settings.get('use_push2_display', True)
-
-        # Try to initialize real MIDI devices (non-blocking)
-        self.try_initialize_midi_devices(settings)
-
-        # Initial device-to-track assignment
-        self.assign_devices_to_tracks()
+        self._last_midi_check_time = 0  # Initialize MIDI check timer
 
         self.init_push()
         self.init_modes(settings)
-
-        # Set up periodic MIDI device checking
-        self._last_midi_check_time = 0
-        self._last_seen_in_devices = set()
-        self._last_seen_out_devices = set()
-        self._update_hardware_devices()
-
-    # UUID Management
-    def add_element_to_uuid_map(self, element):
-        self.elements_uuids_map[element.uuid] = element
-
-    def _remove_element_from_uuid_map(self, uuid):
-        del self.elements_uuids_map[uuid]
-
-    def get_element_with_uuid(self, uuid):
-        return self.elements_uuids_map[uuid]
 
     # Mode-related functions
     def init_modes(self, settings):
@@ -262,285 +229,6 @@ class PyshaApp(object):
                 settings.update(mode_settings)
         json.dump(settings, open('settings.json', 'w'))
 
-    # MIDI-related functions
-    def try_initialize_midi_devices(self, settings):
-        """Non-blocking attempt to initialize MIDI devices"""
-        try:
-            self.init_midi_in(settings.get('default_midi_in_device_name', None))
-            self.init_midi_out(settings.get('default_midi_out_device_name', None))
-            self.init_notes_midi_in(settings.get('default_notes_midi_in_device_name', None))
-        except Exception as e:
-            print(f"MIDI initialization deferred: {e}")
-            # Continue with null devices - app is still functional
-
-    def check_for_new_midi_devices(self):
-        """Periodically check for newly connected MIDI devices"""
-        try:
-            current_in_devices = set(iso.get_midi_input_names())
-            current_out_devices = set(iso.get_midi_output_names())
-
-            # Compare with previously seen devices
-            new_in_devices = current_in_devices - self._last_seen_in_devices
-            new_out_devices = current_out_devices - self._last_seen_out_devices
-
-            if new_in_devices or new_out_devices:
-                # Auto-assign devices to tracks
-                print("New MIDI devices detected!")
-                self._update_hardware_devices()
-
-            self._last_seen_in_devices = current_in_devices
-            self._last_seen_out_devices = current_out_devices
-        except Exception as e:
-            print(f"Error checking for new MIDI devices: {e}")
-
-    def assign_devices_to_tracks(self):
-        """
-        Assign detected MIDI devices to tracks starting from track 1.
-        If fewer than 8 devices are detected, assign null devices to remaining tracks.
-        """
-        try:
-            print("Starting device-to-track assignment...")
-
-            # Get all available MIDI output devices (excluding system devices)
-            self._update_hardware_devices()
-
-            # Assign devices to tracks starting from track 1
-            for track_idx in range(8):
-                track = self.session.get_track_by_idx(track_idx)
-                if track is None:
-                    print(f"Track {track_idx + 1} not found, skipping...")
-                    continue
-
-                if track_idx < len(self.hardware_devices):
-                    # Assign real device to this track
-                    device = self.hardware_devices[track_idx]
-                    print(f"Assigning device '{device}' to track {track_idx + 1}")
-                    track.output_hardware_device_name = device.name
-                else:
-                    # remaining tracks have "unassigned devices"
-                    unassigned_device_name = f"unassigned"
-                    print(f"Assigning '{unassigned_device_name}' to track {track_idx + 1}")
-                    track.output_hardware_device_name = unassigned_device_name
-
-                    # Create null hardware device
-                    hardware_device = HardwareDevice()
-                    hardware_device.name = unassigned_device_name
-                    hardware_device.short_name = "unass"
-                    hardware_device.type = 1  # Output device
-                    hardware_device.midi_output_device_name = unassigned_device_name
-                    hardware_device.midi_channel = track_idx + 1  # MIDI channels 1-8
-
-            print("Device-to-track assignment completed")
-
-        except Exception as e:
-            print(f"Error in device-to-track assignment: {e}")
-            import traceback
-            traceback.print_exc()
-
-    def init_midi_in(self, device_name=None):
-        print('Configuring MIDI in to {}...'.format(device_name))
-        self.available_midi_in_device_names = [name for name in iso.get_midi_input_names() if 'Ableton Push' not in name and 'RtMidi' not in name and 'Through' not in name]
-        if device_name is not None and device_name != '':
-            try:
-                full_name = [name for name in self.available_midi_in_device_names if device_name in name][0]
-            except IndexError:
-                full_name = None
-            if full_name is not None:
-                if self.midi_in is not None:
-                    self.midi_in.callback = None  # Disable current callback (if any)
-                try:
-                    self.midi_in = iso.MidiInputDevice(full_name)
-                    self.midi_in.callback = self.midi_in_handler
-                    print('Receiving MIDI in from "{0}"'.format(full_name))
-                except IOError:
-                    print('Could not connect to MIDI input port "{0}"\nAvailable device names:'.format(full_name))
-                    for name in self.available_midi_in_device_names:
-                        print(' - {0}'.format(name))
-            else:
-                print('No available device name found for {}'.format(device_name))
-        else:
-            if self.midi_in is not None and not hasattr(self.midi_in, '_closed'):
-                self.midi_in.callback = None  # Disable current callback (if any)
-                self.midi_in.close()
-                self.midi_in = iso.MidiInputDevice()
-
-    def init_midi_out(self, device_name=None):
-        print('Configuring MIDI out to {}...'.format(device_name))
-        self.available_midi_out_device_names = [name for name in iso.get_midi_output_names() if 'Ableton Push' not in name  and 'RtMidi' not in name and 'Through' not in name]
-        self.available_midi_out_device_names += ['Virtual']
-
-        if device_name is not None:
-            try:
-                full_name = [name for name in self.available_midi_out_device_names if device_name in name][0]
-            except IndexError:
-                full_name = None
-            if full_name is not None:
-                try:
-                    if full_name == 'Virtual':
-                        self.midi_out = iso.MidiOutputDevice(full_name, virtual=True)
-                    else:
-                        self.midi_out = iso.MidiOutputDevice(full_name)
-                    print(f'Will send MIDI to "{full_name}"')
-                except IOError:
-                    print(f'Could not connect to MIDI output port "{full_name}"\nAvailable device names:')
-                    for name in self.available_midi_out_device_names:
-                        print(' - {0}'.format(name))
-            else:
-                print(f'No available device name found for {device_name}')
-        else:
-            if self.midi_out is not None and not hasattr(self.midi_out, '_closed'):
-                self.midi_out.close()
-                self.midi_out = iso.DummyOutputDevice()
-
-    def init_notes_midi_in(self, device_name=None):
-        print('Configuring notes MIDI in to {}...'.format(device_name))
-        self.available_midi_in_device_names = [name for name in iso.get_midi_input_names() if 'Ableton Push' not in name and 'RtMidi' not in name and 'Through' not in name]
-
-        if device_name is not None and device_name != '':
-            try:
-                full_name = [name for name in self.available_midi_in_device_names if device_name in name][0]
-            except IndexError:
-                full_name = None
-            if full_name is not None:
-                if self.notes_midi_in is not None:
-                    self.notes_midi_in.callback = None  # Disable current callback (if any)
-                try:
-                    self.notes_midi_in = iso.MidiInputDevice(full_name)
-                    self.notes_midi_in.callback = self.notes_midi_in_handler
-                    print('Receiving notes MIDI in from "{0}"'.format(full_name))
-                except IOError:
-                    print('Could not connect to notes MIDI input port "{0}"\nAvailable device names:'.format(full_name))
-                    for name in self.available_midi_in_device_names:
-                        print(' - {0}'.format(name))
-            else:
-                print('No available device name found for {}'.format(device_name))
-        else:
-            if self.notes_midi_in is not None and not hasattr(self.notes_midi_in, '_closed'):
-                self.notes_midi_in.callback = None  # Disable current callback (if any)
-                self.notes_midi_in.close()
-                self.notes_midi_in = None
-
-    def set_midi_in_channel(self, channel, wrap=False):
-        self.midi_in_channel = channel
-        if self.midi_in_channel < -1:  # Use "-1" for "all channels"
-            self.midi_in_channel = -1 if not wrap else 15
-        elif self.midi_in_channel > 15:
-            self.midi_in_channel = 15 if not wrap else -1
-
-    def set_midi_out_channel(self, channel, wrap=False):
-        # We use channel -1 for the "track setting" in which midi channel is taken from currently selected track
-        self.midi_out_channel = channel
-        if self.midi_out_channel < -1:
-            self.midi_out_channel = -1 if not wrap else 15
-        elif self.midi_out_channel > 15:
-            self.midi_out_channel = 15 if not wrap else -1
-
-    def set_midi_in_device_by_index(self, device_idx):
-        if device_idx >= 0 and device_idx < len(self.available_midi_in_device_names):
-            self.init_midi_in(self.available_midi_in_device_names[device_idx])
-        else:
-            self.init_midi_in(None)
-
-    def set_midi_out_device_by_index(self, device_idx):
-        if device_idx >= 0 and device_idx < len(self.available_midi_out_device_names):
-            self.init_midi_out(self.available_midi_out_device_names[device_idx])
-        else:
-            self.init_midi_out(None)
-
-    def set_notes_midi_in_device_by_index(self, device_idx):
-        if device_idx >= 0 and device_idx < len(self.available_midi_in_device_names):
-            self.init_notes_midi_in(self.available_midi_in_device_names[device_idx])
-        else:
-            self.init_notes_midi_in(None)
-
-    def send_midi(self, msg, use_original_msg_channel=False):
-        # Unless we specifically say we want to use the original msg midi channel, set it to global midi out channel or to the channel of the current track
-        if not use_original_msg_channel and hasattr(msg, 'channel'):
-            midi_out_channel = self.midi_out_channel
-            if self.midi_out_channel == -1:
-                # Send the message to the midi channel of the currently selected track (or to track 1 if selected track has no midi channel information)
-                try:
-                    track_midi_channel = self.track_selection_mode.get_current_track_info()['midi_channel']
-                    if track_midi_channel == -1:
-                        midi_out_channel = 0
-                    else:
-                        midi_out_channel = track_midi_channel - 1 # msg.channel is 0-indexed
-                except Exception:
-                    # If track selection mode or track info is not available, use channel 0
-                    midi_out_channel = 0
-            msg = msg.copy(channel=midi_out_channel)
-
-        # Safe MIDI sending
-        try:
-            if hasattr(self.midi_out, 'send') and self.midi_out is not None:
-                self.midi_out.send(msg)
-            # If using null device, silently ignore
-        except Exception as e:
-            print(f"Failed to send MIDI message: {e}")
-            # Continue silently - app should not crash due to MIDI issues
-
-    def midi_in_handler(self, msg):
-        try:
-            if hasattr(msg, 'channel'):  # This will rule out sysex and other "strange" messages that don't have channel info
-                if self.midi_in_channel == -1 or msg.channel == self.midi_in_channel:   # If midi input channel is set to -1 (all) or a specific channel
-
-                    skip_message = False
-                    if msg.type == 'aftertouch':
-                        now = time.time()
-                        if (abs(self.last_cp_value_recevied - msg.value) > 10) and (now - self.last_cp_value_recevied_time < 0.5):
-                            skip_message = True
-                        else:
-                            self.last_cp_value_recevied = msg.value
-                        self.last_cp_value_recevied_time = time.time()
-
-                    if not skip_message:
-                        # Route note messages to selected track's output device
-                        if msg.type in ('note_on', 'note_off') and hasattr(self, 'midi_manager'):
-                            track = self.track_selection_mode.get_selected_track()
-                            if track:
-                                velocity = msg.velocity if msg.type == 'note_on' else 0
-                                self.midi_manager.send_note(
-                                    track.output_hardware_device_name,
-                                    msg.note,
-                                    velocity
-                                )
-
-                        # Forward message to the main MIDI out
-                        self.send_midi(msg)
-
-                        # Forward the midi message to the active modes
-                        for mode in self.active_modes:
-                            try:
-                                mode.on_midi_in(msg, source=getattr(self.midi_in, 'name', 'Null MIDI Input'))
-                            except Exception as e:
-                                print(f"Mode MIDI handler error: {e}")
-                                continue
-        except Exception as e:
-            print(f"MIDI input handler error: {e}")
-            # Continue silently - don't crash on MIDI processing errors
-
-    def notes_midi_in_handler(self, msg):
-        try:
-            # Check if message is note on or off and check if the MIDI channel is the one assigned to the currently selected track
-            # Then, send message to the melodic/rhythmic active modes so the notes are shown in pads/keys
-            if msg.type == 'note_on' or msg.type == 'note_off':
-                try:
-                    track_midi_channel = self.track_selection_mode.get_current_track_info()['midi_channel']
-                    if msg.channel == track_midi_channel - 1:  # msg.channel is 0-indexed
-                        for mode in self.active_modes:
-                            if mode == self.melodic_mode or mode == self.rhyhtmic_mode:
-                                try:
-                                    mode.on_midi_in(msg, source=getattr(self.notes_midi_in, 'name', 'Null Notes MIDI Input'))
-                                except Exception as e:
-                                    print(f"Notes mode MIDI handler error: {e}")
-                                    continue
-                except Exception as e:
-                    print(f"Error getting track info for notes handler: {e}")
-                    # Continue silently
-        except Exception as e:
-            print(f"Notes MIDI input handler error: {e}")
-            # Continue silently - don't crash on MIDI processing errors
-
     # Push2-related functions
     def add_display_notification(self, text):
         self.notification_text = text
@@ -623,9 +311,21 @@ class PyshaApp(object):
             self.update_push2_buttons()
             self.buttons_need_update = False
 
+    def check_for_new_midi_devices(self):
+        """Check for newly connected MIDI devices"""
+        self.midi_manager.update_midi_devices()
+
     def is_button_being_pressed(self, button_name):
         # global buttons_pressed_state
         return buttons_pressed_state.get(button_name, False)
+
+    def measure_framerate(self, now):
+        self.current_frame_rate_measurement += 1
+        if time.time() - self.current_frame_rate_measurement_second > 1.0:
+            self.actual_frame_rate = self.current_frame_rate_measurement
+            self.current_frame_rate_measurement = 0
+            self.current_frame_rate_measurement_second = now
+            print('{0} fps'.format(self.actual_frame_rate))
 
     def run_loop(self):
         print('Pysha is runnnig...')
@@ -636,24 +336,14 @@ class PyshaApp(object):
                 self.update_push2_display()
 
                 # Frame rate measurement
-                now = time.time()
-                self.current_frame_rate_measurement += 1
-                if time.time() - self.current_frame_rate_measurement_second > 1.0:
-                    self.actual_frame_rate = self.current_frame_rate_measurement
-                    self.current_frame_rate_measurement = 0
-                    self.current_frame_rate_measurement_second = now
-                    print('{0} fps'.format(self.actual_frame_rate))
+                self.measure_framerate(time.time())
 
                 # Check if any delayed actions need to be applied
                 self.check_for_delayed_actions()
 
-                # Update clip playheads
-                if hasattr(self, 'midi_manager'):
-                    self.midi_manager.update_playheads()
-
                 after_draw_time = time.time()
 
-                # Calculate sleep time to aproximate the target frame rate
+                # Calculate sleep time to approximate the target frame rate
                 sleep_time = (1.0 / self.target_frame_rate) - (after_draw_time - before_draw_time)
                 if sleep_time > 0:
                     time.sleep(sleep_time)

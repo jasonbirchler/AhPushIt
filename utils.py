@@ -72,6 +72,9 @@ def show_text(ctx, x_part, pixels_from_top, text, height=20, font_color=definiti
     ctx.set_source_rgb(*definitions.get_color_rgb_float(font_color))
     ctx.select_font_face("Arial", cairo.FONT_SLANT_NORMAL, cairo.FONT_WEIGHT_NORMAL)
     font_size = round(int(height * font_size_percentage))
+    # Handle None text by converting to empty string
+    if text is None:
+        text = ""
     text_lines = text.split('\n')
     n_lines = len(text_lines)
     if center_vertically:

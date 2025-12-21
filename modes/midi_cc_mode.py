@@ -111,6 +111,10 @@ class MIDICCMode(PyshaMode):
     active_midi_control_ccs = []
     current_selected_section_and_page = {}
 
+    # TODO: this is currently no-op
+    # needs to actually send MIDI CCs
+    send_midi = None
+
     def initialize(self, settings=None):
         for instrument_short_name in self.get_all_distinct_instrument_short_names_helper():
             try:
@@ -124,7 +128,7 @@ class MIDICCMode(PyshaMode):
                 for section in midi_cc:
                     section_name = section['section']
                     for name, cc_number in section['controls']:
-                        control = MIDICCControl(cc_number, name, section_name, self.get_current_track_color_helper, self.app.send_midi)
+                        control = MIDICCControl(cc_number, name, section_name, self.get_current_track_color_helper, self.send_midi)
                         if section.get('control_value_label_maps', {}).get(name, False):
                             control.value_labels_map = section['control_value_label_maps'][name]
                         self.instrument_midi_control_ccs[instrument_short_name].append(control)
@@ -135,7 +139,7 @@ class MIDICCMode(PyshaMode):
                 for i in range(0, 128):
                     section_s = (i // 16) * 16
                     section_e = section_s + 15
-                    control = MIDICCControl(i, 'CC {0}'.format(i), '{0} to {1}'.format(section_s, section_e), self.get_current_track_color_helper, self.app.send_midi)
+                    control = MIDICCControl(i, 'CC {0}'.format(i), '{0} to {1}'.format(section_s, section_e), self.get_current_track_color_helper, self.send_midi)
                     self.instrument_midi_control_ccs[instrument_short_name].append(control)
                 print('Loaded default MIDI cc mappings for instrument {0}'.format(instrument_short_name))
       
@@ -172,7 +176,7 @@ class MIDICCMode(PyshaMode):
                 for i in range(0, 128):
                     section_s = (i // 16) * 16
                     section_e = section_s + 15
-                    control = MIDICCControl(i, 'CC {0}'.format(i), '{0} to {1}'.format(section_s, section_e), self.get_current_track_color_helper, self.app.send_midi)
+                    control = MIDICCControl(i, 'CC {0}'.format(i), '{0} to {1}'.format(section_s, section_e), self.get_current_track_color_helper, self.send_midi)
                     self.instrument_midi_control_ccs[current_short_name].append(control)
                 print('Initialized default MIDI cc mappings for new device {0}'.format(current_short_name))
 

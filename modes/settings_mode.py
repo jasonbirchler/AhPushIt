@@ -420,17 +420,16 @@ class SettingsMode(definitions.PyshaMode):
                         next_device_name = available_devices[next_device_index]
 
                         # Update the track's device
-                        track.set_output_hardware_device(next_device_name)
+                        track.set_output_device_by_name(next_device_name)
                         print(f"Track {track_num + 1}: Changed device from '{current_hw_device_name}' to '{next_device_name}'")
                         
                     elif selection_state == 1:  # Channel selection only
-                        hw_device = track.get_output_hardware_device()
-                        if hw_device:
-                            current_channel = hw_device.midi_channel
+                        if track.output_device:
+                            current_channel = track.channel
                             new_channel = current_channel + actual_increment
                             # Clamp to valid MIDI channel range (1-16)
                             new_channel = max(1, min(16, new_channel))
-                            self.set_device_midi_channel(hw_device.name, new_channel)
+                            track.channel = new_channel
                         
             except Exception as e:
                 print(e)
@@ -576,7 +575,7 @@ class SettingsMode(definitions.PyshaMode):
                         next_device_name = available_devices[next_device_index]
 
                         # Update the track's device
-                        track.set_output_hardware_device(next_device_name)
+                        track.set_output_device_by_name(next_device_name)
                         print(f"Track {track_num + 1}: Changed device from '{current_hw_device_name}' to '{next_device_name}'")
                     elif selection_state == 1:  # Channel selection only
                         hw_device = track.get_output_hardware_device()

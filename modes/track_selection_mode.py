@@ -64,15 +64,16 @@ class TrackSelectionMode(definitions.PyshaMode):
     def get_current_track_device_short_name(self):
         return self.get_selected_track().output_hardware_device_name
     
-    def get_track_color(self, track: Track):
-        try:
-            track_idx = [idx for idx, t in enumerate(self.app.session.tracks) if track.uuid == t.uuid][0]
-        except IndexError:
-            track_idx = 0
+    def get_track_color(self, track_idx: int):
         return definitions.COLORS_NAMES[track_idx % 8]
     
     def get_current_track_color(self):
-        return self.get_track_color(self.get_selected_track())
+        selected_track = self.get_selected_track()
+        if selected_track is None:
+            return definitions.COLORS_NAMES[0]  # Default color if no track selected
+        # Get the track index from the session
+        track_idx = self.app.session.tracks.index(selected_track)
+        return self.get_track_color(track_idx)
 
     def get_current_track_color_rgb(self):
         return definitions.get_color_rgb_float(self.get_current_track_color())
@@ -164,7 +165,7 @@ class TrackSelectionMode(definitions.PyshaMode):
             self.app.buttons_need_update = True
             return
         for count, name in enumerate(self.track_button_names):
-            color = self.get_track_color(self.app.session.tracks[count])
+            color = self.get_track_color(count)
             self.push.buttons.set_button_color(name, color)
             
     def update_display(self, ctx, w, h):
@@ -172,8 +173,8 @@ class TrackSelectionMode(definitions.PyshaMode):
             return
         # Draw track selector labels
         height = 20
-        for i in range(0, len(self.app.session.tracks)):
-            track_color = self.get_track_color(self.app.session.tracks[i])
+        for i, track in enumerate(self.app.session.tracks):
+            track_color = self.get_track_color(i)
             if self.selected_track == i:
                 background_color = track_color
                 font_color = definitions.BLACK
@@ -182,8 +183,10 @@ class TrackSelectionMode(definitions.PyshaMode):
                 font_color = track_color
             track = self.app.session.get_track_by_idx(i)
             device_short_name = track.output_hardware_device_name
-            if track.input_monitoring:
-                device_short_name = '+' + device_short_name
+            # Use a default name if no device is assigned
+            if device_short_name is None:
+                device_short_name = f"Track {i+1}"
+
             show_text(ctx, i, h - height, device_short_name, height=height,
                     font_color=font_color, background_color=background_color)
 

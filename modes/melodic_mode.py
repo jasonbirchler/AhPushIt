@@ -335,33 +335,15 @@ class MelodicMode(definitions.PyshaMode):
             return True
 
     def on_pad_aftertouch(self, pad_n, pad_ij, velocity):
-        msg = None
-        if pad_n is not None:
-            # polyAT mode
-            self.latest_poly_at_value = (time.time(), velocity)
-            midi_note = self.pad_ij_to_midi_note(pad_ij)
-            if midi_note is not None:
-                msg = mido.Message("polytouch", note=midi_note, value=velocity)
-        else:
-            # channel AT mode
-            self.latest_channel_at_value = (time.time(), velocity)
-            msg = mido.Message("aftertouch", value=velocity)
-
-        if msg is not None:
-            self.app.send_midi(msg)
+        # TODO: implement handler that sends aftertouch to correct device
         return True
 
     def on_touchstrip(self, value):
-        if self.modulation_wheel_mode:
-            msg = mido.Message("control_change", control=1, value=value)
-        else:
-            msg = mido.Message("pitchwheel", pitch=value)
-        self.app.send_midi(msg)
+        # TODO: implement handler that sends touchstrip to correct device
         return True
 
     def on_sustain_pedal(self, sustain_on):
-        msg = mido.Message("control_change", control=64, value=127 if sustain_on else 0)
-        self.app.send_midi(msg)
+        # TODO: implement handler that sends sustain pedal to correct device
         return True
 
     def on_button_pressed(self, button_name):
