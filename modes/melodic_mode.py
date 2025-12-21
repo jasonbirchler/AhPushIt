@@ -297,7 +297,7 @@ class MelodicMode(definitions.PyshaMode):
                 track = self.app.track_selection_mode.get_selected_track()
                 if track:
                     self.app.midi_manager.send_note(
-                        track.output_hardware_device_name,
+                        track.output_device,
                         midi_note,
                         velocity_to_send
                     )
@@ -325,7 +325,7 @@ class MelodicMode(definitions.PyshaMode):
                 track = self.app.track_selection_mode.get_selected_track()
                 if track:
                     self.app.midi_manager.send_note(
-                        track.output_hardware_device_name,
+                        track.output_device,
                         midi_note,
                         0  # velocity 0 = note off
                     )
