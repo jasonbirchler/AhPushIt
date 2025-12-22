@@ -232,9 +232,8 @@ class SettingsMode(definitions.PyshaMode):
                     track_device = track.get_output_hardware_device()
                     # Format device name to fit available space
                     device_short_name = ''
-                    print(len(track_device.name))
-                    if track_device.name and len(track_device.name) < MAX_DEVICE_NAME_CHARS:
-                        device_short_name = track_device.name
+                    if track_device.midi.name and len(track_device.midi.name) < MAX_DEVICE_NAME_CHARS:
+                        device_short_name = track_device.midi.name
                     else:
                         if track_device.short_name and len(track_device.short_name) < MAX_DEVICE_NAME_CHARS:
                             device_short_name = track_device.short_name
@@ -242,8 +241,8 @@ class SettingsMode(definitions.PyshaMode):
                             device_short_name = f"{track_device.short_name[-9:]}..."
                     
                     # Get MIDI channel
-                    hw_device = track.get_output_hardware_device()
-                    midi_channel = hw_device.midi_channel if hw_device else 1
+                    # TODO: track.midi doesn't have a channel. where do i get/set MIDI channel
+                    midi_channel = track_device.midi.channel if track_device.midi.channel else 1
                     
                     # Get selection state for this track
                     selection_state = self.track_selection_states.get(i, 0)
@@ -393,7 +392,7 @@ class SettingsMode(definitions.PyshaMode):
                     
                     if selection_state == 0:  # Device selection only
                         available_devices = self.app.get_available_output_hardware_device_names()
-                        current_hw_device_name = track.output_hardware_device_name
+                        current_hw_device_name = track.output_device.midi.name
 
                         # Check if there are any available devices
                         if not available_devices:
@@ -435,15 +434,13 @@ class SettingsMode(definitions.PyshaMode):
                 print(e)
             return True
 
-
-
-        return True  # Always return True because encoder should not be used in any other mode if this is first active
+        # Always return True because encoder should not be used in any other mode if this is active first
+        return True
 
     def on_button_pressed(self, button_name, shift=False, select=False, long_press=False, double_press=False):
         if button_name == push2_python.constants.BUTTON_SETUP:
             self.setup_button_pressing_time = time.time()
             # If we're not in settings mode, activate it on press
-            # if not self.app.is_mode_active(self):
             self.app.toggle_and_rotate_settings_mode()
             self.app.buttons_need_update = True
             return True
@@ -621,7 +618,7 @@ class SettingsMode(definitions.PyshaMode):
 
     def set_device_midi_channel(self, device_name, new_channel):
         """Send message to backend to change device MIDI channel"""
-        device = self.app.get_output_hardware_device_by_name(device_name)
+        device = self.app.midi_manager.output_devices.get(device_name)
         if device:
             device.set_midi_channel(new_channel)
 

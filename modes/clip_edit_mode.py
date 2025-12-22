@@ -267,7 +267,8 @@ class ClipEditMode(definitions.PyshaMode):
                 'duration_n_pads': int(math.ceil((duration) / self.pads_pad_beat_scale)),
                 'is_selected_in_note_edit_mode': event['position'] == self.selected_event_position
             })
-        track_color = self.app.track_selection_mode.get_track_color(self.clip.track)
+        track_idx = self.app.session.tracks.index(self.clip.track)
+        track_color = self.app.track_selection_mode.get_track_color(track_idx)
         color_matrix = []
         animation_matrix = []
         for i in range(0, 8):
@@ -333,7 +334,8 @@ class ClipEditMode(definitions.PyshaMode):
             track_color_rgb = None
 
             if self.clip is not None:
-                track_color = self.app.track_selection_mode.get_track_color(self.clip.track)
+                track_idx = self.app.session.tracks.index(self.clip.track)
+                track_color = self.app.track_selection_mode.get_track_color(track_idx)
                 track_color_rgb = definitions.get_color_rgb_float(track_color)
 
             if self.mode == self.MODE_CLIP:
@@ -459,7 +461,8 @@ class ClipEditMode(definitions.PyshaMode):
                 else:
                     self.push.buttons.set_button_color(push2_python.constants.BUTTON_RECORD, definitions.WHITE)
 
-                track_color = self.app.track_selection_mode.get_track_color(self.clip.track)
+                track_idx = self.app.session.tracks.index(self.clip.track)
+                track_color = self.app.track_selection_mode.get_track_color(track_idx)
                 if self.clip.playing or self.clip.will_play_at > -1.0:
                     if self.clip.playing:
                         self.push.buttons.set_button_color(push2_python.constants.BUTTON_UPPER_ROW_1, track_color)

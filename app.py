@@ -388,51 +388,12 @@ class PyshaApp(object):
             short_name = tokens[0] + " " + tokens[1]
             return short_name
 
-
-    def _update_hardware_devices(self):
-        print("Updating hardware devices...")
-
-        # Get all available MIDI output devices (excluding system devices)
-        all_output_device_names = [name for name in iso.get_midi_output_names()
-                            if 'Ableton Push' not in name and 'RtMidi' not in name and 'Through' not in name]
-        all_output_device_names = [name for name in all_output_device_names if name != 'Virtual']
-
-        print(f"Detected {len(all_output_device_names)} MIDI output devices: {all_output_device_names}")
-
-        # Create and store hardware device objects
-        for device_name in all_output_device_names:
-            hardware_device = HardwareDevice()
-            hardware_device.name = device_name
-            hardware_device.short_name = self._create_short_name(device_name)
-            hardware_device.type = 1  # Output device
-            hardware_device.midi_output_device_name = device_name
-            hardware_device.midi_channel = 1  # default to MIDI channel 1
-
-            if hardware_device not in self.hardware_devices:
-                self.hardware_devices.append(hardware_device)
-
-    def get_input_hardware_device_by_name(self, hardware_device_name):
-        for hardware_device in self.hardware_devices:
-            if hardware_device.name == hardware_device_name or hardware_device.short_name == hardware_device_name \
-                    and hardware_device.type == 0:
-                return hardware_device
-        return None
-
-    def get_output_hardware_device_by_name(self, hardware_device_name) -> Optional[HardwareDevice]:
-        for hardware_device in self.hardware_devices:
-            if hardware_device.name == hardware_device_name or hardware_device.short_name == hardware_device_name \
-                    and hardware_device.type == 1:
-                return hardware_device
-        return None
-
     def get_available_output_hardware_device_names(self) -> List[str]:
         # Return both full names and short names to ensure proper matching
         device_names = []
-        for device in self.hardware_devices:
-            if device.is_type_output():
-                # Add both full name and short name to ensure matching works
-                if device.name not in device_names:
-                    device_names.append(device.name)
+        for name in self.midi_manager.output_device_names:
+            if name not in device_names:
+                device_names.append(name)
         return device_names
 
 

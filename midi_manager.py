@@ -6,7 +6,6 @@ class MidiManager():
     Manages MIDI devices and timeline using isobar
     This class owns the list of currently connected devices and the global timeline
     """
-
     def __init__(self, app):
         # Assign intial values
         self.app = app
@@ -47,7 +46,7 @@ class MidiManager():
                 print(f"Initialized MIDI output: {name}")
             except Exception as e:
                 print(f"Failed to initialize output {name}: {e}")
-    
+
     def get_output_device(self, device_name: str) -> Optional[iso.MidiOutputDevice]:
         """Get output device by name"""
         if device_name not in self.output_device_names:

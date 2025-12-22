@@ -106,9 +106,7 @@ class ClipTriggeringMode(definitions.PyshaMode):
                     # Add playing percentage with background bar
                     height = (h - 20) // num_clips
                     y = height * i
-                    track_color = self.app.track_selection_mode.get_track_color(
-                        clip.track
-                    )
+                    track_color = self.app.track_selection_mode.get_track_color(track_num)
                     background_color = track_color
                     font_color = track_color + "_darker1"
                     if clip_length > 0.0:
@@ -219,9 +217,7 @@ class ClipTriggeringMode(definitions.PyshaMode):
 
                 state = clip.get_status() if clip is not None else None
 
-                track_color = self.app.track_selection_mode.get_track_color(
-                    self.app.session.tracks[j]
-                )
+                track_color = self.app.track_selection_mode.get_track_color(j)
                 cell_animation = 0
 
                 if state is None or state.empty_status == ClipStates.CLIP_STATUS_IS_EMPTY:

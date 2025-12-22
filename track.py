@@ -52,24 +52,9 @@ class Track(BaseClass):
         # This method can be called after the track has been properly initialized
         # and has a parent relationship established
 
-    def _get_app(self):
-        """Access to the app through the parent hierarchy"""
-        # Navigate up the parent hierarchy to find the app
-        current = self._parent
-        while current is not None:
-            if hasattr(current, 'hardware_devices'):
-                return current
-            current = getattr(current, '_parent', None)
-        return None
-
     def get_output_hardware_device(self) -> Optional[Any]:
-        """Get output hardware device by name"""
-        app = self._get_app()
-        if app:
-            return app.get_output_hardware_device_by_name(
-                self.output_hardware_device_name
-            )
-        return None
+        """Get output hardware device"""
+        return self.output_device
 
     def set_input_monitoring(self, enabled):
         self.input_monitoring = enabled
