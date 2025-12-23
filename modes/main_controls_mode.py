@@ -102,14 +102,14 @@ class MainControlsMode(definitions.PyshaMode):
             return True
         elif button_name == PLAY_BUTTON:
             shift = self.app.is_button_being_pressed(push2_python.constants.BUTTON_SHIFT)
-            if self.app.midi_manager.timeline.is_running:
+            if self.app.session.global_timeline.running:
                 # stop timeline in place. i.e. do not reset current_time
-                self.app.midi_manager.stop_timeline()
+                self.app.session.stop_timeline()
                 # reset timeline to 0 if shift is pressed
                 if shift:
-                    self.app.midi_manager.reset_timeline()
+                    self.app.session.reset_timeline()
             else:
-                self.app.midi_manager.start_timeline()
+                self.app.session.start_timeline()
             self.app.buttons_need_update = True
             return True
 

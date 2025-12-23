@@ -293,10 +293,10 @@ class MelodicMode(definitions.PyshaMode):
             velocity_to_send = velocity if not self.fixed_velocity_mode else 127
 
             # Send via MIDI manager to selected track's output device
-            if hasattr(self.app, 'midi_manager'):
+            if hasattr(self.app, 'session'):
                 track = self.app.track_selection_mode.get_selected_track()
                 if track:
-                    self.app.midi_manager.send_note(
+                    self.app.session.send_note(
                         track.output_device,
                         midi_note,
                         velocity_to_send
@@ -321,10 +321,10 @@ class MelodicMode(definitions.PyshaMode):
                 self.remove_note_being_played(midi_note, "push")
             
             # Send via MIDI manager to selected track's output device
-            if hasattr(self.app, 'midi_manager'):
+            if hasattr(self.app, 'session'):
                 track = self.app.track_selection_mode.get_selected_track()
                 if track:
-                    self.app.midi_manager.send_note(
+                    self.app.session.send_note(
                         track.output_device,
                         midi_note,
                         0  # velocity 0 = note off

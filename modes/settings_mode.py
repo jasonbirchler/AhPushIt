@@ -618,7 +618,7 @@ class SettingsMode(definitions.PyshaMode):
 
     def set_device_midi_channel(self, device_name, new_channel):
         """Send message to backend to change device MIDI channel"""
-        device = self.app.midi_manager.output_devices.get(device_name)
+        device = self.app.session.output_devices.get(device_name)
         if device:
             device.set_midi_channel(new_channel)
 

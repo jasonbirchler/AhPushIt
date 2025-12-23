@@ -24,7 +24,6 @@ from modes.slice_notes_mode import SliceNotesMode
 from modes.track_selection_mode import TrackSelectionMode
 from session import Session
 from hardware_device import HardwareDevice ###
-from midi_manager import MidiManager
 
 buttons_pressed_state = {}
 pads_pressed_state = {}  # Track pad press times for long press detection
@@ -36,9 +35,6 @@ class PyshaApp(object):
     Modes, MidiManger, Session are all children of App.
     """
     session: Session = None
-
-    # midi
-    midi_manager: MidiManager = None
 
     # push
     push = None
@@ -72,7 +68,6 @@ class PyshaApp(object):
 
         self.global_timeline = iso.Timeline(tempo=120)
         self.session = Session(self)
-        self.midi_manager = MidiManager(self)
 
         self.target_frame_rate = settings.get('target_frame_rate', 60)
         self.use_push2_display = settings.get('use_push2_display', True)
@@ -313,7 +308,7 @@ class PyshaApp(object):
 
     def check_for_new_midi_devices(self):
         """Check for newly connected MIDI devices"""
-        self.midi_manager.update_midi_devices()
+        self.session.update_midi_devices()
 
     def is_button_being_pressed(self, button_name):
         # global buttons_pressed_state
@@ -391,7 +386,7 @@ class PyshaApp(object):
     def get_available_output_hardware_device_names(self) -> List[str]:
         # Return both full names and short names to ensure proper matching
         device_names = []
-        for name in self.midi_manager.output_device_names:
+        for name in self.session.output_device_names:
             if name not in device_names:
                 device_names.append(name)
         return device_names

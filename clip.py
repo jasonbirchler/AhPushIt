@@ -290,8 +290,8 @@ class Clip(BaseClass):
         """Helper method to trigger reschedule if clip is playing"""
         if self.playing:
             app = self.track._get_app()
-            if app and hasattr(app, 'midi_manager'):
-                app.midi_manager.reschedule_clip(self.track, self)
+            if app and hasattr(app, 'session'):
+                app.session.reschedule_clip(self.track, self)
 
     def get_sequence_data_for_timeline(self):
         """Get sequence data in the format expected by timeline scheduling"""
