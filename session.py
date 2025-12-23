@@ -16,6 +16,7 @@ class Session():
     bpm: float = 100
     fixed_length_recording_bars: int
     fixed_velocity: bool
+    key: iso.Key
     root: str = "C"
     meter: int
     name: str
@@ -25,6 +26,7 @@ class Session():
         self.app = app
         self.global_timeline = app.global_timeline
         self.global_timeline.max_tracks = definitions.GLOBAL_TIMELINE_MAX_TRACKS
+        self.key = iso.Key(self.root, self.scale)
 
         # MIDI management
         self.input_device_names = self._get_safe_input_device_names()
@@ -41,16 +43,11 @@ class Session():
         # Register initial clips after tracks are created
         self._register_initial_clips()
 
-        # Perform MIDI setup
-        self.setup_midi_manager()
-
-    def setup_midi_manager(self):
-        """Initialize the MIDI manager"""
+        # Perform device setup
         self.initialize_devices()
 
-        # Set timeline defaults
-        self.global_timeline.defaults.quantize = 1
-        self.global_timeline.defaults.octave = 3
+        # Perform timeline setup
+        self.setup_timeline()
 
     ############################################################################
     # Session Management
@@ -115,18 +112,6 @@ class Session():
     def set_fixed_velocity(self, velocity):
         print(f'Trying to set fixed velocity to {velocity}')
 
-    ############################################################################
-    # Session persistence
-    ############################################################################
-
-    def save(self, save_session_name):
-        print(f'Trying to save session {save_session_name}')
-
-    def load(self, load_session_name):
-        print(f'Trying to load session {load_session_name}')
-
-    def new(self, num_tracks, num_scenes):
-        print(f'Trying to create new session with {num_tracks} tracks and {num_scenes} scenes')
 
     ############################################################################
     # Device Management
@@ -189,6 +174,12 @@ class Session():
     ############################################################################
     # Timeline Management
     ############################################################################
+    def setup_timeline(self):
+        """Establishes timeline defaults"""
+        self.global_timeline.defaults.quantize = 1
+        self.global_timeline.defaults.octave = 3
+        self.global_timeline.defaults.key = self.key
+
     def start_timeline(self):
         """Start the global timeline"""
         print("Starting timeline")
@@ -296,3 +287,16 @@ class Session():
                 output_device.note_off(note, channel)
         else:
             print(f"No output device found: {device_name}")
+
+    ############################################################################
+    # Session persistence
+    ############################################################################
+
+    def save(self, save_session_name):
+        print(f'Trying to save session {save_session_name}')
+
+    def load(self, load_session_name):
+        print(f'Trying to load session {load_session_name}')
+
+    def new(self, num_tracks, num_scenes):
+        print(f'Trying to create new session with {num_tracks} tracks and {num_scenes} scenes')
