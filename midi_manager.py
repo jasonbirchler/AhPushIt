@@ -19,7 +19,15 @@ class MidiManager():
         self.pending_actions: List[Dict] = []  # List of {beat, action, clip}
 
         # Perform setup
+        self.setup_midi_manager()
+
+    def setup_midi_manager(self):
+        """Initialize the MIDI manager"""
         self.initialize_devices()
+
+        # Set timeline defaults
+        self.global_timeline.defaults.quantize = 1
+        self.global_timeline.defaults.octave = 3
 
     ############################################################################
     # Device Management
