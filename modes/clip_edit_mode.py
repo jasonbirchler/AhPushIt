@@ -188,20 +188,20 @@ class ClipEditMode(definitions.PyshaMode):
 
         midi_note, start_time = self.pad_ij_to_note_beat(pad_ij)
         end_time = start_time + self.pads_pad_beat_scale
-        
+
         print(f"DEBUG: notes_in_pad - midi_note={midi_note}, start_time={start_time}, end_time={end_time}")
         print(f"DEBUG: notes_in_pad - clip.notes length={len(self.clip.notes)}")
-        
+
         # Find positions where notes match and fall within the time range
         positions = []
-        for pos in range(len(self.clip.notes)):
-            if self.clip.notes[pos] == midi_note:
+        for pos, note in enumerate(self.clip.notes):
+            if note == midi_note:
                 # Simplified timing - assume each position represents a beat
                 note_time = pos * self.pads_pad_beat_scale  # This is a simplified approach
                 if start_time <= note_time <= end_time:
                     positions.append(pos)
                     print(f"DEBUG: Found note at position {pos}, time={note_time}")
-        
+
         print(f"DEBUG: notes_in_pad - found {len(positions)} notes: {positions}")
         return positions
 
@@ -259,7 +259,7 @@ class ClipEditMode(definitions.PyshaMode):
                 row_animation.append(push2_python.constants.ANIMATION_STATIC)
             color_matrix.append(row_colors)
             animation_matrix.append(row_animation)
-        
+
         # Draw extra pads for notes (not the first note pad, these are drawn after to be always on top)
         for note_to_display in notes_to_display:
             pad_ij = note_to_display['pad_start_ij']
@@ -308,7 +308,7 @@ class ClipEditMode(definitions.PyshaMode):
         ctx.set_source_rgb(0, 0, 0)
         ctx.rectangle(0, 0, w, h)
         ctx.fill()
-        
+
         if self.clip is not None and not self.app.is_mode_active(self.app.settings_mode):
             part_w = w // 8
             track_color_rgb = None
@@ -320,7 +320,7 @@ class ClipEditMode(definitions.PyshaMode):
 
             if self.mode == self.MODE_CLIP:
                 if self.selected_clip_idx is not None:
-                    
+
                     # Slot 1, clip name
                     show_title(ctx, part_w * 0, h, 'CLIP', color=track_color_rgb)
                     show_value(ctx, part_w * 0, h, self.clip.name, color=track_color_rgb)
@@ -346,7 +346,7 @@ class ClipEditMode(definitions.PyshaMode):
                     # Slot 5, view scale
                     show_title(ctx, part_w * 4, h, 'VIEW SCALE')
                     show_value(ctx, part_w * 4, h, '{:.3f}'.format(self.pads_pad_beat_scale))
- 
+
             elif self.mode == self.MODE_EVENT:
                 if self.event_data is not None:
                     # Slot 1, midi note
@@ -356,11 +356,11 @@ class ClipEditMode(definitions.PyshaMode):
                     # Slot 2, position (replaces timestamp for simplicity)
                     show_title(ctx, part_w * 1, h, 'POSITION')
                     show_value(ctx, part_w * 1, h, self.event_data['position'])
-                    
+
                     # Slot 3, duration
                     show_title(ctx, part_w * 2, h, 'DURATION')
                     show_value(ctx, part_w * 2, h, '{:.3f}'.format(self.event_data['duration']))
-                    
+
                     # Slot 4, amplitude (velocity)
                     show_title(ctx, part_w * 3, h, 'VELOCITY')
                     show_value(ctx, part_w * 3, h, self.event_data['amplitude'])
@@ -368,7 +368,7 @@ class ClipEditMode(definitions.PyshaMode):
                     # Slot 5, empty
                     show_title(ctx, part_w * 4, h, '-')
                     show_value(ctx, part_w * 4, h, '-')
-                    
+
             elif self.mode == self.MODE_GENERATOR:
                 show_title(ctx, part_w * 0, h, 'ALGORITHM')
                 show_value(ctx, part_w * 0, h, self.generator_algorithm.name)
@@ -391,7 +391,7 @@ class ClipEditMode(definitions.PyshaMode):
                         self.pads_pad_beats_offset + 8 * self.pads_pad_beat_scale
                     )
                     draw_clip(ctx, self.clip, frame=(5.0/8.0, 0.0, 3.0/8.0, 0.87), highlight_notes_beat_frame=highlight_notes_beat_frame, event_color=track_color + '_darker1', highlight_color=track_color)
-                
+
             beats_to_pad = self.beats_to_pad(self.clip.playhead_position_in_beats)
             if 0 <= beats_to_pad <= 7 and beats_to_pad is not self.last_beats_to_pad:
                 # If clip is playing, trigger re-drawing pads when playhead position advances enough
@@ -402,7 +402,7 @@ class ClipEditMode(definitions.PyshaMode):
         # Clear the display to hide previous interface
         if self.app.use_push2_display:
             self.push.display.send_to_display(self.push.display.prepare_frame(self.push.display.make_black_frame()))
-        
+
         self.update_buttons()
         self.update_pads()
 
@@ -410,7 +410,7 @@ class ClipEditMode(definitions.PyshaMode):
         for track in self.app.session.tracks:
             for clip in track.clips:
                 self.available_clips.append(clip)
-        
+
     def deactivate(self):
         self.app.push.pads.set_all_pads_to_color(color=definitions.BLACK)
         for button_name in self.buttons_used:
@@ -450,7 +450,7 @@ class ClipEditMode(definitions.PyshaMode):
                         self.push.buttons.set_button_color(push2_python.constants.BUTTON_UPPER_ROW_1, track_color, animation=definitions.DEFAULT_ANIMATION)
                 else:
                     self.push.buttons.set_button_color(push2_python.constants.BUTTON_UPPER_ROW_1, track_color + '_darker1')
-        
+
         elif self.mode == self.MODE_EVENT:
             self.push.buttons.set_button_color(push2_python.constants.BUTTON_UPPER_ROW_1, definitions.BLACK)
             self.push.buttons.set_button_color(push2_python.constants.BUTTON_UPPER_ROW_2, definitions.BLACK)
@@ -464,7 +464,7 @@ class ClipEditMode(definitions.PyshaMode):
             self.push.buttons.set_button_color(push2_python.constants.BUTTON_DOUBLE_LOOP, definitions.BLACK)
             self.push.buttons.set_button_color(push2_python.constants.BUTTON_QUANTIZE, definitions.BLACK)
             self.push.buttons.set_button_color(push2_python.constants.BUTTON_DELETE, definitions.BLACK)
-            
+
             self.push.buttons.set_button_color(push2_python.constants.BUTTON_CLIP, definitions.BLACK)
 
         elif self.mode == self.MODE_GENERATOR:
@@ -536,7 +536,7 @@ class ClipEditMode(definitions.PyshaMode):
                 # Go back to clip mode
                 self.set_clip_mode(self.selected_clip_idx)
                 return True
-        
+
         # For all modes
         if button_name == push2_python.constants.BUTTON_UP:
             self.pads_min_note_offset += (7 if not shift else 1)
@@ -561,7 +561,7 @@ class ClipEditMode(definitions.PyshaMode):
             # TODO: don't allow offset that would render clip invisible
             self.update_pads()
             return True
-        
+
     def on_pad_pressed(self, pad_n, pad_ij, velocity, shift=False, select=False, long_press=False, double_press=False):
         print(f"DEBUG: on_pad_pressed - pad_n={pad_n}, pad_ij={pad_ij}, velocity={velocity}, long_press={long_press}")
         if self.clip is None:
@@ -654,7 +654,7 @@ class ClipEditMode(definitions.PyshaMode):
                 self.pads_pad_beat_scale = self.pads_pad_beat_scales[next_pad_scale]
                 self.update_pads()
                 return True  # Don't trigger this encoder moving in any other mode
-        
+
         elif self.mode == self.MODE_EVENT:
             if self.event_data is not None:
                 position = self.event_data['position']
@@ -709,4 +709,3 @@ class ClipEditMode(definitions.PyshaMode):
                     # Encoder not in list (not one of the parameter enconders)3
                     pass
                 return True  # Don't trigger this encoder moving in any other mode
-
