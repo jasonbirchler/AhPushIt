@@ -1,5 +1,6 @@
 import os
 import time
+import traceback
 from enum import IntEnum
 
 import push2_python.constants
@@ -8,7 +9,6 @@ import definitions
 from utils import draw_text_at, show_title, show_value
 
 is_running_sw_update = ''
-MAX_DEVICE_NAME_CHARS = 17
 
 """
 This enum determines the order in which the settings pages display
@@ -52,17 +52,22 @@ class SettingsMode(definitions.PyshaMode):
 
     current_preset_save_number = 0
     current_preset_load_number = 0
-    
+
     # Track selection state for hardware devices page
+    # This property determines whether the mode starts with the device or channel selected
     track_selection_states = {}  # track_idx: 0=device, 1=channel
     encoder_accumulators = {}  # encoder_name: accumulated_value
+
+    # Store original device assignments when entering settings mode
+    original_device_assignments = {}  # track_idx: {'device_name': str, 'channel': int}
+    modified_tracks = set()  # track_idx: tracks that have been explicitly modified by user
 
     def move_to_next_page(self):
         self.app.buttons_need_update = True
         self.current_page += 1
         if self.current_page >= self.n_pages:
             self.current_page = 0
-            return True  # Return true because page rotation finished 
+            return True  # Return true because page rotation finished
         return False
 
     def initialize(self, settings=None):
@@ -71,7 +76,7 @@ class SettingsMode(definitions.PyshaMode):
             self.encoders_state[encoder_name] = {
                 'last_message_received': current_time,
             }
-        # Initialize track selection states (0=device, 1=channel)
+
         for i in range(8):
             self.track_selection_states[i] = 0
         # Initialize encoder accumulators
@@ -79,9 +84,31 @@ class SettingsMode(definitions.PyshaMode):
             self.encoder_accumulators[encoder_name] = 0
 
     def activate(self):
+        # Store original device assignments when entering settings mode
+        self.original_device_assignments = {}
+        self.modified_tracks = set()
+
+        for i in range(8):
+            track = self.app.session.tracks[i]
+            self.original_device_assignments[i] = {
+                'device_name': track.output_hardware_device_name,
+                'channel': track.channel
+            }
+
         self.update_buttons()
 
     def deactivate(self):
+        # Restore original device assignments for tracks that weren't modified
+        for track_idx, original_assignment in self.original_device_assignments.items():
+            if track_idx not in self.modified_tracks:
+                track = self.app.session.tracks[track_idx]
+                # Only restore if the current assignment differs from original
+                if (track.output_hardware_device_name != original_assignment['device_name'] or
+                    track.channel != original_assignment['channel']):
+                    track.output_hardware_device_name = original_assignment['device_name']
+                    track.channel = original_assignment['channel']
+                    print(f"Restored track {track_idx + 1} to original device: {original_assignment['device_name']}, channel: {original_assignment['channel']}")
+
         self.push.buttons.set_button_color(push2_python.constants.BUTTON_UPPER_ROW_1, definitions.BLACK)
         self.push.buttons.set_button_color(push2_python.constants.BUTTON_UPPER_ROW_2, definitions.BLACK)
         self.push.buttons.set_button_color(push2_python.constants.BUTTON_UPPER_ROW_3, definitions.BLACK)
@@ -94,6 +121,10 @@ class SettingsMode(definitions.PyshaMode):
         self.push.buttons.set_button_color(push2_python.constants.BUTTON_DOWN, definitions.BLACK)
         self.current_page = 0
         self.setup_button_pressing_time = None
+
+        # Clear the tracking data
+        self.original_device_assignments = {}
+        self.modified_tracks = set()
 
     def update_buttons(self):
         if self.current_page == Pages.PERFORMANCE:
@@ -137,7 +168,7 @@ class SettingsMode(definitions.PyshaMode):
             self.push.buttons.set_button_color(push2_python.constants.BUTTON_UPPER_ROW_8, definitions.WHITE)
             self.push.buttons.set_button_color(push2_python.constants.BUTTON_UP, definitions.WHITE)
             self.push.buttons.set_button_color(push2_python.constants.BUTTON_DOWN, definitions.WHITE)
-        
+
     def update_display(self, ctx, w, h):
         # Divide display in 8 parts to show different settings
         part_w = w // 8
@@ -218,7 +249,7 @@ class SettingsMode(definitions.PyshaMode):
 
                 elif i == 4:  # Restart app(s)
                     show_title(ctx, part_x, h, 'RESTART')
-                
+
                 elif i == 5:  # FPS indicator
                     show_title(ctx, part_x, h, 'FPS')
                     show_value(ctx, part_x, h, self.app.actual_frame_rate, color)
@@ -227,26 +258,16 @@ class SettingsMode(definitions.PyshaMode):
                 try:
                     track = self.app.session.tracks[i]
                     show_title(ctx, part_x, h, 'TRACK {}'.format(i+1))
-                    
-                    # Get device info
-                    track_device = track.get_output_hardware_device()
+
                     # Format device name to fit available space
-                    device_short_name = ''
-                    if track_device.midi.name and len(track_device.midi.name) < MAX_DEVICE_NAME_CHARS:
-                        device_short_name = track_device.midi.name
-                    else:
-                        if track_device.short_name and len(track_device.short_name) < MAX_DEVICE_NAME_CHARS:
-                            device_short_name = track_device.short_name
-                        else:
-                            device_short_name = f"{track_device.short_name[-9:]}..."
-                    
-                    # Get MIDI channel
-                    # TODO: track.midi doesn't have a channel. where do i get/set MIDI channel
-                    midi_channel = track_device.midi.channel if track_device.midi.channel else 1
-                    
+                    device_short_name = track.device_short_name if track else "NONE"
+
+                    # Get MIDI channel from track
+                    midi_channel = track.channel if track.channel else 1
+
                     # Get selection state for this track
                     selection_state = self.track_selection_states.get(i, 0)
-                    
+
                     # Draw device name
                     device_y = part_h // 2 - 15
                     if selection_state == 0:  # Device selected
@@ -267,7 +288,7 @@ class SettingsMode(definitions.PyshaMode):
                         ctx.set_font_size(12)
                         ctx.move_to(part_x + 4, device_y + 10)
                         ctx.show_text(device_short_name)
-                    
+
                     # Draw channel
                     channel_y = part_h // 2 + 5
                     channel_text = f"Ch {midi_channel}"
@@ -289,9 +310,15 @@ class SettingsMode(definitions.PyshaMode):
                         ctx.set_font_size(12)
                         ctx.move_to(part_x + 4, channel_y + 10)
                         ctx.show_text(channel_text)
-                        
-                except:
-                    pass
+
+                except Exception as e:
+                    print(f"Error drawing device info for track {i}: {e}")
+                    # Draw error state
+                    ctx.set_source_rgb(*color)
+                    ctx.select_font_face("Arial", 0, 0)
+                    ctx.set_font_size(12)
+                    ctx.move_to(part_x + 4, part_h // 2)
+                    ctx.show_text("Error")
 
         # After drawing all labels and values, draw other stuff if required
         if self.current_page == Pages.PERFORMANCE:
@@ -348,7 +375,7 @@ class SettingsMode(definitions.PyshaMode):
 
             elif encoder_name == push2_python.constants.ENCODER_TRACK4_ENCODER:
                 self.app.melodic_mode.set_channel_at_range_end(self.app.melodic_mode.channel_at_range_end + increment)
-                
+
             elif encoder_name == push2_python.constants.ENCODER_TRACK5_ENCODER:
                 self.app.melodic_mode.set_poly_at_max_range(self.app.melodic_mode.poly_at_max_range + increment)
 
@@ -381,57 +408,66 @@ class SettingsMode(definitions.PyshaMode):
             try:
                 track = self.app.session.tracks[track_num]
                 selection_state = self.track_selection_states.get(track_num, 0)
-                
+
                 # Apply encoder threshold for device/channel selection
                 threshold = 3
                 self.encoder_accumulators[encoder_name] += increment
-                
+
                 if abs(self.encoder_accumulators[encoder_name]) >= threshold:
                     actual_increment = 1 if self.encoder_accumulators[encoder_name] > 0 else -1
                     self.encoder_accumulators[encoder_name] = 0  # Reset accumulator
-                    
+
                     if selection_state == 0:  # Device selection only
                         available_devices = self.app.get_available_output_hardware_device_names()
-                        current_hw_device_name = track.output_device.midi.name
 
                         # Check if there are any available devices
                         if not available_devices:
                             print(f"No available devices to select from for track {track_num + 1}")
-                            return
+                            return True
 
-                        # Find the current device index, trying both full name and short name
+                        # Get current device name from track
+                        current_hw_device_name = track.output_hardware_device_name if track.output_hardware_device_name else None
+
+                        # Find the current device index
                         current_hw_device_index = -1
-                        for i, device_name in enumerate(available_devices):
-                            if device_name == current_hw_device_name:
-                                current_hw_device_index = i
-                                break
-                            # Also check if the current device name contains this device name (for short names)
-                            elif current_hw_device_name.startswith(device_name) or current_hw_device_name.endswith(device_name):
-                                current_hw_device_index = i
-                                break
+                        if current_hw_device_name:
+                            for i, device_name in enumerate(available_devices):
+                                if device_name == current_hw_device_name:
+                                    current_hw_device_index = i
+                                    break
+                                # Also check if the current device name contains this device name (for short names)
+                                elif current_hw_device_name.startswith(device_name) or current_hw_device_name.endswith(device_name):
+                                    current_hw_device_index = i
+                                    break
 
                         # If current device not found, start from beginning
                         if current_hw_device_index == -1:
                             current_hw_device_index = 0
 
                         # Calculate next device index with wrap-around
-                        next_device_index = (current_hw_device_index + actual_increment) % len(available_devices)
+                        next_device_index = (current_hw_device_index + 1) % len(available_devices)
                         next_device_name = available_devices[next_device_index]
 
                         # Update the track's device
                         track.set_output_device_by_name(next_device_name)
+                        # Mark this track as modified by the user
+                        self.modified_tracks.add(track_num)
                         print(f"Track {track_num + 1}: Changed device from '{current_hw_device_name}' to '{next_device_name}'")
-                        
+
                     elif selection_state == 1:  # Channel selection only
-                        if track.output_device:
-                            current_channel = track.channel
-                            new_channel = current_channel + actual_increment
-                            # Clamp to valid MIDI channel range (1-16)
-                            new_channel = max(1, min(16, new_channel))
-                            track.channel = new_channel
-                        
+                        # Get current channel from track
+                        current_channel = track.channel if track.channel else 1
+                        new_channel = current_channel + actual_increment
+                        # Clamp to valid MIDI channel range (1-16)
+                        new_channel = max(1, min(16, new_channel))
+                        track.channel = new_channel
+                        # Mark this track as modified by the user
+                        self.modified_tracks.add(track_num)
+                        print(f"Track {track_num + 1}: Changed channel from {current_channel} to {new_channel}")
+
             except Exception as e:
-                print(e)
+                print(f"Error in device/channel selection for track {track_num + 1}: {e}")
+                traceback.print_exc()
             return True
 
         # Always return True because encoder should not be used in any other mode if this is active first
@@ -479,7 +515,7 @@ class SettingsMode(definitions.PyshaMode):
 
                 self.app.set_clip_triggering_mode()
                 self.app.main_controls_mode.track_triggering_button_pressing_time = time.time()
-                
+
                 return True
             elif button_name == push2_python.constants.BUTTON_UPPER_ROW_3:
                 self.app.on_midi_push_connection_established()
@@ -500,16 +536,15 @@ class SettingsMode(definitions.PyshaMode):
                 else:
                     run_sw_update(do_pip_install=True)
                 return True
-            
+
             elif button_name == push2_python.constants.BUTTON_UPPER_ROW_5:
                 # Restart apps
                 restart_apps()
                 return True
 
         elif self.current_page == Pages.DEVICES:
-            # Handle up/down arrow navigation
+            # Handle up/down arrow navigation for switching between device and channel selection
             if button_name == push2_python.constants.BUTTON_UP:
-                # Move selection up for all tracks
                 for track_idx in range(8):
                     current_state = self.track_selection_states.get(track_idx, 0)
                     self.track_selection_states[track_idx] = max(0, current_state - 1)
@@ -518,7 +553,6 @@ class SettingsMode(definitions.PyshaMode):
                     self.encoder_accumulators[encoder_name] = 0
                 return True
             elif button_name == push2_python.constants.BUTTON_DOWN:
-                # Move selection down for all tracks  
                 for track_idx in range(8):
                     current_state = self.track_selection_states.get(track_idx, 0)
                     self.track_selection_states[track_idx] = min(1, current_state + 1)
@@ -526,7 +560,7 @@ class SettingsMode(definitions.PyshaMode):
                 for encoder_name in self.encoder_accumulators:
                     self.encoder_accumulators[encoder_name] = 0
                 return True
-            
+
             buttons_row = [
                 push2_python.constants.BUTTON_UPPER_ROW_1,
                 push2_python.constants.BUTTON_UPPER_ROW_2,
@@ -536,13 +570,14 @@ class SettingsMode(definitions.PyshaMode):
                 push2_python.constants.BUTTON_UPPER_ROW_6,
                 push2_python.constants.BUTTON_UPPER_ROW_7,
                 push2_python.constants.BUTTON_UPPER_ROW_8
-            ] 
+            ]
+
             if button_name in buttons_row:
                 track_num = buttons_row.index(button_name)
                 try:
                     track = self.app.session.tracks[track_num]
                     selection_state = self.track_selection_states.get(track_num, 0)
-                    
+
                     if selection_state == 0:  # Device selection only
                         available_devices = self.app.get_available_output_hardware_device_names()
                         current_hw_device_name = track.output_hardware_device_name
@@ -573,6 +608,8 @@ class SettingsMode(definitions.PyshaMode):
 
                         # Update the track's device
                         track.set_output_device_by_name(next_device_name)
+                        # Mark this track as modified by the user
+                        self.modified_tracks.add(track_num)
                         print(f"Track {track_num + 1}: Changed device from '{current_hw_device_name}' to '{next_device_name}'")
                     elif selection_state == 1:  # Channel selection only
                         hw_device = track.get_output_hardware_device()
@@ -580,7 +617,7 @@ class SettingsMode(definitions.PyshaMode):
                             current_channel = hw_device.midi_channel
                             new_channel = (current_channel % 16) + 1  # Cycle 1-16
                             self.set_device_midi_channel(hw_device.name, new_channel)
-                            
+
                 except Exception as e:
                     print(e)
                 return True
@@ -614,7 +651,6 @@ class SettingsMode(definitions.PyshaMode):
                 #     self.app.buttons_need_update = True
 
             return True
-
 
     def set_device_midi_channel(self, device_name, new_channel):
         """Send message to backend to change device MIDI channel"""
