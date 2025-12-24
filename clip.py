@@ -41,6 +41,9 @@ class Clip(BaseClass):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
+        # Get the app and session
+        self.app = self.track._get_app()
+
         # clip playback properties
         self.playing = False
         self.recording = False
@@ -70,14 +73,14 @@ class Clip(BaseClass):
                 self.notes.append(60)  # Default note
             else:
                 self.notes.append(self.notes[-1])  # Repeat last note
-        
+
         # Expand durations array if needed
         while len(self.durations) <= position:
             if len(self.durations) == 0:
                 self.durations.append(0.5)  # Default duration
             else:
                 self.durations.append(self.durations[-1])  # Repeat last duration
-        
+
         # Expand amplitudes array if needed
         while len(self.amplitudes) <= position:
             if len(self.amplitudes) == 0:
@@ -175,21 +178,29 @@ class Clip(BaseClass):
             self.play()
 
     def play(self):
-        """Set the clip to cue to play. External timing managers will handle actual playback."""
+        """Set the clip to cue to play and start playback through the session."""
         if self.track is None:
             return
+
+        if self.app and hasattr(self.app, 'session'):
+            # Call session to schedule the clip start
+            self.app.session.schedule_clip_start(self, quantized=False)
+
         # Set will_play_at to a positive value to indicate "cue to play"
-        # External classes will manage when to actually start playback
         self.will_play_at = 0.0
         # Update the clip status by calling get_status()
         self.clip_status = self.get_status()
 
     def stop(self):
-        """Set the clip to cue to stop. External timing managers will handle actual stopping."""
+        """Set the clip to cue to stop and stop playback through the session."""
         if self.track is None:
             return
+
+        if self.app and hasattr(self.app, 'session'):
+            # Call session to schedule the clip stop
+            self.app.session.schedule_clip_stop(self, quantized=False)
+
         # Set will_stop_at to a positive value to indicate "cue to stop"
-        # External classes will manage when to actually stop playback
         self.will_stop_at = 0.0
         # Update the clip status by calling get_status()
         self.clip_status = self.get_status()
@@ -244,7 +255,7 @@ class Clip(BaseClass):
                 del self.durations[position]
             if position < len(self.amplitudes):
                 del self.amplitudes[position]
-            
+
             print(f'Removed event at position: {position}')
             # Reschedule if playing
             if self.playing:
@@ -257,12 +268,12 @@ class Clip(BaseClass):
         """Add a note event at the next available position"""
         # Calculate position based on timestamp (simplified - could be improved for exact positioning)
         position = len(self.notes)
-        
+
         self._ensure_arrays_expanded(position)
         self.notes[position] = midi_note
         self.durations[position] = duration
         self.amplitudes[position] = int(midi_velocity * 127)
-        
+
         print(f'Added note event: note={midi_note}, vel={midi_velocity}, time={timestamp}, dur={duration} at position {position}')
         # Reschedule if playing
         if self.playing:
@@ -273,14 +284,14 @@ class Clip(BaseClass):
         """Edit event at specific position"""
         if not (0 <= position < len(self.notes)):
             raise IndexError(f"Position {position} out of range")
-        
+
         if midi_note is not None:
             self.notes[position] = midi_note
         if duration is not None:
             self.durations[position] = duration
         if midi_velocity is not None:
             self.amplitudes[position] = int(midi_velocity * 127)
-        
+
         print(f'Edited event at position {position}')
         # Reschedule if playing
         if self.playing:
@@ -289,9 +300,8 @@ class Clip(BaseClass):
     def _reschedule_if_playing(self):
         """Helper method to trigger reschedule if clip is playing"""
         if self.playing:
-            app = self.track._get_app()
-            if app and hasattr(app, 'session'):
-                app.session.reschedule_clip(self.track, self)
+            if self.app and hasattr(self.app, 'session'):
+                self.app.session.reschedule_clip(self.track, self)
 
     def get_sequence_data_for_timeline(self):
         """Get sequence data in the format expected by timeline scheduling"""

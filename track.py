@@ -39,6 +39,12 @@ class Track(BaseClass):
     def session(self):
         return self._parent
 
+    def _get_app(self):
+        """Get the app instance from the session"""
+        if hasattr(self.session, 'app'):
+            return self.session.app
+        return None
+
     def _add_clip(self, clip: 'Clip', position=None):
         # Note this method adds a Clip object in the local Trck object but does not create a clip in the backend
         # Ensure the clip has the correct parent

@@ -232,8 +232,14 @@ class Session():
 
     def reschedule_clip(self, track_idx: str, clip):
         """Reschedule a clip that's already playing to reflect changes"""
-        if track_idx in self.track_schedules and clip.playing:
+        # If track_idx is not provided as a string/index, try to find it from the clip
+        if isinstance(track_idx, str) and track_idx in self.track_schedules and clip.playing:
             self.schedule_clip(track_idx, clip)
+        elif hasattr(track_idx, 'track') and hasattr(track_idx.track, 'clips'):
+            # track_idx is actually a clip, get the real track index
+            actual_track_idx = self.tracks.index(track_idx.track) if track_idx.track in self.tracks else None
+            if actual_track_idx is not None and str(actual_track_idx) in self.track_schedules and clip.playing:
+                self.schedule_clip(str(actual_track_idx), clip)
 
     def get_next_bar_boundary(self, bars_per_quantize: int = 1) -> float:
         """Calculate the next bar boundary for quantized launching"""
@@ -247,24 +253,38 @@ class Session():
 
     def schedule_clip_start(self, clip, quantized: bool = True):
         """Schedule a clip to start at the next bar boundary"""
+        # Get the track index for this clip
+        track_idx = self.tracks.index(clip.track) if clip.track in self.tracks else None
+
+        if track_idx is None:
+            print(f"ERROR: Could not find track index for clip")
+            return
+
         if quantized and self.global_timeline.running:
             next_beat = self.get_next_bar_boundary()
             clip.will_play_at = next_beat
             self.pending_actions.append({'beat': next_beat, 'action': 'start', 'clip': clip})
             print(f"Clip will start at beat {next_beat}")
         else:
-            self.schedule_clip(clip.track, clip)
+            self.schedule_clip(track_idx, clip)
             clip.playing = True
 
     def schedule_clip_stop(self, clip, quantized: bool = True):
         """Schedule a clip to stop at the next bar boundary"""
+        # Get the track index for this clip
+        track_idx = self.tracks.index(clip.track) if clip.track in self.tracks else None
+
+        if track_idx is None:
+            print(f"ERROR: Could not find track index for clip")
+            return
+
         if quantized and self.global_timeline.running:
             next_beat = self.get_next_bar_boundary()
             clip.will_stop_at = next_beat
             self.pending_actions.append({'beat': next_beat, 'action': 'stop', 'clip': clip})
             print(f"Clip will stop at beat {next_beat}")
         else:
-            self.unschedule_clip(clip.track)
+            self.unschedule_clip(track_idx)
             clip.playing = False
 
     def send_note(self, device_name: str, note: int, velocity: int, channel: int = 0):
