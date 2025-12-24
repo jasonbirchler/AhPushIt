@@ -189,6 +189,7 @@ class Session():
         """Stop the global timeline"""
         print("Stopping timeline")
         self.global_timeline.stop()
+        self.global_timeline.running = False
 
     def reset_timeline(self):
         """Reset the global timeline to beat 0"""
