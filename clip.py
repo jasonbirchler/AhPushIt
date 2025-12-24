@@ -36,13 +36,16 @@ class Clip(BaseClass):
 
     @property
     def track(self) -> 'Track':
+        """Get the parent track"""
         return self._parent
+
+    @property
+    def app(self):
+        """Get the app instance through parent chain"""
+        return self.track.app if hasattr(self._parent, 'app') else None
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-
-        # Get the app and session
-        self.app = self.track._get_app()
 
         # clip playback properties
         self.playing = False

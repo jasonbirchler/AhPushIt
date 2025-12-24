@@ -1,11 +1,14 @@
-from typing import List, Optional, Dict
-from base_class import BaseClass
-from track import Track
-from clip import Clip
-import isobar as iso
-import definitions
+from typing import Dict, List, Optional
 
-class Session():
+import isobar as iso
+
+import definitions
+from base_class import BaseClass
+from clip import Clip
+from track import Track
+
+
+class Session(BaseClass):
     """
     The Session object represents the part of the app that interfaces between the Push and MIDI.
     Session owns the list of tracks and their clips, manages MIDI devices, and handles scheduling.
@@ -23,7 +26,7 @@ class Session():
     scale: iso.Scale = iso.Scale.major
 
     def __init__(self, app):
-        self.app = app
+        super().__init__(parent=app)
         self.global_timeline = app.global_timeline
         self.global_timeline.max_tracks = definitions.GLOBAL_TIMELINE_MAX_TRACKS
         self.key = iso.Key(self.root, self.scale)
@@ -48,6 +51,13 @@ class Session():
 
         # Perform timeline setup
         self.setup_timeline()
+
+    @property
+    def app(self):
+        """Get the app instance through parent chain"""
+        # The parent of Session is the PyshaApp object itself
+        return self._parent
+
 
     ############################################################################
     # Session Management

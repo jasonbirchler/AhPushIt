@@ -31,24 +31,22 @@ class Track(BaseClass):
         self.clips = [initial_clip]
         # Register the initial clip with the sequencer interface
         self._register_initial_clip(initial_clip)
-        self.timeline = self.session.global_timeline
+
+        # Get timeline from parent session to avoid circular dependency
+        # The parent of Track is Session, and Session has global_timeline
+        self.timeline = self._parent.global_timeline if hasattr(self._parent, 'global_timeline') else None
         self._output_device = iso.MidiOutputDevice()
         self._device_short_name = None
 
     @property
-    def session(self):
-        return self._parent
-
-    def _get_app(self):
-        """Get the app instance from the session"""
-        if hasattr(self.session, 'app'):
-            return self.session.app
-        return None
+    def app(self):
+        """Get the app instance through parent chain"""
+        return self._parent.app if hasattr(self._parent, 'app') else None
 
     def _add_clip(self, clip: 'Clip', position=None):
         # Note this method adds a Clip object in the local Trck object but does not create a clip in the backend
         # Ensure the clip has the correct parent
-        clip._parent = self
+        clip.track = self
         if position is None:
             self.clips.append(clip)
         else:
