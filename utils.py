@@ -144,36 +144,16 @@ def draw_clip(ctx,
 
     # Use PSequence directly instead of legacy sequence_events
     rendered_notes = []
-    notes_length = len(clip.notes)
-    durations_length = len(clip.durations)
-    amplitudes_length = len(clip.amplitudes)
-
-    print(f"DEBUG: draw_clip - notes: {notes_length}, durations: {durations_length}, amplitudes: {amplitudes_length}")
-    print(f"DEBUG: frame: {frame}, highlight_notes_beat_frame: {highlight_notes_beat_frame}")
-
-    # Use the minimum length to avoid index errors, but limit to reasonable maximum
-    max_pos = min(notes_length, durations_length, amplitudes_length, 1000)  # Hard limit of 1000 notes
-
-    print(f"DEBUG: Processing max {max_pos} notes (limited from {notes_length})")
 
     try:
-        # Convert PSequences to lists first to avoid potential issues
-        # Use the actual length of each PSequence, not the sliced length
-        notes_list = list(clip.notes)
-        durations_list = list(clip.durations)
-        amplitudes_list = list(clip.amplitudes)
-
         # Use the minimum length to avoid index errors
-        actual_max_pos = min(len(notes_list), len(durations_list), len(amplitudes_list))
-
-        print(f"DEBUG: Converted to lists: notes={len(notes_list)}, durations={len(durations_list)}, amplitudes={len(amplitudes_list)}")
-        print(f"DEBUG: Using actual_max_pos={actual_max_pos} (min of all arrays)")
+        actual_max_pos = min(len(clip.notes), len(clip.durations), len(clip.amplitudes))
 
         for i in range(actual_max_pos):
             rendered_notes.append({
-                'midi_note': notes_list[i],
+                'midi_note': clip.notes[i],
                 'rendered_start_timestamp': i * 0.5,  # Position-based timing
-                'rendered_end_timestamp': i * 0.5 + (durations_list[i] if i < len(durations_list) else 0.5),
+                'rendered_end_timestamp': i * 0.5 + (clip.durations[i] if i < len(clip.durations) else 0.5),
                 'chance': 1.0  # Default chance
             })
     except Exception as e:

@@ -1,4 +1,5 @@
 import math
+import traceback
 from typing import Optional
 
 import push2_python
@@ -211,51 +212,30 @@ class ClipEditMode(definitions.PyshaMode):
         if self.clip is None:
             return [], []
 
-        # Use PSequence directly instead of legacy sequence_events
         notes = []
-        notes_length = len(self.clip.notes)
-        durations_length = len(self.clip.durations)
-        amplitudes_length = len(self.clip.amplitudes)
-        
-        print(f"DEBUG: notes_to_pads - notes: {notes_length}, durations: {durations_length}, amplitudes: {amplitudes_length}")
-        
-        # Use the minimum length to avoid index errors, but limit to reasonable maximum
-        max_pos = min(notes_length, durations_length, amplitudes_length, 1000)  # Hard limit of 1000 notes
-        
-        print(f"DEBUG: Processing max {max_pos} notes (limited from {notes_length})")
-        
+
         try:
-            # Convert PSequences to lists first to avoid potential issues
-            # Use the actual length of each PSequence, not the sliced length
-            notes_list = list(self.clip.notes)
-            durations_list = list(self.clip.durations)
-            amplitudes_list = list(self.clip.amplitudes)
-            
             # Use the minimum length to avoid index errors
-            actual_max_pos = min(len(notes_list), len(durations_list), len(amplitudes_list))
-            
-            print(f"DEBUG: Converted to lists: notes={len(notes_list)}, durations={len(durations_list)}, amplitudes={len(amplitudes_list)}")
-            print(f"DEBUG: Using actual_max_pos={actual_max_pos} (min of all arrays)")
-            
+            actual_max_pos = min(len(self.clip.notes), len(self.clip.durations), len(self.clip.amplitudes))
+
             for pos in range(actual_max_pos):
-                if self.pads_min_note_offset <= notes_list[pos] < self.pads_min_note_offset + 8:
+                if self.pads_min_note_offset <= self.clip.notes[pos] < self.pads_min_note_offset + 8:
                     # Calculate timing based on position
                     start_timestamp = pos * self.pads_pad_beat_scale
-                    duration = durations_list[pos] if pos < len(durations_list) else 0.5
+                    duration = self.clip.durations[pos] if pos < len(self.clip.durations) else 0.5
                     end_timestamp = start_timestamp + duration
-                    
+
                     if start_timestamp < self.end_displayed_time or end_timestamp > self.start_displayed_time:
                         notes.append({
                             'position': pos,
-                            'midi_note': notes_list[pos],
+                            'midi_note': self.clip.notes[pos],
                             'rendered_start_timestamp': start_timestamp,
                             'rendered_end_timestamp': end_timestamp
                         })
         except Exception as e:
             print(f"ERROR in notes_to_pads loop: {e}")
-            import traceback
             traceback.print_exc()
-        
+
         notes_to_display = []
         for event in notes:
             duration = event['rendered_end_timestamp'] - event['rendered_start_timestamp']

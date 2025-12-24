@@ -57,10 +57,10 @@ class Clip(BaseClass):
 
         self.clip_status = self.get_status()
 
-        # clip sequence properties using PSequence
-        self.notes = iso.PSequence([60, 67, 72, 77, 84])
-        self.durations = iso.PSequence([0.5, 0.5, 0.5, 0.5, 0.5])
-        self.amplitudes = iso.PSequence([20, 40, 60, 80, 40])
+        # clip sequence properties
+        self.notes = [60, 67, 72, 77, 84]
+        self.durations = [0.5, 0.5, 0.5, 0.5, 0.5]
+        self.amplitudes = [20, 40, 60, 80, 40]
 
     def _ensure_arrays_expanded(self, position):
         """Ensure all sequence arrays are expanded to accommodate the given position"""

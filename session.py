@@ -209,19 +209,10 @@ class Session():
             print(f"WARNING: No notes in clip")
             return
 
-        # Use PSequence objects directly from clip
-        pattern = clip.notes
-        velocity_pattern = clip.amplitudes  # amplitudes are already in 0-127 range
-        duration_pattern = clip.durations
-
-        print(f"Notes: {list(clip.notes)}")
-        print(f"Velocities: {list(clip.amplitudes)}")
-        print(f"Durations: {list(clip.durations)}")
-
         track = self.global_timeline.schedule({
-            'note': pattern,
-            'velocity': velocity_pattern,
-            'duration': duration_pattern,
+            'note': iso.PSequence(clip.notes),
+            'velocity': iso.PSequence(clip.amplitudes),
+            'duration': iso.PSequence(clip.durations),
         }, output_device=output_device)
 
         self.track_schedules[track_idx] = track
