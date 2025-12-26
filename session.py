@@ -224,6 +224,7 @@ class Session(BaseClass):
             'note': iso.PSequence(clip.notes),
             'velocity': iso.PSequence(clip.amplitudes),
             'duration': iso.PSequence(clip.durations),
+            'quantize': clip.quantize,
         }, output_device=output_device)
 
         self.track_schedules[track_idx] = track

@@ -205,8 +205,26 @@ class ClipEditMode(definitions.PyshaMode):
         print(f"DEBUG: notes_in_pad - found {len(positions)} notes: {positions}")
         return positions
 
+    def _get_actual_playhead_position(self):
+        """Calculate the actual playhead position within the clip based on global timeline"""
+        if not self.clip or not self.clip.playing:
+            return 0.0
+
+        # Get current global timeline position
+        global_position = self.app.global_timeline.current_time if hasattr(self.app, 'global_timeline') else 0.0
+
+        # Calculate playhead position within clip (assuming clip started at some point)
+        # For now, use modulo to wrap around within clip length
+        if self.clip.clip_length_in_beats > 0:
+            playhead_position = global_position % self.clip.clip_length_in_beats
+        else:
+            playhead_position = 0.0
+
+        return playhead_position
+
     def beats_to_pad(self, beats):
-        return int(math.floor(8 * (beats - self.start_displayed_time)/(self.end_displayed_time - self.start_displayed_time)))
+        result = int(math.floor(8 * (beats - self.start_displayed_time)/(self.end_displayed_time - self.start_displayed_time)))
+        return result
 
     def notes_to_pads(self):
         if self.clip is None:
@@ -392,13 +410,15 @@ class ClipEditMode(definitions.PyshaMode):
                     )
                     draw_clip(ctx, self.clip, frame=(5.0/8.0, 0.0, 3.0/8.0, 0.87), highlight_notes_beat_frame=highlight_notes_beat_frame, event_color=track_color + '_darker1', highlight_color=track_color)
 
-            beats_to_pad = self.beats_to_pad(self.clip.playhead_position_in_beats)
+            # Calculate actual playhead position based on global timeline
+            actual_playhead_position = self._get_actual_playhead_position()
+            beats_to_pad = self.beats_to_pad(actual_playhead_position)
             if 0 <= beats_to_pad <= 7 and beats_to_pad is not self.last_beats_to_pad:
                 # If clip is playing, trigger re-drawing pads when playhead position advances enough
                 self.update_pads()
 
     def activate(self):
-        print(f"DEBUG: ClipEditMode.activate() called")
+        print("DEBUG: ClipEditMode.activate() called")
         # Clear the display to hide previous interface
         if self.app.use_push2_display:
             self.push.display.send_to_display(self.push.display.prepare_frame(self.push.display.make_black_frame()))
@@ -493,10 +513,11 @@ class ClipEditMode(definitions.PyshaMode):
         if self.clip is None:
             return
 
-        color_matrix, animation_matrix = self.notes_to_pads() 
+        color_matrix, animation_matrix = self.notes_to_pads()
         if self.clip.playing:
-            # If clip is playing, draw playhead
-            beats_to_pad = self.beats_to_pad(self.clip.playhead_position_in_beats)
+            # If clip is playing, draw playhead using actual playhead position
+            actual_playhead_position = self._get_actual_playhead_position()
+            beats_to_pad = self.beats_to_pad(actual_playhead_position)
             if 0 <= beats_to_pad <= 7:
                 self.last_beats_to_pad = beats_to_pad
                 for i in range(0, 8):
@@ -578,6 +599,7 @@ class ClipEditMode(definitions.PyshaMode):
                     for position in notes_in_pad:
                         print(f"DEBUG: Removing note at position {position}")
                         self.clip.remove_sequence_event(position)
+                    print(f"DEBUG: Calling update_pads() after note removal")
                     self.update_pads()
                 else:
                     # Exit event edit mode
@@ -594,14 +616,16 @@ class ClipEditMode(definitions.PyshaMode):
                 # Create a new note
                 midi_note, timestamp = self.pad_ij_to_note_beat(pad_ij)
                 print(f"DEBUG: Creating new note - midi_note={midi_note}, timestamp={timestamp}")
+                print(f"DEBUG: Current clip length: {self.clip.clip_length_in_beats}")
                 self.clip.add_sequence_note_event(midi_note, velocity / 127, timestamp, self.pads_pad_beat_scale)
                 if timestamp + self.pads_pad_beat_scale > self.clip.clip_length_in_beats:
-                    # If adding a not beyond current clip length
-                    self.clip.set_length(math.ceil(timestamp + self.pads_pad_beat_scale))
+                    # If adding a note beyond current clip length
+                    new_length = math.ceil(timestamp + self.pads_pad_beat_scale)
+                    print(f"DEBUG: Extending clip length from {self.clip.clip_length_in_beats} to {new_length}")
+                    self.clip.set_length(new_length)
                 self.update_pads()
             else:
                 # Exit event edit mode
-                print(f"DEBUG: Exiting event edit mode (no notes in pad)")
                 self.set_clip_mode(self.selected_clip_idx)
 
         return True

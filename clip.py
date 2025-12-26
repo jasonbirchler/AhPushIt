@@ -27,6 +27,7 @@ class Clip(BaseClass):
     notes: list
     playhead_position_in_beats: float
     playing: bool
+    quantize: float = 1
     recording: bool
     will_play_at: float
     will_stop_at: float
@@ -50,6 +51,7 @@ class Clip(BaseClass):
         # clip playback properties
         self.playing = False
         self.recording = False
+        self.quantize = 1.0
         self.will_play_at = -1.0
         self.will_stop_at = -1.0
         self.will_start_recording_at = -1.0
@@ -64,9 +66,9 @@ class Clip(BaseClass):
         self.clip_status = self.get_status()
 
         # clip sequence properties
-        self.notes = [60, 67, 72, 77, 84]
-        self.durations = [0.5, 0.5, 0.5, 0.5, 0.5]
-        self.amplitudes = [20, 40, 60, 80, 40]
+        self.notes = [35, 35, 35, 47, 33, 33, 33, 45]
+        self.durations = [.25,.25,.25,.25]
+        self.amplitudes = [20, 40, 60, 80]
 
     def _ensure_arrays_expanded(self, position):
         """Ensure all sequence arrays are expanded to accommodate the given position"""

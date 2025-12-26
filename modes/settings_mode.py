@@ -16,8 +16,8 @@ The order is arbitrary and can be arranged by personal preference
 """
 class Pages(IntEnum):
     PERFORMANCE = 0
-    VARIOUS = 1
-    DEVICES = 2
+    DEVICES = 1
+    VARIOUS = 2
     ABOUT = 3
 
 
