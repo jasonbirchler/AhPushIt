@@ -28,19 +28,36 @@ class Sequencer():
         for track in self.tracks:
             self.timeline.schedule(track, quantize=self.quantize, remove_when_done=False)
 
+    def get_track_by_index(self, index):
+        """
+        Get a track by index
+        """
+        if index < 0 or index >= len(self.tracks):
+            print("ERROR: Track index out of range")
+            return None
+        return self.tracks[index]
+
     def add_track(self, track):
         """
         Add a track to the timeline if there is space
         """
-        if not isinstance(track, iso.Track):
-            print("ERROR: Track must be an isobar Track object")
-            return
-        if len(self.tracks) >= definitions.GLOBAL_TIMELINE_MAX_TRACKS:
-            print("ERROR: Max number of tracks reached")
-            return
-        self.tracks.append(track)
+        if isinstance(track, iso.Track) and len(self.tracks) < definitions.GLOBAL_TIMELINE_MAX_TRACKS:
+            self.tracks.append(track)
+            self.timeline.schedule(track, quantize=self.quantize, remove_when_done=False)
+        else:
+            print(
+                f"ERROR: Track must be an isobar Track object,\
+                    and there can be a max of {definitions.GLOBAL_TIMELINE_MAX_TRACKS} tracks"
+            )
 
     def remove_track(self, track):
+        """
+        Remove a track from the timeline
+        """
+        if track not in self.tracks:
+            print("ERROR: Track not found")
+            return
+        self.timeline.unschedule(track)
         self.tracks.remove(track)
 
     def update_track(self, track_idx:int, clip):
@@ -51,6 +68,20 @@ class Sequencer():
         """
         track = self.timeline.tracks[track_idx]
         track.update(clip)
+
+    def mute_track(self, track_idx:int):
+        """
+        Mute a track
+        """
+        track = self.timeline.tracks[track_idx]
+        track.mute()
+
+    def unmute_track(self, track_idx:int):
+        """
+        Unmute a track
+        """
+        track = self.timeline.tracks[track_idx]
+        track.unmute()
 
     def play(self):
         """ Start the timeline in the background """
@@ -68,3 +99,60 @@ class Sequencer():
         """ Stop the timeline and return to zero """
         self.timeline.stop()
         self.timeline.reset()
+
+    # Getters and Setters
+    def get_bpm(self):
+        """ Get the current BPM """
+        return self.bpm
+
+    def set_bpm(self, bpm):
+        """ Set the BPM and update the timeline tempo """
+        self.bpm = bpm
+        self.timeline.tempo = bpm
+
+    def get_root(self):
+        """ Get the current root note """
+        return self.root
+
+    def set_root(self, root):
+        """ Set the root note and update the key """
+        self.root = root
+        self.key = iso.Key(self.root, self.scale)
+
+    def get_scale(self):
+        """ Get the current scale """
+        return self.scale
+
+    def set_scale(self, scale):
+        """ Set the scale and update the key """
+        self.scale = scale
+        self.key = iso.Key(self.root, self.scale)
+
+    def get_key(self):
+        """ Get the current key """
+        return self.key
+
+    def set_key(self, root, scale):
+        """ Set the key from the given root and scale """
+        self.set_root(root)
+        self.set_scale(scale)
+
+    def get_quantize(self):
+        """ Get the current quantize value """
+        return self.quantize
+
+    def set_quantize(self, quantize):
+        """ Set the quantize value """
+        self.quantize = quantize
+
+    def get_tracks(self):
+        """ Get the list of tracks """
+        return self.tracks
+
+    def get_track_count(self):
+        """ Get the number of tracks """
+        return len(self.tracks)
+
+    def get_timeline(self):
+        """ Get the timeline object """
+        return self.timeline
