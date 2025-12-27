@@ -6,7 +6,6 @@ from base_class import BaseClass
 
 # if TYPE_CHECKING:
 from clip import Clip
-from hardware_device import HardwareDevice
 import definitions
 
 
@@ -15,7 +14,6 @@ class Track(BaseClass):
 
     channel: int
     input_monitoring: bool
-    isobar_track: iso.Track
     output_hardware_device_name: str
     remove_when_done: bool = False
     timeline: iso.Timeline
@@ -34,8 +32,9 @@ class Track(BaseClass):
 
         # Get timeline from parent session to avoid circular dependency
         # The parent of Track is Session, and Session has global_timeline
+        self._send_clock = False
         self.timeline = self._parent.global_timeline if hasattr(self._parent, 'global_timeline') else None
-        self._output_device = iso.MidiOutputDevice()
+        self._output_device = iso.MidiOutputDevice(send_clock=self.send_clock)
         self._device_short_name = None
 
     @property
@@ -121,3 +120,13 @@ class Track(BaseClass):
     def device_short_name(self, name: str) -> None:
         """Set the short name of the output device"""
         self._device_short_name = name
+
+    @property
+    def send_clock(self) -> bool:
+        """Get whether clock is being sent"""
+        return self._send_clock
+
+    @send_clock.setter
+    def send_clock(self, value: bool) -> None:
+        """Set whether clock is being sent"""
+        self._send_clock = value
