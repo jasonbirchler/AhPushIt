@@ -1,6 +1,7 @@
 import cairo
-import definitions
 import push2_python
+
+import definitions
 
 
 def show_title(ctx, x, h, text, color=[1, 1, 1]):

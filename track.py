@@ -14,7 +14,7 @@ class Track(BaseClass):
 
     channel: int
     input_monitoring: bool
-    output_hardware_device_name: str
+    output_device_name: str
     remove_when_done: bool = False
     timeline: iso.Timeline
 
@@ -23,18 +23,13 @@ class Track(BaseClass):
         # Initialize attributes that are used by other code
         self.channel = 0
         self.input_monitoring = False
-        self.output_hardware_device_name = None
+        self.output_device_name = None
         # Create initial clip with this track as parent
         initial_clip = Clip(parent=self)
         self.clips = [initial_clip]
-        # Register the initial clip with the sequencer interface
-        self._register_initial_clip(initial_clip)
 
-        # Get timeline from parent session to avoid circular dependency
-        # The parent of Track is Session, and Session has global_timeline
         self._send_clock = False
-        self.timeline = self._parent.global_timeline if hasattr(self._parent, 'global_timeline') else None
-        self._output_device = iso.MidiOutputDevice(send_clock=self.send_clock)
+        self._output_device = iso.MidiOutputDevice(self.output_device_name, send_clock=self.send_clock)
         self._device_short_name = None
 
     @property
@@ -51,15 +46,6 @@ class Track(BaseClass):
         else:
             self.clips.insert(position, clip)
 
-    def _register_initial_clip(self, clip):
-        """Register the initial clip created in constructor with sequencer interface"""
-        # This method can be called after the track has been properly initialized
-        # and has a parent relationship established
-
-    def get_output_hardware_device(self) -> Optional[Any]:
-        """Get output hardware device"""
-        return self.output_device
-
     def set_input_monitoring(self, enabled):
         self.input_monitoring = enabled
 
@@ -68,7 +54,7 @@ class Track(BaseClass):
 
     def set_output_device_by_name(self, device_name) -> None:
         # Update the track's output hardware device name
-        self.output_hardware_device_name = device_name
+        self.output_device_name = device_name
         self.output_device = iso.MidiOutputDevice(device_name=device_name, send_clock=True)
         # Invalidate the cached short name so it gets regenerated with the new device name
         self._device_short_name = None
@@ -81,13 +67,13 @@ class Track(BaseClass):
         if self._device_short_name is not None:
             return self._device_short_name
         else:
-            if self.output_hardware_device_name is None:
-                self.output_hardware_device_name = self._output_device.midi.name
+            if self.output_device_name is None:
+                self.output_device_name = self._output_device.midi.name
 
-            if len(self.output_hardware_device_name) < definitions.MAX_DEVICE_NAME_CHARS:
-                return self.output_hardware_device_name
+            if len(self.output_device_name) < definitions.MAX_DEVICE_NAME_CHARS:
+                return self.output_device_name
             else:
-                return f"{self.output_hardware_device_name[:definitions.MAX_DEVICE_NAME_CHARS - 3]}..."
+                return f"{self.output_device_name[:definitions.MAX_DEVICE_NAME_CHARS - 3]}..."
 
     def get_output_device(self) -> Optional[iso.MidiOutputDevice]:
         """Get the output device"""
@@ -96,7 +82,7 @@ class Track(BaseClass):
     def set_output_device(self, device: iso.MidiOutputDevice) -> None:
         """Set the output device"""
         self.output_device = device
-        self.output_hardware_device_name = device.name if device else None
+        self.output_device_name = device.name if device else None
         self._generate_short_name()
 
     @property

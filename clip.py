@@ -17,13 +17,11 @@ class ClipStatus(NamedTuple):
     quantization_step: float
 
 class Clip(BaseClass):
-    amplitudes: list
     bpm_multiplier: float
     clip_length_in_beats: float
     clip_status: ClipStatus
     current_quantization_step: float
-    durations: list
-    name: str
+    name: str = None
     notes: list
     playhead_position_in_beats: float
     playing: bool
@@ -51,47 +49,22 @@ class Clip(BaseClass):
         # clip playback properties
         self.playing = False
         self.recording = False
-        self.quantize = 1.0
         self.will_play_at = -1.0
         self.will_stop_at = -1.0
         self.will_start_recording_at = -1.0
         self.will_stop_recording_at = -1.0
-        self.clip_length_in_beats = 8.0
+        self.clip_length_in_beats = 4.0 # default 1bar = 4beats
         self.current_quantization_step = 0.0
         self.playhead_position_in_beats = 0.0
         self.bpm_multiplier = 1.0
-        self.name = ""
         self.wrap_events_across_clip_loop = False
 
         self.clip_status = self.get_status()
 
         # clip sequence properties
-        self.notes = [35, 35, 35, 47, 33, 33, 33, 45]
-        self.durations = [.25,.25,.25,.25]
-        self.amplitudes = [20, 40, 60, 80]
-
-    def _ensure_arrays_expanded(self, position):
-        """Ensure all sequence arrays are expanded to accommodate the given position"""
-        # Expand notes array if needed
-        while len(self.notes) <= position:
-            if len(self.notes) == 0:
-                self.notes.append(60)  # Default note
-            else:
-                self.notes.append(self.notes[-1])  # Repeat last note
-
-        # Expand durations array if needed
-        while len(self.durations) <= position:
-            if len(self.durations) == 0:
-                self.durations.append(0.5)  # Default duration
-            else:
-                self.durations.append(self.durations[-1])  # Repeat last duration
-
-        # Expand amplitudes array if needed
-        while len(self.amplitudes) <= position:
-            if len(self.amplitudes) == 0:
-                self.amplitudes.append(64)  # Default amplitude
-            else:
-                self.amplitudes.append(self.amplitudes[-1])  # Repeat last amplitude
+        self.notes = []
+        self.durations = None
+        self.amplitudes = None
 
     def get_note_at_position(self, position: int):
         """Get note at specific position with bounds checking"""
@@ -102,6 +75,9 @@ class Clip(BaseClass):
 
     def get_duration_at_position(self, position: int):
         """Get duration at specific position with bounds checking"""
+        # if it's not a list just return the float
+        if isinstance(self.durations, float):
+            return self.durations
         if 0 <= position < len(self.durations):
             return self.durations[position]
         else:
@@ -109,6 +85,9 @@ class Clip(BaseClass):
 
     def get_amplitude_at_position(self, position: int):
         """Get amplitude at specific position with bounds checking"""
+        # if it's not a list just return the float
+        if isinstance(self.amplitudes, float):
+            return self.amplitudes
         if 0 <= position < len(self.amplitudes):
             return self.amplitudes[position]
         else:
@@ -116,7 +95,6 @@ class Clip(BaseClass):
 
     def set_note_at_position(self, position: int, note: int):
         """Set note at specific position, expanding arrays if necessary"""
-        self._ensure_arrays_expanded(position)
         self.notes[position] = note
         # Trigger reschedule if playing
         if self.playing:
@@ -124,16 +102,28 @@ class Clip(BaseClass):
 
     def set_duration_at_position(self, position: int, duration: float):
         """Set duration at specific position, expanding arrays if necessary"""
-        self._ensure_arrays_expanded(position)
-        self.durations[position] = duration
+        if isinstance(self.durations, float):
+            self.durations = [self.durations]
+
+        if position > len(self.durations):
+            self.durations.append(duration)
+        else:
+            self.durations[position] = duration
+        
         # Trigger reschedule if playing
         if self.playing:
             self._reschedule_if_playing()
 
     def set_amplitude_at_position(self, position: int, amplitude: float):
         """Set amplitude at specific position, expanding arrays if necessary"""
-        self._ensure_arrays_expanded(position)
-        self.amplitudes[position] = amplitude
+        if isinstance(self.amplitudes, float):
+            self.amplitudes = [self.amplitudes]
+
+        if position > len(self.amplitudes):
+            self.amplitudes.append(amplitude)
+        else:
+            self.amplitudes[position] = amplitude
+        
         # Trigger reschedule if playing
         if self.playing:
             self._reschedule_if_playing()
@@ -187,9 +177,9 @@ class Clip(BaseClass):
         if self.track is None:
             return
 
-        if self.app and hasattr(self.app, 'session'):
+        if self.app and hasattr(self.app, 'seq'):
             # Call session to schedule the clip start
-            self.app.session.schedule_clip_start(self, quantized=False)
+            self.app.seq.schedule_clip(self)
 
         # Set will_play_at to a positive value to indicate "cue to play"
         self.will_play_at = 0.0
@@ -274,8 +264,10 @@ class Clip(BaseClass):
         # Calculate position based on timestamp (simplified - could be improved for exact positioning)
         position = len(self.notes)
 
-        self._ensure_arrays_expanded(position)
-        self.notes[position] = midi_note
+        if position == 0:
+            self.notes.append(midi_note)
+        else:
+            self.notes[position] = midi_note
         self.durations[position] = duration
         self.amplitudes[position] = int(midi_velocity * 127)
 

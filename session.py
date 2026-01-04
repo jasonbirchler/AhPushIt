@@ -43,9 +43,6 @@ class Session(BaseClass):
         # Initialize with 8 empty Track objects to match the 8 track buttons
         self.tracks = [Track(parent=self) for _ in range(8)]
 
-        # Register initial clips after tracks are created
-        self._register_initial_clips()
-
         # Perform device setup
         self.initialize_devices()
 
@@ -93,16 +90,6 @@ class Session(BaseClass):
             # Only print error for unexpected exceptions, not for normal index issues
             print('ERROR selecting clip track: {}'.format(e))
         return None
-
-    def _register_initial_clips(self):
-        """Register all initial clips with the sequencer interface after session is properly initialized"""
-        # This method should be called after the session has a proper parent relationship
-        if self.app:
-            for track_idx, track in enumerate(self.tracks):
-                for clip_idx, clip in enumerate(track.clips):
-                    print(f"DEBUG: Registering clip {clip_idx} in track {track_idx}")
-        else:
-            print("DEBUG: Could not register initial clips - app not available")
 
     def scene_play(self, scene_number):
         print(f'Trying to play scene {scene_number}')
@@ -192,14 +179,14 @@ class Session(BaseClass):
 
     def start_timeline(self):
         """Start the global timeline"""
-        print("Starting timeline")
         self.global_timeline.start()
+        print(f"Starting timeline {self.global_timeline.running}")
 
     def stop_timeline(self):
         """Stop the global timeline"""
-        print("Stopping timeline")
         self.global_timeline.stop()
         self.global_timeline.running = False
+        print(f"Stopping timeline {self.global_timeline.running}")
 
     def reset_timeline(self):
         """Reset the global timeline to beat 0"""
@@ -210,9 +197,9 @@ class Session(BaseClass):
         """Schedule a clip's events to the timeline"""
         self.unschedule_clip(track_idx)
 
-        output_device = self.get_output_device(clip.track.output_hardware_device_name)
+        output_device = self.get_output_device(clip.track.output_device_name)
         if not output_device:
-            print(f"ERROR: No output device found for '{clip.track.output_hardware_device_name}'")
+            print(f"ERROR: No output device found for '{clip.track.output_device_name}'")
             print(f"Available devices: {list(self.output_devices.keys())}")
             return
 
@@ -245,12 +232,12 @@ class Session(BaseClass):
         """Reschedule a clip that's already playing to reflect changes"""
         # If track_idx is not provided as a string/index, try to find it from the clip
         if isinstance(track_idx, str) and track_idx in self.track_schedules and clip.playing:
-            self.schedule_clip(track_idx, clip)
+            self.app.seq.schedule_clip(clip)
         elif hasattr(track_idx, 'track') and hasattr(track_idx.track, 'clips'):
             # track_idx is actually a clip, get the real track index
             actual_track_idx = self.tracks.index(track_idx.track) if track_idx.track in self.tracks else None
             if actual_track_idx is not None and str(actual_track_idx) in self.track_schedules and clip.playing:
-                self.schedule_clip(str(actual_track_idx), clip)
+                self.app.seq.schedule_clip(clip)
 
     def get_next_bar_boundary(self, bars_per_quantize: int = 1) -> float:
         """Calculate the next bar boundary for quantized launching"""
@@ -277,7 +264,7 @@ class Session(BaseClass):
             self.pending_actions.append({'beat': next_beat, 'action': 'start', 'clip': clip})
             print(f"Clip will start at beat {next_beat}")
         else:
-            self.schedule_clip(track_idx, clip)
+            self.app.seq.schedule_clip(clip)
             clip.playing = True
 
     def schedule_clip_stop(self, clip, quantized: bool = True):

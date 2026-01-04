@@ -147,6 +147,12 @@ def draw_clip(ctx,
 
     try:
         # Use the minimum length to avoid index errors
+        if clip.notes is None:
+            clip.notes = []
+        if clip.durations is None:
+            clip.durations = []
+        if clip.amplitudes is None:
+            clip.amplitudes = []
         actual_max_pos = min(len(clip.notes), len(clip.durations), len(clip.amplitudes))
 
         for i in range(actual_max_pos):

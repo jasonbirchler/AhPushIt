@@ -8,7 +8,6 @@ import cairo
 import isobar as iso
 import numpy
 import push2_python
-from typing import List, Optional
 
 import definitions
 from display_utils import show_notification
@@ -23,18 +22,19 @@ from modes.settings_mode import SettingsMode
 from modes.slice_notes_mode import SliceNotesMode
 from modes.track_selection_mode import TrackSelectionMode
 from session import Session
-from hardware_device import HardwareDevice ###
+from sequencer import Sequencer
 
 buttons_pressed_state = {}
 pads_pressed_state = {}  # Track pad press times for long press detection
 
 class PyshaApp(object):
     """
-    The App handles initializes everything at startup.
+    The App handles initializing everything at startup.
     App manages Push interface.
     Modes, MidiManger, Session are all children of App.
     """
     session: Session = None
+    seq: Sequencer = None
 
     # push
     push = None
@@ -66,8 +66,9 @@ class PyshaApp(object):
         else:
             settings = {}
 
-        self.global_timeline = iso.Timeline(tempo=120)
+        self.global_timeline = iso.Timeline()
         self.session = Session(self)
+        self.seq = Sequencer(self)
 
         self.target_frame_rate = settings.get('target_frame_rate', 60)
         self.use_push2_display = settings.get('use_push2_display', True)
@@ -104,7 +105,7 @@ class PyshaApp(object):
         # Note: clip_triggering_mode and clip_edit_mode are intentionally NOT added to active_modes here
         # because they're in the same XOR group as melodic_mode and melodic_mode is the default
 
-        self.track_selection_mode.select_track(self.track_selection_mode.selected_track)
+        self.track_selection_mode.select_track_as_active(self.track_selection_mode.selected_track)
 
         self.settings_mode = SettingsMode(self, settings=settings)
 
@@ -374,24 +375,6 @@ class PyshaApp(object):
         app.update_push2_buttons()
         app.update_push2_pads()
 
-    # Hardware devices
-    def _create_short_name(self, name):
-        tokens = name.split(' ')
-        if len(tokens) == 1:
-            return tokens[0]
-        else:
-            short_name = tokens[0] + " " + tokens[1]
-            return short_name
-
-    def get_available_output_hardware_device_names(self) -> List[str]:
-        # Return both full names and short names to ensure proper matching
-        device_names = []
-        for name in self.session.output_device_names:
-            if name not in device_names:
-                device_names.append(name)
-        return device_names
-
-
 # Bind push action handlers with class methods
 @push2_python.on_encoder_touched()
 def on_encoder_touched(_, encoder_name):
@@ -518,8 +501,8 @@ def on_sustain_pedal(_, sustain_on):
             if action_performed:
                 break  # If mode took action, stop event propagation
     except NameError as e:
-       print('Error:  {}'.format(str(e)))
-       traceback.print_exc()
+        print('Error:  {}'.format(str(e)))
+        traceback.print_exc()
 
 
 midi_connected_received_before_app = False

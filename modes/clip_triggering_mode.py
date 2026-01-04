@@ -289,6 +289,9 @@ class ClipTriggeringMode(definitions.PyshaMode):
 
         clip = self.app.session.get_clip_by_idx(track_num, clip_num)
         if clip is not None:
+            # set the clip name. is there a better place to do this?
+            if clip.name is None:
+                clip.name = f"{track_num}-{clip_num}"
             if self.app.is_button_being_pressed(
                 self.app.main_controls_mode.record_button
             ):

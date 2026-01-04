@@ -5,28 +5,56 @@ class Sequencer():
     """
     Class that interfaces with isobar (Timeline and Tracks) to create a sequencer.
     """
-    def __init__(self):
+    def __init__(self, app):
+        self.app = app
+        self.timeline = app.global_timeline
         self.bpm = 120.0
         self.root = 'C'
         self.scale = iso.Scale.minor
         self.key = iso.Key(self.root, self.scale)
         self.quantize = 1
+        self.device_names = []
+        self.devices = []
         self.tracks = []
-        self.timeline = iso.Timeline(tempo=self.bpm)
 
         for i in range(8):
-            self.tracks.append(
-                iso.Track(
-                    timeline=self.timeline,
-                    output_device=iso.MidiOutputDevice(),
-                    name=f"{i}",
-                    remove_when_done=False
-                ))
-        self.schedule_all_tracks()
+            track = iso.Track(
+                timeline=self.timeline,
+                output_device=iso.MidiOutputDevice("IAC Driver Bus 1"),
+                name=f"{i}",
+                remove_when_done=False
+            )
+            track.event_stream = {}
+            self.tracks.append(track)
 
-    def schedule_all_tracks(self):
-        for track in self.tracks:
-            self.timeline.schedule(track, quantize=self.quantize, remove_when_done=False)
+    def schedule_clip(self, clip):
+        """
+        Schedule a clip to the timeline
+        """
+        if clip.notes is None:
+            return
+
+        device = self.app.session.get_output_device(clip.track.output_device_name)
+        # if duration or amplitude is a list, convert to PSequence
+        if isinstance(clip.durations, list):
+            clip.durations = iso.PSequence(clip.durations)
+        if isinstance(clip.amplitudes, list):
+            clip.amplitudes = iso.PSequence(clip.amplitudes)
+
+        self.timeline.schedule(
+            {
+                "note": iso.PSequence(clip.notes),
+                "duration": clip.durations,
+                "amplitude": clip.amplitudes
+            },
+            name=clip.name,
+            quantize=self.start_on_next_bar(),
+            output_device=device,
+            remove_when_done=False
+        )
+
+    def start_on_next_bar(self):
+        return 4 - (int(self.timeline.current_time) % 4)
 
     def get_track_by_index(self, index):
         """

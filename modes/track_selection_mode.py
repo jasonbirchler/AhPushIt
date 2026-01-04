@@ -56,13 +56,13 @@ class TrackSelectionMode(definitions.PyshaMode):
         return {}
 
     def get_all_distinct_device_short_names(self):
-        return list(set([track.output_hardware_device_name for track in self.app.session.tracks]))
+        return list(set([track.output_device_name for track in self.app.session.tracks]))
 
     def get_current_track_device_info(self):
-        return self.devices_info.get(self.get_selected_track().output_hardware_device_name, {})
+        return self.devices_info.get(self.get_selected_track().output_device_name, {})
 
     def get_current_track_device_short_name(self):
-        return self.get_selected_track().output_hardware_device_name
+        return self.get_selected_track().output_device_name
     
     def get_track_color(self, track_idx: int):
         return definitions.COLORS_NAMES[track_idx % 8]
@@ -115,7 +115,7 @@ class TrackSelectionMode(definitions.PyshaMode):
         elif self.get_current_track_device_info().get('default_layout', definitions.LAYOUT_MELODIC) == definitions.LAYOUT_SLICES:
             self.app.set_slice_notes_mode()
 
-    def clean_currently_notes_being_played(self):
+    def clean_notes_currently_being_played(self):
         if self.app.is_mode_active(self.app.melodic_mode):
             self.app.melodic_mode.remove_all_notes_being_played()
         elif self.app.is_mode_active(self.app.rhyhtmic_mode):
@@ -127,7 +127,7 @@ class TrackSelectionMode(definitions.PyshaMode):
         for i in range(0, len(tracks)):
             tracks[i].set_input_monitoring(i == track_idx)
 
-    def select_track(self, track_idx):
+    def select_track_as_active(self, track_idx):
         # Selects a track
         # Note that if this is called from a mode from the same xor group with melodic/rhythmic modes,
         # that other mode will be deactivated.
@@ -135,7 +135,7 @@ class TrackSelectionMode(definitions.PyshaMode):
         if track is not None:
             self.selected_track = track_idx
             self.send_select_track(self.selected_track)
-            self.clean_currently_notes_being_played()
+            self.clean_notes_currently_being_played()
             try:
                 self.app.midi_cc_mode.new_track_selected()
                 self.app.preset_selection_mode.new_track_selected()
@@ -152,7 +152,7 @@ class TrackSelectionMode(definitions.PyshaMode):
         # Only select track on initial activation, not on repeated calls
         # This preserves manually set monitoring states
         if not hasattr(self, '_activated'):
-            self.select_track(self.selected_track)
+            self.select_track_as_active(self.selected_track)
             self._activated = True
 
     def deactivate(self):
@@ -182,7 +182,7 @@ class TrackSelectionMode(definitions.PyshaMode):
                 background_color = definitions.BLACK
                 font_color = track_color
             track = self.app.session.get_track_by_idx(i)
-            device_short_name = track.output_hardware_device_name
+            device_short_name = track.output_device_name
             # Use a default name if no device is assigned
             if device_short_name is None:
                 device_short_name = f"Track {i+1}"
@@ -201,12 +201,12 @@ class TrackSelectionMode(definitions.PyshaMode):
                 else:
                     if not shift:
                         # If button shift not pressed, select the track
-                        self.select_track(self.track_button_names.index(button_name))
+                        self.select_track_as_active(self.track_button_names.index(button_name))
                     else:
                         # If button shift pressed, send all notes off to that track
                         try:
                             track = self.app.session.tracks[track_idx]
-                            hardware_device = track.get_output_hardware_device()
+                            hardware_device = track.get_output_device()
                             if hardware_device is not None:
                                 hardware_device.all_notes_off()
                         except IndexError:

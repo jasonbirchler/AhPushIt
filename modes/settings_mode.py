@@ -91,7 +91,7 @@ class SettingsMode(definitions.PyshaMode):
         for i in range(8):
             track = self.app.session.tracks[i]
             self.original_device_assignments[i] = {
-                'device_name': track.output_hardware_device_name,
+                'device_name': track.output_device_name,
                 'channel': track.channel
             }
 
@@ -103,9 +103,9 @@ class SettingsMode(definitions.PyshaMode):
             if track_idx not in self.modified_tracks:
                 track = self.app.session.tracks[track_idx]
                 # Only restore if the current assignment differs from original
-                if (track.output_hardware_device_name != original_assignment['device_name'] or
+                if (track.output_device_name != original_assignment['device_name'] or
                     track.channel != original_assignment['channel']):
-                    track.output_hardware_device_name = original_assignment['device_name']
+                    track.output_device_name = original_assignment['device_name']
                     track.channel = original_assignment['channel']
                     print(f"Restored track {track_idx + 1} to original device: {original_assignment['device_name']}, channel: {original_assignment['channel']}")
 
@@ -418,7 +418,7 @@ class SettingsMode(definitions.PyshaMode):
                     self.encoder_accumulators[encoder_name] = 0  # Reset accumulator
 
                     if selection_state == 0:  # Device selection only
-                        available_devices = self.app.get_available_output_hardware_device_names()
+                        available_devices = self.app.session.output_device_names
 
                         # Check if there are any available devices
                         if not available_devices:
@@ -426,7 +426,7 @@ class SettingsMode(definitions.PyshaMode):
                             return True
 
                         # Get current device name from track
-                        current_hw_device_name = track.output_hardware_device_name if track.output_hardware_device_name else None
+                        current_hw_device_name = track.output_device_name if track.output_device_name else None
 
                         # Find the current device index
                         current_hw_device_index = -1
@@ -579,8 +579,8 @@ class SettingsMode(definitions.PyshaMode):
                     selection_state = self.track_selection_states.get(track_num, 0)
 
                     if selection_state == 0:  # Device selection only
-                        available_devices = self.app.get_available_output_hardware_device_names()
-                        current_hw_device_name = track.output_hardware_device_name
+                        available_devices = self.app.session.output_device_names
+                        current_hw_device_name = track.output_device_name
 
                         # Check if there are any available devices
                         if not available_devices:
@@ -612,7 +612,7 @@ class SettingsMode(definitions.PyshaMode):
                         self.modified_tracks.add(track_num)
                         print(f"Track {track_num + 1}: Changed device from '{current_hw_device_name}' to '{next_device_name}'")
                     elif selection_state == 1:  # Channel selection only
-                        hw_device = track.get_output_hardware_device()
+                        hw_device = track.get_output_device()
                         if hw_device:
                             current_channel = hw_device.midi_channel
                             new_channel = (current_channel % 16) + 1  # Cycle 1-16
