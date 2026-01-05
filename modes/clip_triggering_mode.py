@@ -1,8 +1,10 @@
 import definitions
 import push2_python
+import traceback
 
 from definitions import ClipStates
 from utils import show_text, draw_clip
+from clip import Clip
 
 
 class ClipTriggeringMode(definitions.PyshaMode):
@@ -287,36 +289,44 @@ class ClipTriggeringMode(definitions.PyshaMode):
             ]
         )
 
+        # get the clip
         clip = self.app.session.get_clip_by_idx(track_num, clip_num)
-        if clip is not None:
-            # set the clip name. is there a better place to do this?
-            if clip.name is None:
-                clip.name = f"{track_num}-{clip_num}"
-            if self.app.is_button_being_pressed(
-                self.app.main_controls_mode.record_button
-            ):
-                clip.record_on_off()
-                self.app.set_button_ignore_next_action_if_not_yet_triggered(
-                    self.app.main_controls_mode.record_button
-                )
-            else:
-                if self.app.is_button_being_pressed(self.clear_clip_button):
-                    if not clip.is_empty():
-                        clip.clear()
-                        self.app.add_display_notification(
-                            "Cleared clip: {0}-{1}".format(
-                                track_num + 1, clip_num + 1
-                            )
-                        )
+        # if there's no clip in that slot, create one
+        if clip is None:
+            track = self.app.session.get_track_by_idx(track_num)
+            if track is not None:
+                new_clip = Clip(parent=track)
+                track.add_clip(new_clip, clip_num)
+            clip = self.app.session.get_clip_by_idx(track_num, clip_num)
 
-                elif self.app.is_button_being_pressed(self.double_clip_button):
-                    if not clip.is_empty():
-                        clip.double()
-                        self.app.add_display_notification(
-                            "Doubled clip: {0}-{1}".format(
-                                track_num + 1, clip_num + 1
-                            )
+        # set the clip name. is there a better place to do this?
+        if clip.name is None:
+            clip.name = f"{track_num}-{clip_num}"
+        if self.app.is_button_being_pressed(
+            self.app.main_controls_mode.record_button
+        ):
+            clip.record_on_off()
+            self.app.set_button_ignore_next_action_if_not_yet_triggered(
+                self.app.main_controls_mode.record_button
+            )
+        else:
+            if self.app.is_button_being_pressed(self.clear_clip_button):
+                if not clip.is_empty():
+                    clip.clear()
+                    self.app.add_display_notification(
+                        "Cleared clip: {0}-{1}".format(
+                            track_num + 1, clip_num + 1
                         )
+                    )
+
+            elif self.app.is_button_being_pressed(self.double_clip_button):
+                if not clip.is_empty():
+                    clip.double()
+                    self.app.add_display_notification(
+                        "Doubled clip: {0}-{1}".format(
+                            track_num + 1, clip_num + 1
+                        )
+                    )
 
             elif self.app.is_button_being_pressed(self.quantize_button):
                 #no-op for now
@@ -361,44 +371,36 @@ class ClipTriggeringMode(definitions.PyshaMode):
 
             print(f"DEBUG: Track found, current clips: {len(track.clips)}, need clip {clip_num}")
 
-            # Ensure we have enough clips in the track
-            while len(track.clips) <= clip_num:
-                print(f"DEBUG: Creating new clip at position {len(track.clips)}")
-                from clip import Clip
-                new_clip = Clip(parent=track)
-                track._add_clip(new_clip)
-                print(f"DEBUG: Clip created, track now has {len(track.clips)} clips")
-
             # Get the clip (which should now exist)
             clip = self.app.session.get_clip_by_idx(track_num, clip_num)
-            if clip is not None:
-                try:
-                    # Enter clip edit mode for both existing and newly created clips
-                    self.app.clip_edit_mode.set_clip_mode(clip)
-                    print(f"DEBUG: set_clip_mode completed")
-                    
-                    print(f"DEBUG: About to call set_clip_edit_mode()")
-                    self.app.set_clip_edit_mode()
-                    print(f"DEBUG: set_clip_edit_mode completed")
-                    
-                    # Debug: Check if mode was actually switched
-                    if hasattr(self.app, 'is_mode_active'):
-                        is_clip_edit_active = self.app.is_mode_active(self.app.clip_edit_mode)
-                        print(f"DEBUG: Is clip edit mode active? {is_clip_edit_active}")
-                    
-                    return True  # Return True to indicate success
-                    
-                except Exception as e:
-                    print(f"ERROR: Exception during mode switching: {e}")
-                    import traceback
-                    traceback.print_exc()
-                    return False
-            else:
-                print(f"ERROR: Could not get clip at position {track_num}, {clip_num}")
+            if clip is None:
+                print(f"DEBUG: Creating new clip at position {len(track.clips)}")
+                new_clip = Clip(parent=track)
+                track.add_clip(new_clip, clip_num)
+                print(f"DEBUG: Clip created, track now has {len(track.clips)} clips")
+
+            try:
+                # Enter clip edit mode for both existing and newly created clips
+                self.app.clip_edit_mode.set_clip_mode(clip)
+                print(f"DEBUG: set_clip_mode completed")
+
+                print(f"DEBUG: About to call set_clip_edit_mode()")
+                self.app.set_clip_edit_mode()
+                print(f"DEBUG: set_clip_edit_mode completed")
+
+                # Debug: Check if mode was actually switched
+                if hasattr(self.app, 'is_mode_active'):
+                    is_clip_edit_active = self.app.is_mode_active(self.app.clip_edit_mode)
+                    print(f"DEBUG: Is clip edit mode active? {is_clip_edit_active}")
+
+                return True  # Return True to indicate success
+
+            except Exception as e:
+                print(f"ERROR: Exception during mode switching: {e}")
+                traceback.print_exc()
                 return False
         except Exception as e:
             print(f"ERROR in long press handling: {e}")
-            import traceback
             traceback.print_exc()
             return False
 

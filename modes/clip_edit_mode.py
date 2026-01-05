@@ -234,7 +234,7 @@ class ClipEditMode(definitions.PyshaMode):
 
         try:
             # Use the minimum length to avoid index errors
-            actual_max_pos = min(len(self.clip.notes), len(self.clip.durations), len(self.clip.amplitudes))
+            actual_max_pos = len(self.clip.notes)
 
             for pos in range(actual_max_pos):
                 if self.pads_min_note_offset <= self.clip.notes[pos] < self.pads_min_note_offset + 8:

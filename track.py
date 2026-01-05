@@ -24,9 +24,6 @@ class Track(BaseClass):
         self.channel = 0
         self.input_monitoring = False
         self.output_device_name = None
-        # Create initial clip with this track as parent
-        initial_clip = Clip(parent=self)
-        self.clips = [initial_clip]
 
         self._send_clock = False
         self._output_device = iso.MidiOutputDevice(self.output_device_name, send_clock=self.send_clock)
@@ -37,7 +34,7 @@ class Track(BaseClass):
         """Get the app instance through parent chain"""
         return self._parent.app if hasattr(self._parent, 'app') else None
 
-    def _add_clip(self, clip: 'Clip', position=None):
+    def add_clip(self, clip: 'Clip', position=None):
         # Note this method adds a Clip object in the local Trck object but does not create a clip in the backend
         # Ensure the clip has the correct parent
         clip.track = self

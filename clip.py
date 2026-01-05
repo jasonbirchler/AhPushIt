@@ -37,6 +37,11 @@ class Clip(BaseClass):
         """Get the parent track"""
         return self._parent
 
+    @track.setter
+    def track(self, value: 'Track') -> None:
+        """Set the parent track"""
+        self._parent = value
+
     @property
     def app(self):
         """Get the app instance through parent chain"""
@@ -192,7 +197,7 @@ class Clip(BaseClass):
 
         if self.app and hasattr(self.app, 'session'):
             # Call session to schedule the clip stop
-            self.app.session.schedule_clip_stop(self, quantized=False)
+            self.app.session.schedule_clip_stop(self)
 
         # Set will_stop_at to a positive value to indicate "cue to stop"
         self.will_stop_at = 0.0
@@ -242,9 +247,9 @@ class Clip(BaseClass):
         if 0 <= position < len(self.notes):
             # Remove from all arrays at the given position
             del self.notes[position]
-            if position < len(self.durations):
+            if isinstance(self.durations, list) and position < len(self.durations):
                 del self.durations[position]
-            if position < len(self.amplitudes):
+            if isinstance(self.amplitudes, list) and position < len(self.amplitudes):
                 del self.amplitudes[position]
 
             print(f'Removed event at position: {position}')
@@ -264,7 +269,11 @@ class Clip(BaseClass):
             self.notes.append(midi_note)
         else:
             self.notes[position] = midi_note
+        if isinstance(self.durations, float):
+            self.durations = [self.durations]
         self.durations[position] = duration
+        if isinstance(self.amplitudes, float):
+            self.amplitudes = [self.amplitudes]
         self.amplitudes[position] = int(midi_velocity * 127)
 
         print(f'Added note event: note={midi_note}, vel={midi_velocity}, time={timestamp}, dur={duration} at position {position}')
@@ -281,8 +290,12 @@ class Clip(BaseClass):
         if midi_note is not None:
             self.notes[position] = midi_note
         if duration is not None:
+            if isinstance(self.durations, float):
+                self.durations = [self.durations]
             self.durations[position] = duration
         if midi_velocity is not None:
+            if isinstance(self.amplitudes, float):
+                self.amplitudes = [self.amplitudes]
             self.amplitudes[position] = int(midi_velocity * 127)
 
         print(f'Edited event at position {position}')
