@@ -283,11 +283,13 @@ class ClipTriggeringMode(definitions.PyshaMode):
             self.quantize_button,
         ]
         action_button_being_pressed = any(
-            [
-                self.app.is_button_being_pressed(button_name)
-                for button_name in action_buttons_to_check
-            ]
+            self.app.is_button_being_pressed(button_name)
+            for button_name in action_buttons_to_check
         )
+
+        if action_button_being_pressed:
+            # If any action button is being pressed, ignore the pad press
+            return True
 
         # get the clip
         clip = self.app.session.get_clip_by_idx(track_num, clip_num)
@@ -353,10 +355,8 @@ class ClipTriggeringMode(definitions.PyshaMode):
             self.quantize_button,
         ]
         action_button_being_pressed = any(
-            [
-                self.app.is_button_being_pressed(button_name)
-                for button_name in action_buttons_to_check
-            ]
+            self.app.is_button_being_pressed(button_name)
+            for button_name in action_buttons_to_check
         )
 
         if action_button_being_pressed:

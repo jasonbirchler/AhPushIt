@@ -146,14 +146,13 @@ def draw_clip(ctx,
     rendered_notes = []
 
     try:
-        # Use the minimum length to avoid index errors
         if clip.notes is None:
             clip.notes = []
+        if isinstance(clip.durations, float):
+            clip.durations = [clip.durations]
         if clip.durations is None:
             clip.durations = []
-        if clip.amplitudes is None:
-            clip.amplitudes = []
-        actual_max_pos = min(len(clip.notes), len(clip.durations), len(clip.amplitudes))
+        actual_max_pos = len(clip.notes)
 
         for i in range(actual_max_pos):
             rendered_notes.append({
