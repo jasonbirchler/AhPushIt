@@ -249,7 +249,7 @@ class Session(BaseClass):
         next_boundary = ((current_beat // beats_per_quantize) + 1) * beats_per_quantize
         return next_boundary
 
-    def schedule_clip_start(self, clip, quantized: bool = True):
+    def schedule_clip_start(self, clip):
         """Schedule a clip to start at the next bar boundary"""
         # Get the track index for this clip
         track_idx = self.tracks.index(clip.track) if clip.track in self.tracks else None
@@ -258,7 +258,7 @@ class Session(BaseClass):
             print(f"ERROR: Could not find track index for clip")
             return
 
-        if quantized and self.global_timeline.running:
+        if self.global_timeline.running:
             next_beat = self.get_next_bar_boundary()
             clip.will_play_at = next_beat
             self.pending_actions.append({'beat': next_beat, 'action': 'start', 'clip': clip})
@@ -267,7 +267,7 @@ class Session(BaseClass):
             self.app.seq.schedule_clip(clip)
             clip.playing = True
 
-    def schedule_clip_stop(self, clip, quantized: bool = True):
+    def schedule_clip_stop(self, clip):
         """Schedule a clip to stop at the next bar boundary"""
         # Get the track index for this clip
         track_idx = self.tracks.index(clip.track) if clip.track in self.tracks else None
@@ -276,7 +276,7 @@ class Session(BaseClass):
             print(f"ERROR: Could not find track index for clip")
             return
 
-        if quantized and self.global_timeline.running:
+        if self.global_timeline.running:
             next_beat = self.get_next_bar_boundary()
             clip.will_stop_at = next_beat
             self.pending_actions.append({'beat': next_beat, 'action': 'stop', 'clip': clip})

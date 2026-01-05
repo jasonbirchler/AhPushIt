@@ -66,6 +66,8 @@ class PyshaApp(object):
         else:
             settings = {}
 
+        # initialize timeline in app to make access simpler
+        # from session and sequencer
         self.global_timeline = iso.Timeline()
         self.session = Session(self)
         self.seq = Sequencer(self)
@@ -246,10 +248,12 @@ class PyshaApp(object):
             self.push.configure_midi()
 
         if platform.system() == "Linux":
-            # When this app runs in Linux is because it is running on the Raspberrypi
-            #  I've overved problems trying to reconnect many times withotu success on the Raspberrypi, resulting in
-            # "ALSA lib seq_hw.c:466:(snd_seq_hw_open) open /dev/snd/seq failed: Cannot allocate memory" issues.
-            # A work around is make the reconnection time bigger, but a better solution should probably be found.
+            # When this app runs in Linux is because it is running on the Raspberry Pi
+            # Can be problems trying to reconnect many times without success on the Raspberry Pi,
+            # resulting in:
+            # "ALSA lib seq_hw.c:466:(snd_seq_hw_open) open /dev/snd/seq failed: Cannot allocate memory"
+            # A workaround is to make the reconnection time longer.
+            # A better solution should be found.
             self.push.set_push2_reconnect_call_interval(2)
 
     def update_push2_pads(self):

@@ -318,40 +318,14 @@ class ClipTriggeringMode(definitions.PyshaMode):
                             )
                         )
 
-                elif self.app.is_button_being_pressed(self.quantize_button):
-                    if not clip.is_empty():
-                        current_quantization_step = clip.current_quantization_step
-                        if current_quantization_step == 0.0:
-                            next_quantization_step = 4.0 / 16.0
-                        elif current_quantization_step == 4.0 / 16.0:
-                            next_quantization_step = 4.0 / 8.0
-                        elif current_quantization_step == 4.0 / 8.0:
-                            next_quantization_step = 4.0 / 4.0
-                        elif current_quantization_step == 4.0 / 4.0:
-                            next_quantization_step = 0.0
-                        else:
-                            next_quantization_step = 0.0
-                        clip.quantize(next_quantization_step)
-                        quantization_step_labels = {
-                            0.25: "16th note",
-                            0.5: "8th note",
-                            1.0: "4th note",
-                            0.0: "no quantization",
-                        }
-                        self.app.add_display_notification(
-                            "Quantized clip to {0}: {1}-{2}".format(
-                                quantization_step_labels.get(
-                                    next_quantization_step, next_quantization_step
-                                ),
-                                track_num + 1,
-                                clip_num + 1,
-                            )
-                        )
+            elif self.app.is_button_being_pressed(self.quantize_button):
+                #no-op for now
+                pass
 
-                else:
-                    # No "option" button pressed, do play/stop
-                    clip.play_stop()
-                    return True
+            else:
+                # No "option" button pressed, do play/stop
+                clip.play_stop()
+                return True
         return False
 
     def on_pad_long_pressed(self, pad_n, pad_ij, velocity):

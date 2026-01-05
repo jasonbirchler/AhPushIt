@@ -25,7 +25,6 @@ class Clip(BaseClass):
     notes: list
     playhead_position_in_beats: float
     playing: bool
-    quantize: float = 1
     recording: bool
     will_play_at: float
     will_stop_at: float
@@ -222,9 +221,6 @@ class Clip(BaseClass):
         self.notes = iso.PSequence(list(self.notes) + list(self.notes))
         self.durations = iso.PSequence(list(self.durations) + list(self.durations))
         self.amplitudes = iso.PSequence(list(self.amplitudes) + list(self.amplitudes))
-
-    def quantize(self, quantization_step):
-        print(f'clip quantize TBD')
 
     def set_length(self, new_length):
         self.clip_length_in_beats = new_length
