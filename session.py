@@ -288,6 +288,8 @@ class Session(BaseClass):
     def send_note(self, device_name: str, note: int, velocity: int, channel: int = 0):
         """Send a MIDI note on/off to an output device"""
         output_device = self.get_output_device(device_name)
+        if output_device is None:
+            output_device = iso.MidiOutputDevice()
         if output_device:
             if velocity > 0:
                 print(f"Sending note ON: {note} vel={velocity} to {device_name}")
