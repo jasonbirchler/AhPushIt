@@ -378,6 +378,7 @@ class ClipTriggeringMode(definitions.PyshaMode):
                 new_clip = Clip(parent=track)
                 track.add_clip(new_clip, clip_num)
                 print(f"DEBUG: Clip created, track now has {len(track.clips)} clips")
+                clip = new_clip
 
             try:
                 # Enter clip edit mode for both existing and newly created clips
