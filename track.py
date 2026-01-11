@@ -10,8 +10,6 @@ import definitions
 
 
 class Track(BaseClass):
-    clips: List[Clip] = []
-
     channel: int
     input_monitoring: bool
     output_device_name: str
@@ -24,6 +22,8 @@ class Track(BaseClass):
         self.channel = 0
         self.input_monitoring = False
         self.output_device_name = None
+        
+        self.clips: List[Clip] = [None, None, None, None, None, None, None, None]
 
         self._send_clock = False
         self._output_device = iso.MidiOutputDevice(self.output_device_name, send_clock=self.send_clock)

@@ -4,7 +4,7 @@ import traceback
 
 from definitions import ClipStates
 from utils import show_text, draw_clip
-from clip import Clip
+from clip import Clip, ClipStatus
 
 
 class ClipTriggeringMode(definitions.PyshaMode):
@@ -59,19 +59,32 @@ class ClipTriggeringMode(definitions.PyshaMode):
             track = self.app.session.get_track_by_idx(track_num)
             for clip_num in range(0, len(track.clips)):
                 clip = self.app.session.get_clip_by_idx(track_num, clip_num)
-                clip_state = clip.get_status()
-                if clip_state.play_status in (ClipStates.CLIP_STATUS_PLAYING, ClipStates.CLIP_STATUS_CUED_TO_STOP):
-                    clip_length = clip_state.clip_length
-                    playhead_position = clip.playhead_position_in_beats
-                    current_track_playing_clips_info.append(
-                        (clip_num, clip_length, playhead_position, clip)
+                if clip is None:
+                    clip_state = ClipStatus(
+                        play_status = ClipStates.CLIP_STATUS_STOPPED,
+                        record_status = ClipStates.CLIP_STATUS_NO_RECORDING,
+                        empty_status = ClipStates.CLIP_STATUS_IS_EMPTY,
+                        clip_length = ClipStates.CLIP_STATUS_IS_EMPTY,
+                        quantization_step = 0.0
                     )
-                if clip_state.play_status == ClipStates.CLIP_STATUS_CUED_TO_PLAY:
-                    clip_length = clip_state.clip_length
-                    playhead_position = clip.playhead_position_in_beats
-                    current_track_will_play_clips_info.append(
-                        (clip_num, clip_length, playhead_position, clip)
-                    )
+                else:
+                    clip_state = clip.get_status()
+                
+                if clip_state.empty_status == ClipStates.CLIP_STATUS_IS_EMPTY:
+                    continue
+                else:
+                    if clip_state.play_status in (ClipStates.CLIP_STATUS_PLAYING, ClipStates.CLIP_STATUS_CUED_TO_STOP):
+                        clip_length = clip_state.clip_length
+                        playhead_position = clip.playhead_position_in_beats
+                        current_track_playing_clips_info.append(
+                            (clip_num, clip_length, playhead_position, clip)
+                        )
+                    if clip_state.play_status == ClipStates.CLIP_STATUS_CUED_TO_PLAY:
+                        clip_length = clip_state.clip_length
+                        playhead_position = clip.playhead_position_in_beats
+                        current_track_will_play_clips_info.append(
+                            (clip_num, clip_length, playhead_position, clip)
+                        )
             if current_track_playing_clips_info:
                 if track_num not in playing_clips_info:
                     playing_clips_info[track_num] = {}
@@ -193,26 +206,28 @@ class ClipTriggeringMode(definitions.PyshaMode):
     def update_pads(self):
         color_matrix = []
         animation_matrix = []
-        for i in range(0, 8):
+        for c in range(0, 8): # c represents the clip
             row_colors = []
             row_animation = []
-            for j in range(0, 8):
+            for t in range(0, 8): # t represents the track
                 # Get clip more safely - check if track and clip exist first
                 clip = None
                 try:
-                    track = self.app.session.get_track_by_idx(j)
-                    if track is not None and i < len(track.clips):
-                        clip = track.clips[i]
+                    track = self.app.session.get_track_by_idx(t)
+                    if track is not None:
+                        # Use get_clip_by_idx which properly handles the sparse nature
+                        clip = self.app.session.get_clip_by_idx(t, c)
                 except Exception:
                     # If any error occurs, clip remains None
                     pass
 
+                # Only get status if clip is not None
                 state = clip.get_status() if clip is not None else None
 
-                track_color = self.app.track_selection_mode.get_track_color(j)
+                track_color = self.app.track_selection_mode.get_track_color(t)
                 cell_animation = 0
 
-                if state is None or state.empty_status == ClipStates.CLIP_STATUS_IS_EMPTY:
+                if clip is None or state is None or state.empty_status == ClipStates.CLIP_STATUS_IS_EMPTY:
                     # Is empty
                     cell_color = definitions.BLACK
                 else:
