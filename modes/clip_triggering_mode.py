@@ -389,10 +389,8 @@ class ClipTriggeringMode(definitions.PyshaMode):
             # Get the clip (which should now exist)
             clip = self.app.session.get_clip_by_idx(track_num, clip_num)
             if clip is None:
-                print(f"DEBUG: Creating new clip at position {len(track.clips)}")
                 new_clip = Clip(parent=track)
                 track.add_clip(new_clip, clip_num)
-                print(f"DEBUG: Clip created, track now has {len(track.clips)} clips")
                 clip = new_clip
 
             try:

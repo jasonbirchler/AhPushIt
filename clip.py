@@ -1,8 +1,9 @@
-import json
-from typing import TYPE_CHECKING, List, NamedTuple
+from typing import TYPE_CHECKING, NamedTuple
+import math
 
 import isobar as iso
 
+import definitions
 from base_class import BaseClass
 from definitions import ClipStates
 
@@ -18,7 +19,12 @@ class ClipStatus(NamedTuple):
 
 class Clip(BaseClass):
     bpm_multiplier: float
-    clip_length_in_beats: float
+    clip_length_in_beats: float  # assuming 4/4, 1 bar = 4 beats
+    beats_per_bar: int
+    step_divisions: int  # determines what length note each pad represents
+    steps: int
+    pages: int
+    current_page: int
     clip_status: ClipStatus
     current_quantization_step: float
     name: str = None
@@ -50,14 +56,19 @@ class Clip(BaseClass):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        # clip playback properties
+        # default clip properties
         self.playing = False
         self.recording = False
         self.will_play_at = -1.0
         self.will_stop_at = -1.0
         self.will_start_recording_at = -1.0
         self.will_stop_recording_at = -1.0
-        self.clip_length_in_beats = 4.0 # default 1bar = 4beats
+        self._clip_length_in_beats = 4.0
+        self.beats_per_bar = 4
+        self._step_divisions = 16  # 1/16 notes
+        self._steps = int((self._clip_length_in_beats/self.beats_per_bar) * self._step_divisions)
+        self._pages = self._steps / definitions.GRID_WIDTH
+        self._current_page = 0
         self.current_quantization_step = 0.0
         self.playhead_position_in_beats = 0.0
         self.bpm_multiplier = 1.0
@@ -66,9 +77,9 @@ class Clip(BaseClass):
         self.clip_status = self.get_status()
 
         # clip sequence properties
-        self.notes = []
-        self.durations = None
-        self.amplitudes = None
+        self.notes = [None] * self.steps
+        self.durations = [None] * self.steps
+        self.amplitudes = [None] * self.steps
 
     def get_note_at_position(self, position: int):
         """Get note at specific position with bounds checking"""
@@ -79,9 +90,6 @@ class Clip(BaseClass):
 
     def get_duration_at_position(self, position: int):
         """Get duration at specific position with bounds checking"""
-        # if it's not a list just return the float
-        if isinstance(self.durations, float):
-            return self.durations
         if 0 <= position < len(self.durations):
             return self.durations[position]
         else:
@@ -89,9 +97,6 @@ class Clip(BaseClass):
 
     def get_amplitude_at_position(self, position: int):
         """Get amplitude at specific position with bounds checking"""
-        # if it's not a list just return the float
-        if isinstance(self.amplitudes, float):
-            return self.amplitudes
         if 0 <= position < len(self.amplitudes):
             return self.amplitudes[position]
         else:
@@ -218,20 +223,76 @@ class Clip(BaseClass):
         self.clip_status = self.get_status()
 
     def clear(self):
-        self.notes = iso.PSequence([])
-        self.durations = iso.PSequence([])
-        self.amplitudes = iso.PSequence([])
+        self.notes = [None] * self.steps
+        self.durations = [None] * self.steps
+        self.amplitudes = [None] * self.steps
 
     def double(self):
-        self.notes = iso.PSequence(list(self.notes) + list(self.notes))
-        self.durations = iso.PSequence(list(self.durations) + list(self.durations))
-        self.amplitudes = iso.PSequence(list(self.amplitudes) + list(self.amplitudes))
+        self.notes = list(self.notes) + list(self.notes)
+        self.durations = list(self.durations) + list(self.durations)
+        self.amplitudes = list(self.amplitudes) + list(self.amplitudes)
 
     def set_length(self, new_length):
         self.clip_length_in_beats = new_length
 
     def set_bpm_multiplier(self, new_bpm_multiplier):
         self.bpm_multiplier = new_bpm_multiplier
+
+    @property
+    def clip_length_in_beats(self) -> float:
+        """Get the clip length in beats"""
+        return self._clip_length_in_beats
+
+    @clip_length_in_beats.setter
+    def clip_length_in_beats(self, value: float) -> None:
+        """Set the clip length in beats and update dependent properties"""
+        self._clip_length_in_beats = value
+        self.steps = int((self._clip_length_in_beats/self.beats_per_bar) * self.step_divisions)
+        self.pages = self.steps / definitions.GRID_WIDTH
+
+    @property
+    def step_divisions(self) -> int:
+        """Get the step divisions (determines what length note each pad represents)"""
+        return self._step_divisions
+
+    @step_divisions.setter
+    def step_divisions(self, value: int) -> None:
+        """Set the step divisions and update dependent properties"""
+        self._step_divisions = value
+        self.steps = int((self.clip_length_in_beats/self.beats_per_bar) * self._step_divisions)
+        self.pages = self.steps / definitions.GRID_WIDTH
+
+    @property
+    def steps(self) -> int:
+        """Get the total number of steps in the clip"""
+        return self._steps
+
+    @steps.setter
+    def steps(self, value: int) -> None:
+        """Set the total number of steps and update dependent properties"""
+        self._steps = value
+        self.pages = self._steps / definitions.GRID_WIDTH
+
+    @property
+    def pages(self) -> float:
+        """Get the total number of pages required to display the clip"""
+        return self._pages
+
+    @pages.setter
+    def pages(self, value: float) -> None:
+        """Set the total number of pages
+           Always round up to the next integer because the Push can't have a fraction of a grid"""
+        self._pages = math.ceil(value)
+
+    @property
+    def current_page(self) -> int:
+        """Get the page number of the currently rendered page"""
+        return self._current_page
+
+    @current_page.setter
+    def current_page(self, value: int) -> None:
+        """Set the page number of the currently rendered page"""
+        self._current_page = value
 
     def set_note_sequence(self, new_sequence):
         """Set the entire note sequence from a list"""
