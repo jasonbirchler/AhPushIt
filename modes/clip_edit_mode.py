@@ -23,10 +23,11 @@ class ClipEditMode(definitions.PyshaMode):
         push2_python.constants.BUTTON_UPPER_ROW_6,
         push2_python.constants.BUTTON_UPPER_ROW_7,
         push2_python.constants.BUTTON_UPPER_ROW_8,
-        push2_python.constants.BUTTON_UP,
-        push2_python.constants.BUTTON_DOWN,
-        push2_python.constants.BUTTON_LEFT,
-        push2_python.constants.BUTTON_RIGHT,
+        push2_python.constants.BUTTON_OCTAVE_UP,
+        push2_python.constants.BUTTON_OCTAVE_DOWN,
+        push2_python.constants.BUTTON_PAGE_LEFT,
+        push2_python.constants.BUTTON_PAGE_RIGHT,
+        push2_python.constants.BUTTON_SHIFT,
         push2_python.constants.BUTTON_DOUBLE_LOOP,
         push2_python.constants.BUTTON_QUANTIZE,
         push2_python.constants.BUTTON_DELETE,
@@ -47,12 +48,7 @@ class ClipEditMode(definitions.PyshaMode):
     generator_algorithms = []
     selected_generator_algorithm = 0
 
-    pads_min_note_offset = 64
-    pads_pad_beats_offset = 0.0 # Offset for notes to be shown
-    pads_pad_beat_scale = 0.5 # Default, 1 pad is one half of a beat, there fore 8 pads are 1 bar (assuming 4/4)
-    pads_pad_beat_scales = [0.125 + 0.125 * i for i in range(0, 32)]
-
-    last_beats_to_pad = -1
+    default_note_duration = 0.25  # Default duration in beats (1/16 note)
 
     '''
     MODE_CLIP
@@ -107,196 +103,46 @@ class ClipEditMode(definitions.PyshaMode):
     def generator_algorithm(self):
         return self.generator_algorithms[self.selected_generator_algorithm]
 
-    @property
-    def start_displayed_time(self):
-        return self.pads_pad_beats_offset
 
-    @property
-    def end_displayed_time(self):
-        return self.pads_pad_beats_offset + self.pads_pad_beat_scale * 8
 
-    def adjust_pads_to_sequence(self):
-        print(f"DEBUG: adjust_pads_to_sequence() called")
-        try:
-            # Auto adjust pads_min_note_offset, etc
-            if self.clip:
-                notes_length = len(self.clip.notes)
-                print(f"DEBUG: Clip found, notes length: {notes_length}")
-
-                # Safety check for unreasonable note counts
-                if notes_length > 1000:  # More than 1000 notes is suspicious
-                    print(f"WARNING: Clip has {notes_length} notes, which is unusually large. Using default settings.")
-                    self.pads_min_note_offset = 64
-                elif notes_length > 0:
-                    # For reasonable note counts, try to find the minimum note
-                    print(f"DEBUG: Finding min note from {notes_length} notes...")
-                    notes_list = list(self.clip.notes)
-                    print(f"DEBUG: Converted to list with {len(notes_list)} notes")
-                    self.pads_min_note_offset = min(notes_list)
-                    print(f"DEBUG: Set pads_min_note_offset to {self.pads_min_note_offset}")
-                else:
-                    print(f"DEBUG: No notes in clip, using default offset")
-                    self.pads_min_note_offset = 64
-            else:
-                print(f"DEBUG: No clip selected, using default offset")
-                self.pads_min_note_offset = 64
-
-            self.pads_pad_beats_offset = 0.0
-            self.pads_pad_beat_scale = 0.5
-            print(f"DEBUG: adjust_pads_to_sequence() completed successfully")
-
-        except Exception as e:
-            print(f"ERROR in adjust_pads_to_sequence: {e}")
-            import traceback
-            traceback.print_exc()
-            # Set safe defaults if anything goes wrong
-            self.pads_min_note_offset = 64
-            self.pads_pad_beats_offset = 0.0
-            self.pads_pad_beat_scale = 0.5
+    def reset_window_to_clip(self):
+        """Reset window position to show the beginning of the clip"""
+        if self.clip:
+            self.clip.window_step_offset = 0
+            self.clip.window_note_offset = 60  # Middle C
 
     def set_clip_mode(self, new_clip_idx):
-        try:
-            self.selected_event_position = None
-            self.selected_clip_idx = new_clip_idx
-
-            self.adjust_pads_to_sequence()
-            print(f"DEBUG: adjust_pads_to_sequence() completed")
-
-            self.mode = self.MODE_CLIP
-            print(f"DEBUG: mode set to MODE_CLIP")
-
-        except Exception as e:
-            print(f"ERROR in set_clip_mode: {e}")
-            import traceback
-            traceback.print_exc()
+        self.selected_event_position = None
+        self.selected_clip_idx = new_clip_idx
+        self.reset_window_to_clip()
+        self.mode = self.MODE_CLIP
 
     def set_event_mode(self, position):
         self.selected_event_position = position
         self.mode = self.MODE_EVENT
 
-    def pad_ij_to_note_beat(self, pad_ij):
-        note = self.pads_min_note_offset + (7 - pad_ij[0])
-        beat = pad_ij[1] * self.pads_pad_beat_scale + self.pads_pad_beats_offset
-        print(f"DEBUG: pad_ij_to_note_beat - pad_ij={pad_ij} -> note={note}, beat={beat}")
-        return note, beat
-
-    def notes_in_pad(self, pad_ij):
-        print(f"DEBUG: notes_in_pad called with pad_ij={pad_ij}")
-        if self.clip is None:
-            print(f"DEBUG: notes_in_pad - no clip selected")
-            return []
-
-        midi_note, start_time = self.pad_ij_to_note_beat(pad_ij)
-        end_time = start_time + self.pads_pad_beat_scale
-
-        print(f"DEBUG: notes_in_pad - midi_note={midi_note}, start_time={start_time}, end_time={end_time}")
-        print(f"DEBUG: notes_in_pad - clip.notes length={len(self.clip.notes)}")
-
-        # Find positions where notes match and fall within the time range
-        positions = []
-        for pos, note in enumerate(self.clip.notes):
-            if note == midi_note:
-                # Simplified timing - assume each position represents a beat
-                note_time = pos * self.pads_pad_beat_scale  # This is a simplified approach
-                if start_time <= note_time <= end_time:
-                    positions.append(pos)
-                    print(f"DEBUG: Found note at position {pos}, time={note_time}")
-
-        print(f"DEBUG: notes_in_pad - found {len(positions)} notes: {positions}")
-        return positions
-
-    def _get_actual_playhead_position(self):
-        """Calculate the actual playhead position within the clip based on global timeline"""
-        if not self.clip or not self.clip.playing:
-            return 0.0
-
-        # Get current global timeline position
-        global_position = self.app.global_timeline.current_time if hasattr(self.app, 'global_timeline') else 0.0
-
-        # Calculate playhead position within clip (assuming clip started at some point)
-        # For now, use modulo to wrap around within clip length
-        if self.clip.clip_length_in_beats > 0:
-            playhead_position = global_position % self.clip.clip_length_in_beats
-        else:
-            playhead_position = 0.0
-
-        return playhead_position
-
-    def beats_to_pad(self, beats):
-        result = int(math.floor(8 * (beats - self.start_displayed_time)/(self.end_displayed_time - self.start_displayed_time)))
-        return result
-
-    def notes_to_pads(self):
+    def render_pads(self):
+        """Render the current window of notes to pad colors"""
         if self.clip is None:
             return [], []
 
-        notes = []
-
-        try:
-            # The length of the notes list is how many times we need
-            # to iterate to make sure we account for all notes
-            total_number_of_notes = len(self.clip.notes)
-
-            for pos in range(total_number_of_notes):
-                if self.pads_min_note_offset <= self.clip.notes[pos] < self.pads_min_note_offset + 8:
-                    # Calculate timing based on position
-                    start_timestamp = pos * self.pads_pad_beat_scale
-                    duration = self.clip.durations[pos] if pos < len(self.clip.durations) else 0.5
-                    end_timestamp = start_timestamp + duration
-
-                    if start_timestamp < self.end_displayed_time or end_timestamp > self.start_displayed_time:
-                        notes.append({
-                            'position': pos,
-                            'midi_note': self.clip.notes[pos],
-                            'rendered_start_timestamp': start_timestamp,
-                            'rendered_end_timestamp': end_timestamp
-                        })
-        except Exception as e:
-            print(f"ERROR in notes_to_pads loop: {e}")
-            traceback.print_exc()
-
-        notes_to_display = []
-        for event in notes:
-            duration = event['rendered_end_timestamp'] - event['rendered_start_timestamp']
-            if duration < 0.0 and self.clip:
-                duration = duration + self.clip.clip_length_in_beats
-            notes_to_display.append({
-                'pad_start_ij': (7 - (event['midi_note'] - self.pads_min_note_offset),
-                                int(math.floor((event['rendered_start_timestamp'] - self.pads_pad_beats_offset)/(self.pads_pad_beat_scale)))),
-                'duration_n_pads': int(math.ceil((duration) / self.pads_pad_beat_scale)),
-                'is_selected_in_note_edit_mode': event['position'] == self.selected_event_position
-            })
         track_idx = self.app.session.tracks.index(self.clip.track)
         track_color = self.app.track_selection_mode.get_track_color(track_idx)
-        color_matrix = []
-        animation_matrix = []
-        for i in range(0, 8):
-            row_colors = []
-            row_animation = []
-            for j in range(0, 8):
-                row_colors.append(definitions.BLACK)
-                row_animation.append(push2_python.constants.ANIMATION_STATIC)
-            color_matrix.append(row_colors)
-            animation_matrix.append(row_animation)
 
-        # Draw extra pads for notes (not the first note pad, these are drawn after to be always on top)
-        for note_to_display in notes_to_display:
-            pad_ij = note_to_display['pad_start_ij']
-            for i in range(note_to_display['duration_n_pads']):
-                if 0 <= pad_ij[0] <= 8 and 0 <= (pad_ij[1] + i) <= 7:
-                    if i != 0:
-                        if not note_to_display['is_selected_in_note_edit_mode']:
-                            color_matrix[pad_ij[0]][pad_ij[1] + i] = track_color + '_darker1'
-                        else:
-                            color_matrix[pad_ij[0]][pad_ij[1] + i] = definitions.GRAY_DARK
-        # Draw first-pads for notes (this will allow to always draw full color first-pad note for overlapping notes)
-        for note_to_display in notes_to_display:
-            pad_ij = note_to_display['pad_start_ij']
-            if 0 <= pad_ij[0] <= 8 and 0 <= pad_ij[1] <= 7:
-                color_matrix[pad_ij[0]][pad_ij[1]] = track_color
-                if note_to_display['is_selected_in_note_edit_mode']:
-                    animation_matrix[pad_ij[0]][pad_ij[1]] = definitions.DEFAULT_ANIMATION
-                    color_matrix[pad_ij[0]][pad_ij[1]] = definitions.WHITE
+        # Initialize color and animation matrices
+        color_matrix = [[definitions.BLACK for _ in range(8)] for _ in range(8)]
+        animation_matrix = [[push2_python.constants.ANIMATION_STATIC for _ in range(8)] for _ in range(8)]
+
+        # Get notes in current window
+        notes_to_render = self.clip.get_notes_for_rendering()
+
+        # Light up pads for each note
+        for note_data in notes_to_render:
+            pad_i = note_data['pad_i']
+            pad_j = note_data['pad_j']
+
+            if 0 <= pad_i < 8 and 0 <= pad_j < 8:
+                color_matrix[pad_i][pad_j] = track_color
 
         return color_matrix, animation_matrix
 
@@ -315,12 +161,8 @@ class ClipEditMode(definitions.PyshaMode):
         self.clip.quantize(next_quantization_step)
 
     def set_new_generated_sequence(self):
-        random_sequence, new_clip_length = self.generator_algorithm.generate_sequence()
-        self.clip.set_note_sequence({
-                'clipLength': new_clip_length,
-                'sequenceEvents': random_sequence,
-        })
-        self.adjust_pads_to_sequence()
+        # Generator functionality temporarily disabled during refactor
+        pass
 
     def update_display(self, ctx, w, h):
         # Clear the entire display first
@@ -362,9 +204,9 @@ class ClipEditMode(definitions.PyshaMode):
                     show_title(ctx, part_w * 3, h, 'BPM MULTIPLIER')
                     show_value(ctx, part_w * 3, h, '{:.3f}'.format(self.clip.bpm_multiplier))
 
-                    # Slot 5, view scale
-                    show_title(ctx, part_w * 4, h, 'VIEW SCALE')
-                    show_value(ctx, part_w * 4, h, '{:.3f}'.format(self.pads_pad_beat_scale))
+                    # Slot 5, window position
+                    show_title(ctx, part_w * 4, h, 'WINDOW')
+                    show_value(ctx, part_w * 4, h, f'S:{self.clip.window_step_offset} N:{self.clip.window_note_offset}')
 
             elif self.mode == self.MODE_EVENT:
                 if self.event_data is not None:
@@ -400,23 +242,7 @@ class ClipEditMode(definitions.PyshaMode):
                         label = '{}'.format(parameter['value'])
                     show_value(ctx, part_w * (i + 1), h, label)
 
-            # For all modes, slots 6-8 show clip preview
-            if self.mode != self.MODE_GENERATOR or (self.mode == self.MODE_GENERATOR and len(self.generator_algorithm.get_algorithm_parameters()) <= 3):
-                if self.clip and self.clip.clip_length_in_beats > 0.0:
-                    highlight_notes_beat_frame = (
-                        self.pads_min_note_offset,
-                        self.pads_min_note_offset + 8,
-                        self.pads_pad_beats_offset,
-                        self.pads_pad_beats_offset + 8 * self.pads_pad_beat_scale
-                    )
-                    draw_clip(ctx, self.clip, frame=(5.0/8.0, 0.0, 3.0/8.0, 0.87), highlight_notes_beat_frame=highlight_notes_beat_frame, event_color=track_color + '_darker1', highlight_color=track_color)
 
-            # Calculate actual playhead position based on global timeline
-            actual_playhead_position = self._get_actual_playhead_position()
-            beats_to_pad = self.beats_to_pad(actual_playhead_position)
-            if 0 <= beats_to_pad <= 7 and beats_to_pad is not self.last_beats_to_pad:
-                # If clip is playing, trigger re-drawing pads when playhead position advances enough
-                self.update_pads()
 
     def activate(self):
         print("DEBUG: ClipEditMode.activate() called")
@@ -505,27 +331,47 @@ class ClipEditMode(definitions.PyshaMode):
             self.push.buttons.set_button_color(push2_python.constants.BUTTON_CLIP, definitions.WHITE)
 
         if self.mode == self.MODE_CLIP or self.mode == self.MODE_EVENT:
-            self.push.buttons.set_button_color(push2_python.constants.BUTTON_UP, definitions.WHITE)
-            self.push.buttons.set_button_color(push2_python.constants.BUTTON_DOWN, definitions.WHITE)
-            self.push.buttons.set_button_color(push2_python.constants.BUTTON_LEFT, definitions.WHITE)
-            self.push.buttons.set_button_color(push2_python.constants.BUTTON_RIGHT, definitions.WHITE)
+            self.push.buttons.set_button_color(push2_python.constants.BUTTON_OCTAVE_UP, definitions.WHITE)
+            self.push.buttons.set_button_color(push2_python.constants.BUTTON_OCTAVE_DOWN, definitions.WHITE)
+            self.push.buttons.set_button_color(push2_python.constants.BUTTON_PAGE_LEFT, definitions.WHITE)
+            self.push.buttons.set_button_color(push2_python.constants.BUTTON_PAGE_RIGHT, definitions.WHITE)
+            self.push.buttons.set_button_color(push2_python.constants.BUTTON_SHIFT, definitions.WHITE)
 
     def update_pads(self):
         if self.clip is None:
             return
-
-        color_matrix, animation_matrix = self.notes_to_pads()
-        if self.clip.playing:
-            # If clip is playing, draw playhead using actual playhead position
-            actual_playhead_position = self._get_actual_playhead_position()
-            beats_to_pad = self.beats_to_pad(actual_playhead_position)
-            if 0 <= beats_to_pad <= 7:
-                self.last_beats_to_pad = beats_to_pad
-                for i in range(0, 8):
-                    color_matrix[i][beats_to_pad] = definitions.WHITE
+        color_matrix, animation_matrix = self.render_pads()
         self.push.pads.set_pads_color(color_matrix, animation_matrix)
 
     def on_button_pressed(self, button_name, shift=False, select=False, long_press=False, double_press=False):
+        # Window navigation for all modes - handle first
+        if self.clip:
+            if button_name == push2_python.constants.BUTTON_OCTAVE_UP:
+                self.clip.window_note_offset += 1
+                if self.clip.window_note_offset > 120:
+                    self.clip.window_note_offset = 120
+                self.update_pads()
+                return True
+            elif button_name == push2_python.constants.BUTTON_OCTAVE_DOWN:
+                self.clip.window_note_offset -= 1
+                if self.clip.window_note_offset < 0:
+                    self.clip.window_note_offset = 0
+                self.update_pads()
+                return True
+            elif button_name == push2_python.constants.BUTTON_PAGE_LEFT:
+                self.clip.window_step_offset -= 1
+                if self.clip.window_step_offset < 0:
+                    self.clip.window_step_offset = 0
+                self.update_pads()
+                return True
+            elif button_name == push2_python.constants.BUTTON_PAGE_RIGHT:
+                self.clip.window_step_offset += 1
+                max_offset = max(0, self.clip.steps - 8)
+                if self.clip.window_step_offset > max_offset:
+                    self.clip.window_step_offset = max_offset
+                self.update_pads()
+                return True
+
         if self.mode == self.MODE_CLIP:
             if button_name == push2_python.constants.BUTTON_DOUBLE_LOOP:
                 self.clip.double()
@@ -559,31 +405,6 @@ class ClipEditMode(definitions.PyshaMode):
                 self.set_clip_mode(self.selected_clip_idx)
                 return True
 
-        # For all modes
-        if button_name == push2_python.constants.BUTTON_UP:
-            self.pads_min_note_offset += (7 if not shift else 1)
-            if self.pads_min_note_offset > 128 - 8:
-                self.pads_min_note_offset = 128 - 8
-            self.update_pads()
-            return True
-        elif button_name == push2_python.constants.BUTTON_DOWN:
-            self.pads_min_note_offset -= (7 if not shift else 1)
-            if self.pads_min_note_offset < 0:
-                self.pads_min_note_offset = 0
-            self.update_pads()
-            return True
-        elif button_name == push2_python.constants.BUTTON_LEFT:
-            self.pads_pad_beats_offset -= self.pads_pad_beat_scale
-            if self.pads_pad_beats_offset < 0.0:
-                self.pads_pad_beats_offset = 0.0
-            self.update_pads()
-            return True
-        elif button_name == push2_python.constants.BUTTON_RIGHT:
-            self.pads_pad_beats_offset += self.pads_pad_beat_scale
-            # TODO: don't allow offset that would render clip invisible
-            self.update_pads()
-            return True
-
     def on_pad_pressed(
         self,
         pad_n,
@@ -594,70 +415,26 @@ class ClipEditMode(definitions.PyshaMode):
         long_press=False,
         double_press=False ):
 
-        # Debug information requested by user
-        print(f"=== CLIP EDIT MODE PAD PRESS DEBUG ===")
-        print(f"Track object: {self.clip.track if self.clip else None}")
-        print(f"Clip object: {self.clip}")
-        print(f"Pad index (pad_ij): {pad_ij}")
-        print(f"velocity={velocity}")
-        print(f"long_press={long_press}")
-
         if self.clip is None:
-            print(f"DEBUG: on_pad_pressed - no clip selected")
             return True
 
-        notes_in_pad = self.notes_in_pad(pad_ij)
-        print(f"DEBUG: on_pad_pressed - notes_in_pad={notes_in_pad}")
-        
-        # Check if notes are assigned on press/release
-        has_notes_on_press = len(notes_in_pad) > 0
-        print(f"Whether a note is assigned on_press: {has_notes_on_press}")
-        
-        if notes_in_pad:
-            if not long_press:
-                if self.mode != self.MODE_EVENT:
-                    # Remove all notes using positions
-                    print(f"DEBUG: Removing {len(notes_in_pad)} notes")
-                    for position in notes_in_pad:
-                        print(f"DEBUG: Removing note at position {position}")
-                        self.clip.remove_sequence_event(position)
-                    print(f"DEBUG: Calling update_pads() after note removal")
-                    self.update_pads()
-                    
-                    # Notes are being removed on press
-                    print(f"Whether a note is assigned on_release: True (notes removed)")
-                else:
-                    # Exit event edit mode
-                    print(f"DEBUG: Exiting event edit mode")
-                    self.set_clip_mode(self.selected_clip_idx)
-                    print(f"Whether a note is assigned on_release: True (exiting event mode)")
-            else:
-                if self.mode == self.MODE_EVENT:
-                    self.set_clip_mode(self.selected_clip_idx)
-                # Enter event edit mode using position
-                print(f"DEBUG: Entering event edit mode for position {notes_in_pad[0]}")
-                self.set_event_mode(notes_in_pad[0])
-                print(f"Whether a note is assigned on_release: True (entering event mode)")
+        step_idx, midi_note = self.clip.pad_to_step_and_note(pad_ij[0], pad_ij[1])
+
+        # Check if step is within clip bounds
+        if step_idx >= self.clip.steps:
+            return True
+
+        # Check if note exists at this step
+        has_note = self.clip.has_note_at_step(step_idx, midi_note)
+
+        if has_note:
+            # Remove the note
+            self.clip.remove_note_at_step(step_idx, midi_note)
         else:
-            if self.mode != self.MODE_EVENT:
-                # Create a new note
-                midi_note, timestamp = self.pad_ij_to_note_beat(pad_ij)
-                print(f"DEBUG: Creating new note - midi_note={midi_note}, timestamp={timestamp}")
-                print(f"DEBUG: Current clip length: {self.clip.clip_length_in_beats}")
-                self.clip.add_sequence_note_event(midi_note, velocity / 127, timestamp, self.pads_pad_beat_scale)
-                if timestamp + self.pads_pad_beat_scale > self.clip.clip_length_in_beats:
-                    # If adding a note beyond current clip length
-                    new_length = math.ceil(timestamp + self.pads_pad_beat_scale)
-                    print(f"DEBUG: Extending clip length from {self.clip.clip_length_in_beats} to {new_length}")
-                    self.clip.set_length(new_length)
-                self.update_pads()
-                
-                # Note is being assigned on press (creation)
-                print(f"Whether a note is assigned on_release: False")
-            else:
-                # Exit event edit mode
-                self.set_clip_mode(self.selected_clip_idx)
-                print(f"Whether a note is assigned on_release: True (exiting event mode, no notes in pad)")
+            # Add the note
+            self.clip.add_note_at_step(step_idx, midi_note, self.default_note_duration, velocity)
+
+        self.update_pads()
 
         return True
 
@@ -705,45 +482,11 @@ class ClipEditMode(definitions.PyshaMode):
                 self.update_pads()
                 return True  # Don't trigger this encoder moving in any other mode
 
-            elif encoder_name == push2_python.constants.ENCODER_TRACK5_ENCODER:
-                # Set pad beat zoom
-                current_pad_scale = self.pads_pad_beat_scales.index(self.pads_pad_beat_scale)
-                next_pad_scale = current_pad_scale + increment
-                if next_pad_scale < 0:
-                    next_pad_scale = 0
-                elif next_pad_scale >= len(self.pads_pad_beat_scales) - 1:
-                    next_pad_scale = len(self.pads_pad_beat_scales) - 1
-                self.pads_pad_beat_scale = self.pads_pad_beat_scales[next_pad_scale]
-                self.update_pads()
-                return True  # Don't trigger this encoder moving in any other mode
+
 
         elif self.mode == self.MODE_EVENT:
-            if self.event_data is not None:
-                position = self.event_data['position']
-                if encoder_name == push2_python.constants.ENCODER_TRACK1_ENCODER:
-                    # Edit note value
-                    new_note = self.event_data['note'] + increment
-                    self.clip.set_note_at_position(position, new_note)
-                    return True  # Don't trigger this encoder moving in any other mode
-                elif encoder_name == push2_python.constants.ENCODER_TRACK3_ENCODER:
-                    # Edit duration
-                    if not shift:
-                        new_duration = round(100.0 * max(0.1, self.event_data['duration'] + increment/10.0))/100.0
-                    else:
-                        new_duration = max(0.1, self.event_data['duration'] + increment/10)
-                    self.clip.set_duration_at_position(position, new_duration)
-                    return True  # Don't trigger this encoder moving in any other mode
-                elif encoder_name == push2_python.constants.ENCODER_TRACK2_ENCODER:
-                    # Edit amplitude (velocity)
-                    new_amplitude = self.event_data['amplitude'] + increment
-                    self.clip.set_amplitude_at_position(position, new_amplitude)
-                    return True  # Don't trigger this encoder moving in any other mode
-                elif encoder_name == push2_python.constants.ENCODER_TRACK4_ENCODER:
-                    # Encoder 4 not used in simplified mode
-                    pass
-                elif encoder_name == push2_python.constants.ENCODER_TRACK5_ENCODER:
-                    # Encoder 5 not used in simplified mode
-                    pass
+            # Event mode removed for now - can be added back later if needed
+            pass
 
         elif self.mode == self.MODE_GENERATOR:
             if encoder_name == push2_python.constants.ENCODER_TRACK1_ENCODER:
