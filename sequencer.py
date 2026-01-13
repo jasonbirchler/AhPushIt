@@ -54,11 +54,17 @@ class Sequencer():
                     step_durations.append(float(clip.durations[step_idx, voice]))
                     step_amplitudes.append(int(clip.amplitudes[step_idx, voice]))
 
-            # Add step data (tuple for chords, single value otherwise, None if empty)
+            # Format for isobar: tuples for chords, single values for single notes
+            # Duration is always a single value (all notes in a chord have same duration)
             if step_notes:
-                notes_list.append(tuple(step_notes) if len(step_notes) > 1 else step_notes[0])
-                durations_list.append(tuple(step_durations) if len(step_durations) > 1 else step_durations[0])
-                amplitudes_list.append(tuple(step_amplitudes) if len(step_amplitudes) > 1 else step_amplitudes[0])
+                if len(step_notes) > 1:
+                    notes_list.append(tuple(step_notes))
+                    durations_list.append(step_durations[0])  # Use first duration for all notes
+                    amplitudes_list.append(tuple(step_amplitudes))
+                else:
+                    notes_list.append(step_notes[0])
+                    durations_list.append(step_durations[0])
+                    amplitudes_list.append(step_amplitudes[0])
             else:
                 notes_list.append(None)
                 durations_list.append(0.25)
