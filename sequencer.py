@@ -35,17 +35,40 @@ class Sequencer():
             return
 
         device = self.app.session.get_output_device(clip.track.output_device_name)
-        # if duration or amplitude is a list, convert to PSequence
-        if isinstance(clip.durations, list):
-            clip.durations = iso.PSequence(clip.durations)
-        if isinstance(clip.amplitudes, list):
-            clip.amplitudes = iso.PSequence(clip.amplitudes)
+
+        # Convert polyphonic numpy arrays to lists for isobar
+        notes_list = []
+        durations_list = []
+        amplitudes_list = []
+
+        for step_idx in range(clip.steps):
+            step_notes = []
+            step_durations = []
+            step_amplitudes = []
+
+            # Collect all non-None notes at this step
+            for voice in range(clip.max_polyphony):
+                note = clip.notes[step_idx, voice]
+                if note is not None:
+                    step_notes.append(int(note))
+                    step_durations.append(float(clip.durations[step_idx, voice]))
+                    step_amplitudes.append(int(clip.amplitudes[step_idx, voice]))
+
+            # Add step data (tuple for chords, single value otherwise, None if empty)
+            if step_notes:
+                notes_list.append(tuple(step_notes) if len(step_notes) > 1 else step_notes[0])
+                durations_list.append(tuple(step_durations) if len(step_durations) > 1 else step_durations[0])
+                amplitudes_list.append(tuple(step_amplitudes) if len(step_amplitudes) > 1 else step_amplitudes[0])
+            else:
+                notes_list.append(None)
+                durations_list.append(0.25)
+                amplitudes_list.append(0)
 
         self.timeline.schedule(
             {
-                "note": iso.PSequence(clip.notes),
-                "duration": clip.durations,
-                "amplitude": clip.amplitudes
+                "note": iso.PSequence(notes_list),
+                "duration": iso.PSequence(durations_list),
+                "amplitude": iso.PSequence(amplitudes_list)
             },
             name=clip.name,
             quantize=self.start_on_next_bar(),
@@ -114,7 +137,7 @@ class Sequencer():
     def play(self):
         """ Start the timeline in the background """
         self.timeline.start()
-    
+
     def stop(self):
         """ Stop the timeline """
         self.timeline.stop()

@@ -362,5 +362,5 @@ class Clip(BaseClass):
     def _reschedule_if_playing(self):
         """Helper method to trigger reschedule if clip is playing"""
         if self.playing:
-            if self.app and hasattr(self.app, 'session'):
-                self.app.session.reschedule_clip(self.track, self)
+            if self.app and hasattr(self.app, 'seq'):
+                self.app.seq.schedule_clip(self)

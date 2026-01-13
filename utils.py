@@ -147,24 +147,29 @@ def draw_clip(ctx,
 
     try:
         if clip.notes is None:
-            clip.notes = []
-        if isinstance(clip.durations, float):
-            clip.durations = [clip.durations]
-        if clip.durations is None:
-            clip.durations = []
-        actual_max_pos = len(clip.notes)
+            return
 
-        for i in range(actual_max_pos):
-            rendered_notes.append({
-                'midi_note': clip.notes[i],
-                'rendered_start_timestamp': i * 0.5,  # Position-based timing
-                'rendered_end_timestamp': i * 0.5 + (clip.durations[i] if i < len(clip.durations) else 0.5),
-                'chance': 1.0  # Default chance
-            })
+        # Iterate through steps and collect all notes
+        for step_idx in range(clip.steps):
+            for voice in range(clip.max_polyphony):
+                note = clip.notes[step_idx, voice]
+                if note is not None:
+                    duration = clip.durations[step_idx, voice] if step_idx < clip.steps else 0.25
+                    # Calculate timing based on step position
+                    start_time = step_idx * (clip.clip_length_in_beats / clip.steps)
+                    end_time = start_time + duration
+
+                    rendered_notes.append({
+                        'midi_note': int(note),
+                        'rendered_start_timestamp': start_time,
+                        'rendered_end_timestamp': end_time,
+                        'chance': 1.0
+                    })
     except Exception as e:
         print(f"ERROR in draw_clip loop: {e}")
         import traceback
         traceback.print_exc()
+        return
     all_midinotes = [int(note['midi_note']) for note in rendered_notes]
     playhead_position_percentage = clip.playhead_position_in_beats/displaybeatslength
 
