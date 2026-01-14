@@ -190,7 +190,7 @@ class TrackSelectionMode(definitions.PyshaMode):
             show_text(ctx, i, h - height, device_short_name, height=height,
                     font_color=font_color, background_color=background_color)
 
-    def on_button_pressed(self, button_name, shift=False, select=False, long_press=False, double_press=False):
+    def on_button_pressed(self, button_name, long_press=False):
        if button_name in self.track_button_names:
             track_idx = self.track_button_names.index(button_name)
             track = self.app.session.get_track_by_idx(track_idx)
@@ -199,15 +199,4 @@ class TrackSelectionMode(definitions.PyshaMode):
                     # Toggle input monitoring
                     track.set_input_monitoring(not track.input_monitoring)
                 else:
-                    if not shift:
-                        # If button shift not pressed, select the track
-                        self.select_track_as_active(self.track_button_names.index(button_name))
-                    else:
-                        # If button shift pressed, send all notes off to that track
-                        try:
-                            track = self.app.session.tracks[track_idx]
-                            hardware_device = track.get_output_device()
-                            if hardware_device is not None:
-                                hardware_device.all_notes_off()
-                        except IndexError:
-                            pass
+                    self.select_track_as_active(self.track_button_names.index(button_name))

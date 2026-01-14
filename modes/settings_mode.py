@@ -473,7 +473,7 @@ class SettingsMode(definitions.PyshaMode):
         # Always return True because encoder should not be used in any other mode if this is active first
         return True
 
-    def on_button_pressed(self, button_name, shift=False, select=False, long_press=False, double_press=False):
+    def on_button_pressed(self, button_name, shift = False):
         if button_name == push2_python.constants.BUTTON_SETUP:
             self.setup_button_pressing_time = time.time()
             # If we're not in settings mode, activate it on press
@@ -486,7 +486,7 @@ class SettingsMode(definitions.PyshaMode):
                 self.app.pads_need_update = True
                 return True
 
-            elif button_name == push2_python.constants.BUTTON_UPPER_ROW_2:
+            if button_name == push2_python.constants.BUTTON_UPPER_ROW_2:
                 self.app.melodic_mode.use_poly_at = not self.app.melodic_mode.use_poly_at
                 if self.app.melodic_mode.use_poly_at:
                     self.app.push.pads.set_polyphonic_aftertouch()
@@ -503,9 +503,9 @@ class SettingsMode(definitions.PyshaMode):
                 # Deactivate settings mode by setting current page to last page and calling "rotate settings page" method from app
                 self.current_page = self.n_pages - 1
                 self.app.toggle_and_rotate_settings_mode()
-
                 return True
-            elif button_name == push2_python.constants.BUTTON_UPPER_ROW_2:
+
+            if button_name == push2_python.constants.BUTTON_UPPER_ROW_2:
                 self.app.session.load(str(self.current_preset_load_number))
                 self.app.add_display_notification("Loaded session from slot: {}".format(self.current_preset_load_number))
 
@@ -517,7 +517,7 @@ class SettingsMode(definitions.PyshaMode):
                 self.app.main_controls_mode.track_triggering_button_pressing_time = time.time()
 
                 return True
-            elif button_name == push2_python.constants.BUTTON_UPPER_ROW_3:
+            if button_name == push2_python.constants.BUTTON_UPPER_ROW_3:
                 self.app.on_midi_push_connection_established()
                 return True
 
@@ -527,7 +527,7 @@ class SettingsMode(definitions.PyshaMode):
                 self.app.save_current_settings_to_file()
                 return True
 
-            elif button_name == push2_python.constants.BUTTON_UPPER_ROW_4:
+            if button_name == push2_python.constants.BUTTON_UPPER_ROW_4:
                 # Run software update code
                 global is_running_sw_update
                 is_running_sw_update = "Starting"

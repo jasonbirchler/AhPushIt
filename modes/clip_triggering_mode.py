@@ -258,14 +258,7 @@ class ClipTriggeringMode(definitions.PyshaMode):
             animation_matrix.append(row_animation)
         self.push.pads.set_pads_color(color_matrix, animation_matrix)
 
-    def on_button_pressed(
-        self,
-        button_name,
-        shift=False,
-        select=False,
-        long_press=False,
-        double_press=False,
-    ):
+    def on_button_pressed(self, button_name):
         if button_name in self.scene_trigger_buttons:
             triggered_scene_row = self.scene_trigger_buttons.index(button_name)
             self.app.session.scene_play(triggered_scene_row)
@@ -273,14 +266,14 @@ class ClipTriggeringMode(definitions.PyshaMode):
             self.app.buttons_need_update = True
             return True
 
-        elif button_name == self.duplicate_button:
+        if button_name == self.duplicate_button:
             if self.selected_scene < self.num_scenes - 1:
                 # Do not duplicate scene if we're at the last one (no more space!)
                 self.app.session.scene_duplicate(self.selected_scene)
                 self.selected_scene += 1
                 self.app.buttons_need_update = True
                 self.app.add_display_notification(
-                    "Duplicated scene: {0}".format(self.selected_scene + 1)
+                    f"Duplicated scene: {self.selected_scene + 1}"
                 )
             return True
 

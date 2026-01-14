@@ -370,8 +370,7 @@ class ClipEditMode(definitions.PyshaMode):
             elif button_name == push2_python.constants.BUTTON_PAGE_RIGHT:
                 self.clip.window_step_offset += increment
                 max_offset = max(0, self.clip.steps - 8)
-                if self.clip.window_step_offset > max_offset:
-                    self.clip.window_step_offset = max_offset
+                self.clip.window_step_offset = min(self.clip.window_step_offset, max_offset)
                 self.update_pads()
                 return True
 
@@ -379,22 +378,22 @@ class ClipEditMode(definitions.PyshaMode):
             if button_name == push2_python.constants.BUTTON_DOUBLE_LOOP:
                 self.clip.double()
                 return True
-            elif button_name == push2_python.constants.BUTTON_QUANTIZE:
+            if button_name == push2_python.constants.BUTTON_QUANTIZE:
                 self.quantize_helper()
                 return True
-            elif button_name == push2_python.constants.BUTTON_UPPER_ROW_3:
+            if button_name == push2_python.constants.BUTTON_UPPER_ROW_3:
                 self.quantize_helper()
                 return True
-            elif button_name == push2_python.constants.BUTTON_DELETE:
+            if button_name == push2_python.constants.BUTTON_DELETE:
                 self.clip.clear()
                 return True
-            elif button_name == push2_python.constants.BUTTON_UPPER_ROW_1:
+            if button_name == push2_python.constants.BUTTON_UPPER_ROW_1:
                 self.clip.play_stop()
                 return True
-            elif button_name == push2_python.constants.BUTTON_RECORD:
+            if button_name == push2_python.constants.BUTTON_RECORD:
                 self.clip.record_on_off()
                 return True
-            elif button_name == push2_python.constants.BUTTON_CLIP:
+            if button_name == push2_python.constants.BUTTON_CLIP:
                 self.mode = self.MODE_GENERATOR
                 return True
 
@@ -403,7 +402,7 @@ class ClipEditMode(definitions.PyshaMode):
                 # Replace existing sequence with generated one
                 self.set_new_generated_sequence()
                 return True
-            elif button_name == push2_python.constants.BUTTON_CLIP:
+            if button_name == push2_python.constants.BUTTON_CLIP:
                 # Go back to clip mode
                 self.set_clip_mode(self.selected_clip_idx)
                 return True
