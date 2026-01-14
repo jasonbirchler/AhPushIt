@@ -410,7 +410,7 @@ class SettingsMode(definitions.PyshaMode):
                 selection_state = self.track_selection_states.get(track_num, 0)
 
                 # Apply encoder threshold for device/channel selection
-                threshold = 3
+                threshold = 5
                 self.encoder_accumulators[encoder_name] += increment
 
                 if abs(self.encoder_accumulators[encoder_name]) >= threshold:
@@ -436,7 +436,7 @@ class SettingsMode(definitions.PyshaMode):
                                     current_hw_device_index = i
                                     break
                                 # Also check if the current device name contains this device name (for short names)
-                                elif current_hw_device_name.startswith(device_name) or current_hw_device_name.endswith(device_name):
+                                if current_hw_device_name.startswith(device_name) or current_hw_device_name.endswith(device_name):
                                     current_hw_device_index = i
                                     break
 
@@ -444,8 +444,12 @@ class SettingsMode(definitions.PyshaMode):
                         if current_hw_device_index == -1:
                             current_hw_device_index = 0
 
-                        # Calculate next device index with wrap-around
-                        next_device_index = (current_hw_device_index + 1) % len(available_devices)
+                        # Calculate next device index
+                        next_device_index = current_hw_device_index + actual_increment
+                        if next_device_index >= len(available_devices):
+                            next_device_index = len(available_devices) - 1
+                        elif next_device_index < 0:
+                            next_device_index = 0
                         next_device_name = available_devices[next_device_index]
 
                         # Update the track's device

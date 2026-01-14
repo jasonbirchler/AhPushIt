@@ -134,12 +134,14 @@ class PyshaMode(object):
     def push(self):
         return self.app.push
 
-    # Method run only once when the mode object is created, may receive settings dictionary from main app
+    # Method run only once when the mode object is created,
+    # may receive settings dictionary from main app
     def initialize(self, settings=None):
         pass
 
-    # Method to return a dictionary of properties to store in a settings file, and that will be passed to
-    # initialize method when object created
+    # Method to return a dictionary of properties
+    # to store in a settings file,
+    # and that will be passed to initialize method when object created
     def get_settings_to_save(self):
         return {}
 
@@ -150,7 +152,8 @@ class PyshaMode(object):
     def deactivate(self):
         pass
 
-    # Method called at every iteration in the main loop to see if any actions need to be performed at the end of the iteration
+    # Method called at every iteration in the main loop
+    # to see if any actions need to be performed at the end of the iteration
     # This is used to avoid some actions unncessesarily being repeated many times
     def check_for_delayed_actions(self):
         pass
@@ -171,13 +174,23 @@ class PyshaMode(object):
 
     # Some update helper methods
     def set_button_color(self, button_name, color=WHITE, animation=ANIMATION_STATIC, animation_end_color=BLACK):
-        self.push.buttons.set_button_color(button_name, color, animation=animation, animation_end_color=animation_end_color)
+        self.push.buttons.set_button_color(
+            button_name,
+            color,
+            animation=animation,
+            animation_end_color=animation_end_color
+        )
 
     def set_button_color_if_pressed(self, button_name, color=WHITE, off_color=OFF_BTN_COLOR, animation=ANIMATION_STATIC, animation_end_color=BLACK):
         if not self.app.is_button_being_pressed(button_name):
             self.push.buttons.set_button_color(button_name, off_color)
         else:
-            self.push.buttons.set_button_color(button_name, color, animation=animation, animation_end_color=animation_end_color)
+            self.push.buttons.set_button_color(
+                button_name,
+                color,
+                animation=animation,
+                animation_end_color=animation_end_color
+            )
 
     def set_button_color_if_expression(self, button_name, expression, color=WHITE, false_color=OFF_BTN_COLOR, animation=ANIMATION_STATIC, animation_end_color=BLACK, also_include_is_pressed=False):
         if also_include_is_pressed:
@@ -185,17 +198,28 @@ class PyshaMode(object):
         if not expression:
             self.push.buttons.set_button_color(button_name, false_color)
         else:
-            self.push.buttons.set_button_color(button_name, color, animation=animation, animation_end_color=animation_end_color)
+            self.push.buttons.set_button_color(
+                button_name,
+                color,
+                animation=animation,
+                animation_end_color=animation_end_color
+            )
 
     def set_buttons_to_color(self, button_names, color=WHITE, animation=ANIMATION_STATIC, animation_end_color=BLACK):
         for button_name in button_names:
-            self.push.buttons.set_button_color(button_name, color, animation=animation, animation_end_color=animation_end_color)
+            self.push.buttons.set_button_color(
+                button_name,
+                color,
+                animation=animation,
+                animation_end_color=animation_end_color
+            )
 
     def set_buttons_need_update_if_button_used(self, button_name):
         if button_name in self.buttons_used:
             self.app.buttons_need_update = True
 
-    # Push2 action callbacks (these methods should return True if some action was carried out, otherwise return None)
+    # Push2 action callbacks
+    # (these methods should return True if some action was carried out, otherwise return None)
     def on_encoder_rotated(self, encoder_name, increment):
         pass
 

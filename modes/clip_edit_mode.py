@@ -351,23 +351,20 @@ class ClipEditMode(definitions.PyshaMode):
             increment = 8 if shift else 1
             if button_name == push2_python.constants.BUTTON_OCTAVE_UP:
                 self.clip.window_note_offset += increment
-                if self.clip.window_note_offset > 120:
-                    self.clip.window_note_offset = 120
+                self.clip.window_note_offset = min(self.clip.window_note_offset, 120)
                 self.update_pads()
                 return True
-            elif button_name == push2_python.constants.BUTTON_OCTAVE_DOWN:
+            if button_name == push2_python.constants.BUTTON_OCTAVE_DOWN:
                 self.clip.window_note_offset -= increment
-                if self.clip.window_note_offset < 0:
-                    self.clip.window_note_offset = 0
+                self.clip.window_note_offset = max(self.clip.window_note_offset, 0)
                 self.update_pads()
                 return True
-            elif button_name == push2_python.constants.BUTTON_PAGE_LEFT:
+            if button_name == push2_python.constants.BUTTON_PAGE_LEFT:
                 self.clip.window_step_offset -= increment
-                if self.clip.window_step_offset < 0:
-                    self.clip.window_step_offset = 0
+                self.clip.window_step_offset = max(self.clip.window_step_offset, 0)
                 self.update_pads()
                 return True
-            elif button_name == push2_python.constants.BUTTON_PAGE_RIGHT:
+            if button_name == push2_python.constants.BUTTON_PAGE_RIGHT:
                 self.clip.window_step_offset += increment
                 max_offset = max(0, self.clip.steps - 8)
                 self.clip.window_step_offset = min(self.clip.window_step_offset, max_offset)

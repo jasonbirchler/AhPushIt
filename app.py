@@ -470,8 +470,8 @@ def on_button_pressed(_, name):
             if action_performed:
                 break  # If mode took action, stop event propagation
     except NameError as e:
-       print('Error:  {}'.format(str(e)))
-       traceback.print_exc()
+        print(f'Error:  {str(e)}')
+        traceback.print_exc()
 
 
 @push2_python.on_button_released()

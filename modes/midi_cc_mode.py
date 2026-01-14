@@ -280,8 +280,7 @@ class MIDICCMode(PyshaMode):
                         self.active_midi_control_ccs[i].draw(ctx, i)
                     except IndexError:
                         continue
- 
-    
+
     def on_button_pressed(self, button_name):
         if  button_name in self.midi_cc_button_names:
             current_track_sections = self.get_current_track_midi_cc_sections()
@@ -292,7 +291,10 @@ class MIDICCMode(PyshaMode):
                 self.update_current_section_page(new_section=new_section, new_page=0)
             return True
 
-        elif button_name in [push2_python.constants.BUTTON_PAGE_LEFT, push2_python.constants.BUTTON_PAGE_RIGHT]:
+        if button_name in [
+            push2_python.constants.BUTTON_PAGE_LEFT,
+            push2_python.constants.BUTTON_PAGE_RIGHT
+            ]:
             show_prev, show_next = self.get_should_show_midi_cc_next_prev_pages_for_section()
             _, current_page = self.get_currently_selected_midi_cc_section_and_page()
             if button_name == push2_python.constants.BUTTON_PAGE_LEFT and show_prev:
@@ -300,6 +302,8 @@ class MIDICCMode(PyshaMode):
             elif button_name == push2_python.constants.BUTTON_PAGE_RIGHT and show_next:
                 self.update_current_section_page(new_page=current_page + 1)
             return True
+
+        return None
 
 
     def on_encoder_rotated(self, encoder_name, increment):
