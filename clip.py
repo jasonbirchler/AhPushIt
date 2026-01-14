@@ -213,8 +213,9 @@ class Clip(BaseClass):
             # Call session to schedule the clip start
             self.app.seq.schedule_clip(self)
 
-        # Set will_play_at to a positive value to indicate "cue to play"
-        self.will_play_at = 0.0
+        # Mark clip as playing
+        self.playing = True
+        self.will_play_at = -1.0
         # Update the clip status by calling get_status()
         self.clip_status = self.get_status()
 
@@ -223,14 +224,20 @@ class Clip(BaseClass):
         if self.track is None:
             return
 
-        if self.app and hasattr(self.app, 'session'):
-            # Call session to schedule the clip stop
-            self.app.session.schedule_clip_stop(self)
+        if self.app and hasattr(self.app, 'global_timeline'):
+            # Find and unschedule the clip from timeline by name
+            for track in self.app.global_timeline.tracks:
+                if track.name == self.name:
+                    try:
+                        self.app.global_timeline.unschedule(track)
+                    except:
+                        pass  # Track may not be scheduled
+                    break
 
-        # Set will_stop_at to a positive value to indicate "cue to stop"
-        self.will_stop_at = 0.0
-        # Update the clip status by calling get_status()
-        self.clip_status = self.get_status()
+        # Mark clip as stopped
+        self.playing = False
+        self.will_stop_at = -1.0
+        self.update_status()
 
     def record_on_off(self):
         """Toggle recording state and update status."""
@@ -238,11 +245,11 @@ class Clip(BaseClass):
             return
         # Toggle recording state
         self.recording = not self.recording
-        # Update the clip status by calling get_status()
-        self.clip_status = self.get_status()
+        self.update_status()
 
     def update_status(self):
-        """Update the clip status based on current state. Call this after modifying state variables."""
+        """Update the clip status based on current state.
+        Call this after modifying state variables."""
         self.clip_status = self.get_status()
 
     def clear(self):

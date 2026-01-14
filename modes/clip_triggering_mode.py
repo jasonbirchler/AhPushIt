@@ -236,6 +236,7 @@ class ClipTriggeringMode(definitions.PyshaMode):
                 if state and state.play_status == ClipStates.CLIP_STATUS_PLAYING:
                     # Is playing
                     cell_color = track_color
+                    cell_animation = definitions.DEFAULT_ANIMATION
 
                 if state and state.play_status in (ClipStates.CLIP_STATUS_CUED_TO_PLAY, ClipStates.CLIP_STATUS_CUED_TO_STOP):
                     # Will start or will stop playing
@@ -352,6 +353,7 @@ class ClipTriggeringMode(definitions.PyshaMode):
             else:
                 # No "option" button pressed, do play/stop
                 clip.play_stop()
+                self.update_pads()
                 return True
         return False
 

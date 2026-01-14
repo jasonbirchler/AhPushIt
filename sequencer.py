@@ -79,7 +79,8 @@ class Sequencer():
             name=clip.name,
             quantize=self.start_on_next_bar(),
             output_device=device,
-            remove_when_done=False
+            remove_when_done=False,
+            replace=True
         )
 
     def start_on_next_bar(self):
