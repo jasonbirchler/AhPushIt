@@ -463,6 +463,7 @@ def on_pad_aftertouch(_, pad_n, pad_ij, velocity):
 
 @push2_python.on_button_pressed()
 def on_button_pressed(_, name):
+    buttons_pressed_state[name] = True
     try:
         for mode in app.active_modes[::-1]:
             action_performed = mode.on_button_pressed(name)
@@ -475,6 +476,7 @@ def on_button_pressed(_, name):
 
 @push2_python.on_button_released()
 def on_button_released(_, name):
+    buttons_pressed_state[name] = False
     try:
         for mode in app.active_modes[::-1]:
             action_performed = mode.on_button_released(name)

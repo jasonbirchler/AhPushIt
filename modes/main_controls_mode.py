@@ -66,7 +66,7 @@ class MainControlsMode(definitions.PyshaMode):
         else:
             self.push.buttons.set_button_color(PLAY_BUTTON, definitions.WHITE)
 
-    def on_button_pressed(self, button_name, shift=False, select=False, long_press=False, double_press=False):
+    def on_button_pressed(self, button_name):
         if button_name == MELODIC_RHYTHMIC_TOGGLE_BUTTON:
             self.app.toggle_melodic_rhythmic_slice_modes()
             self.app.pads_need_update = True
@@ -101,7 +101,7 @@ class MainControlsMode(definitions.PyshaMode):
             self.app.buttons_need_update = True
             return True
         elif button_name == PLAY_BUTTON:
-            shift = self.app.is_button_being_pressed(push2_python.constants.BUTTON_SHIFT)
+            shift = False
             if self.app.session.global_timeline.running:
                 # stop timeline in place. i.e. do not reset current_time
                 self.app.session.stop_timeline()
