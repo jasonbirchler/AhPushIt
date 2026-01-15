@@ -16,6 +16,7 @@ class Sequencer():
         self.device_names = []
         self.devices = []
         self.tracks = []
+        self.clip_loop_positions = {}  # Track clip loop positions for queuing
 
         for i in range(8):
             track = iso.Track(
@@ -27,7 +28,7 @@ class Sequencer():
             track.event_stream = {}
             self.tracks.append(track)
 
-    def schedule_clip(self, clip):
+    def schedule_clip(self, clip, quantize_start=True):
         """
         Schedule a clip to the timeline
         """
@@ -70,6 +71,13 @@ class Sequencer():
                 durations_list.append(0.25)
                 amplitudes_list.append(0)
 
+        # Track when this clip should loop
+        total_duration = sum(durations_list)
+        current_time = self.timeline.current_time
+        quantize_offset = self.start_on_next_bar() if quantize_start else 0
+        next_loop_time = current_time + quantize_offset + total_duration
+        self.clip_loop_positions[clip.name] = next_loop_time
+
         self.timeline.schedule(
             {
                 "note": iso.PSequence(notes_list),
@@ -77,11 +85,28 @@ class Sequencer():
                 "amplitude": iso.PSequence(amplitudes_list)
             },
             name=clip.name,
-            quantize=self.start_on_next_bar(),
+            quantize=quantize_offset,
             output_device=device,
             remove_when_done=False,
             replace=True
         )
+
+    def check_queued_clips(self):
+        """Check if any clips should switch due to queuing"""
+        current_time = self.timeline.current_time
+
+        for track in self.app.session.tracks:
+            for clip in track.clips:
+                if clip and clip.playing and clip.queued_clip:
+                    # Check if we've passed the loop point
+                    if clip.name in self.clip_loop_positions:
+                        loop_time = self.clip_loop_positions[clip.name]
+                        if current_time >= loop_time:
+                            # Time to switch
+                            clip.stop()
+                            # Update loop time for next iteration
+                            if clip.name in self.clip_loop_positions:
+                                del self.clip_loop_positions[clip.name]
 
     def start_on_next_bar(self):
         return 4 - (int(self.timeline.current_time) % 4)

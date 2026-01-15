@@ -96,6 +96,8 @@ OFF_BTN_COLOR = GRAY_DARK
 NOTE_ON_COLOR = GREEN
 
 DEFAULT_ANIMATION = push2_python.constants.ANIMATION_PULSING_QUARTER
+FAST_ANIMATION = push2_python.constants.ANIMATION_PULSING_8TH
+NO_ANIMATION = push2_python.constants.ANIMATION_STATIC
 
 USER_DOCUMENTS_PATH = os.path.expanduser('~/Documents/')
 BASE_DATA_DIR = os.path.join(USER_DOCUMENTS_PATH, 'Shepherd')

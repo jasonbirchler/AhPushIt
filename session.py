@@ -46,9 +46,6 @@ class Session(BaseClass):
         # Perform device setup
         self.initialize_devices()
 
-        # Perform timeline setup
-        self.setup_timeline()
-
     @property
     def app(self):
         """Get the app instance through parent chain"""
@@ -171,12 +168,6 @@ class Session(BaseClass):
     ############################################################################
     # Timeline Management
     ############################################################################
-    def setup_timeline(self):
-        """Establishes timeline defaults"""
-        self.global_timeline.defaults.quantize = 1
-        self.global_timeline.defaults.octave = 3
-        self.global_timeline.defaults.key = self.key
-
     def start_timeline(self):
         """Start the global timeline"""
         self.global_timeline.start()

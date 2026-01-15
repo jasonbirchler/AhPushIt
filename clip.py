@@ -72,8 +72,7 @@ class Clip(BaseClass):
         self.bpm_multiplier = 1.0
         self.wrap_events_across_clip_loop = False
         self.max_polyphony = 4
-
-        self.clip_status = self.get_status()
+        self.queued_clip = None
 
         # clip sequence properties - numpy arrays for polyphonic step sequencing
         self.notes = np.full((self.steps, self.max_polyphony), None, dtype=object)
@@ -83,6 +82,8 @@ class Clip(BaseClass):
         # window for editing (viewport into the larger virtual grid)
         self.window_step_offset = 0
         self.window_note_offset = 60  # Start at middle C
+
+        self.clip_status = self.get_status()
 
     def pad_to_step_and_note(self, pad_i: int, pad_j: int) -> tuple:
         """Convert pad coordinates to step index and MIDI note"""
@@ -179,7 +180,7 @@ class Clip(BaseClass):
         else:
             play_status = ClipStates.CLIP_STATUS_STOPPED
 
-        if self.clip_length_in_beats == 0.0:
+        if self.is_empty():
             empty_status = ClipStates.CLIP_STATUS_IS_EMPTY
         else:
             empty_status = ClipStates.CLIP_STATUS_IS_NOT_EMPTY
@@ -193,7 +194,7 @@ class Clip(BaseClass):
         )
 
     def is_empty(self):
-        return self.get_status().empty_status == ClipStates.CLIP_STATUS_IS_EMPTY
+        return not np.any(self.notes != None)
 
     def play_stop(self):
         if self.track is None:
@@ -204,14 +205,14 @@ class Clip(BaseClass):
         else:
             self.play()
 
-    def play(self):
+    def play(self, quantize_start=True):
         """Set the clip to cue to play and start playback through the session."""
         if self.track is None:
             return
 
         if self.app and hasattr(self.app, 'seq'):
             # Call session to schedule the clip start
-            self.app.seq.schedule_clip(self)
+            self.app.seq.schedule_clip(self, quantize_start=quantize_start)
 
         # Mark clip as playing
         self.playing = True
@@ -237,6 +238,13 @@ class Clip(BaseClass):
         # Mark clip as stopped
         self.playing = False
         self.will_stop_at = -1.0
+
+        # If there's a queued clip, start it now without quantization
+        if self.queued_clip:
+            next_clip = self.queued_clip
+            self.queued_clip = None
+            next_clip.play(quantize_start=False)
+
         self.update_status()
 
     def record_on_off(self):

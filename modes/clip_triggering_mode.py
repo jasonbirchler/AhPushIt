@@ -233,13 +233,26 @@ class ClipTriggeringMode(definitions.PyshaMode):
                 else:
                     cell_color = track_color + "_darker1"
 
-                if state and state.play_status == ClipStates.CLIP_STATUS_PLAYING:
-                    # Is playing
+                # Check if this clip is queued to play
+                is_queued = False
+                if track is not None and clip is not None:
+                    for other_clip in track.clips:
+                        if other_clip and other_clip.queued_clip == clip:
+                            is_queued = True
+                            break
+
+                if is_queued:
+                    # Clip is queued to play - show with animation
+                    cell_color = track_color
+                    cell_animation = definitions.FAST_ANIMATION
+                elif state and state.play_status == ClipStates.CLIP_STATUS_STOPPED:
+                    cell_animation = definitions.ANIMATION_STATIC
+                elif state and state.play_status == ClipStates.CLIP_STATUS_PLAYING:
+                    # Is playing - show with animation
                     cell_color = track_color
                     cell_animation = definitions.DEFAULT_ANIMATION
-
-                if state and state.play_status in (ClipStates.CLIP_STATUS_CUED_TO_PLAY, ClipStates.CLIP_STATUS_CUED_TO_STOP):
-                    # Will start or will stop playing
+                elif state and state.play_status in (ClipStates.CLIP_STATUS_CUED_TO_PLAY, ClipStates.CLIP_STATUS_CUED_TO_STOP):
+                    # Will start or will stop playing - show with animation
                     cell_color = track_color
                     cell_animation = definitions.DEFAULT_ANIMATION
 
@@ -251,6 +264,7 @@ class ClipTriggeringMode(definitions.PyshaMode):
                 if state and state.record_status == ClipStates.CLIP_STATUS_RECORDING:
                     # Is recording
                     cell_color = definitions.RED
+                    cell_animation = definitions.DEFAULT_ANIMATION
 
                 row_colors.append(cell_color)
                 row_animation.append(cell_animation)
@@ -345,7 +359,23 @@ class ClipTriggeringMode(definitions.PyshaMode):
 
             else:
                 # No "option" button pressed, do play/stop
-                clip.play_stop()
+                if not clip.playing:
+                    # Starting a clip - check if another clip in the track is playing
+                    track = self.app.session.get_track_by_idx(track_num)
+                    if track:
+                        for other_clip in track.clips:
+                            if other_clip and other_clip != clip and other_clip.playing:
+                                # Queue this clip to play after the current one finishes
+                                other_clip.queued_clip = clip
+                                self.update_pads()
+                                return True
+                    # No other clip playing, start immediately
+                    clip.play_stop()
+                else:
+                    # Stopping a clip - clear any queued clip
+                    clip.queued_clip = None
+                    clip.play_stop()
+
                 self.update_pads()
                 return True
         return False

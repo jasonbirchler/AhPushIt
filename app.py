@@ -295,6 +295,9 @@ class PyshaApp(object):
             self.check_for_new_midi_devices()
             self._last_midi_check_time = current_time
 
+        # Check for queued clips that need to switch
+        self.seq.check_queued_clips()
+
         # If MIDI not configured, make sure we try sending messages so it gets configured
         if not self.push.midi_is_configured():
             self.push.configure_midi()
