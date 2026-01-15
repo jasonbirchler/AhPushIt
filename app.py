@@ -23,6 +23,7 @@ from modes.slice_notes_mode import SliceNotesMode
 from modes.track_selection_mode import TrackSelectionMode
 from session import Session
 from sequencer import Sequencer
+from project_manager import ProjectManager
 
 buttons_pressed_state = {}
 pads_pressed_state = {}  # Track pad press times for long press detection
@@ -35,6 +36,7 @@ class PyshaApp(object):
     """
     session: Session = None
     seq: Sequencer = None
+    pm: ProjectManager = None
 
     # push
     push = None
@@ -71,6 +73,7 @@ class PyshaApp(object):
         self.global_timeline = iso.Timeline()
         self.session = Session(self)
         self.seq = Sequencer(self)
+        self.pm = ProjectManager(self)
 
         self.target_frame_rate = settings.get('target_frame_rate', 60)
         self.use_push2_display = settings.get('use_push2_display', True)

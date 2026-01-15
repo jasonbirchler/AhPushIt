@@ -8,11 +8,11 @@ class Sequencer():
     def __init__(self, app):
         self.app = app
         self.timeline = app.global_timeline
-        self.bpm = 120.0
-        self.root = 'C'
-        self.scale = iso.Scale.minor
-        self.key = iso.Key(self.root, self.scale)
-        self.quantize = 1
+        self._bpm = 120.0
+        self._root = 'C'
+        self._scale = iso.Scale.minor
+        self._key = iso.Key(self._root, self._scale)
+        self._quantize = 1
         self.device_names = []
         self.devices = []
         self.tracks = []
@@ -185,58 +185,53 @@ class Sequencer():
         self.timeline.reset()
 
     # Getters and Setters
-    def get_bpm(self):
+    @property
+    def bpm(self):
         """ Get the current BPM """
-        return self.bpm
+        return self._bpm
 
-    def set_bpm(self, bpm):
+    @bpm.setter
+    def bpm(self, bpm):
         """ Set the BPM and update the timeline tempo """
-        self.bpm = bpm
+        self._bpm = bpm
         self.timeline.tempo = bpm
 
-    def get_root(self):
+    @property
+    def root(self):
         """ Get the current root note """
-        return self.root
+        return self._root
 
-    def set_root(self, root):
+    @root.setter
+    def root(self, root):
         """ Set the root note and update the key """
-        self.root = root
-        self.key = iso.Key(self.root, self.scale)
+        self._root = root
 
-    def get_scale(self):
+    @property
+    def scale(self):
         """ Get the current scale """
-        return self.scale
+        return self._scale
 
-    def set_scale(self, scale):
+    @scale.setter
+    def scale(self, scale):
         """ Set the scale and update the key """
-        self.scale = scale
-        self.key = iso.Key(self.root, self.scale)
+        self._scale = scale
 
-    def get_key(self):
+    @property
+    def key(self):
         """ Get the current key """
-        return self.key
+        return self._key
 
-    def set_key(self, root, scale):
+    @key.setter
+    def key(self, root, scale):
         """ Set the key from the given root and scale """
-        self.set_root(root)
-        self.set_scale(scale)
+        self._key = iso.Key(root, scale)
 
-    def get_quantize(self):
+    @property
+    def quantize(self):
         """ Get the current quantize value """
-        return self.quantize
+        return self._quantize
 
-    def set_quantize(self, quantize):
+    @quantize.setter
+    def quantize(self, quantize):
         """ Set the quantize value """
-        self.quantize = quantize
-
-    def get_tracks(self):
-        """ Get the list of tracks """
-        return self.tracks
-
-    def get_track_count(self):
-        """ Get the number of tracks """
-        return len(self.tracks)
-
-    def get_timeline(self):
-        """ Get the timeline object """
-        return self.timeline
+        self._quantize = quantize
