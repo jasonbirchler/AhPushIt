@@ -327,13 +327,10 @@ class ClipTriggeringMode(definitions.PyshaMode):
 
         # get the clip
         clip = self.app.session.get_clip_by_idx(track_num, clip_num)
-        # if there's no clip in that slot, create one
+        # if there's no clip in that slot, nothing to do
+        # return true so the event doesn't propagate any further
         if clip is None:
-            track = self.app.session.get_track_by_idx(track_num)
-            if track is not None:
-                new_clip = Clip(parent=track)
-                track.add_clip(new_clip, clip_num)
-            clip = self.app.session.get_clip_by_idx(track_num, clip_num)
+            return True
 
         # set the clip name. is there a better place to do this?
         if clip.name is None:
