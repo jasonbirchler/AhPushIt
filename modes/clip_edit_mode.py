@@ -198,7 +198,8 @@ class ClipEditMode(definitions.PyshaMode):
                         1.0: '4th note',
                         0.0: '-'
                     }
-                    show_value(ctx, part_w * 2, h, '{}'.format(quantization_step_labels.get(self.clip.current_quantization_step, self.clip.current_quantization_step)))
+                    if self.clip:
+                        show_value(ctx, part_w * 2, h, '{}'.format(quantization_step_labels.get(self.clip.current_quantization_step, self.clip.current_quantization_step)))
 
                     # Slot 4, bpm multiplier
                     show_title(ctx, part_w * 3, h, 'BPM MULTIPLIER')

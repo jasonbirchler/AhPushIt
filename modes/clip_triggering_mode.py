@@ -241,22 +241,33 @@ class ClipTriggeringMode(definitions.PyshaMode):
                             is_queued = True
                             break
 
-                if is_queued:
-                    # Clip is queued to play - show with animation
-                    cell_color = track_color
+                # Check if this clip HAS a queued clip (it's playing but will be replaced)
+                has_queued_clip = False
+                if clip is not None and hasattr(clip, 'queued_clip') and clip.queued_clip is not None:
+                    has_queued_clip = True
+
+                if is_queued and not has_queued_clip:
+                    # Clip is queued to play - show with fast animation
+                    cell_color = track_color + "_darker1"
                     cell_animation = definitions.FAST_ANIMATION
                 elif state and state.play_status == ClipStates.CLIP_STATUS_STOPPED:
                     cell_animation = definitions.ANIMATION_STATIC
                 elif state and state.play_status == ClipStates.CLIP_STATUS_PLAYING:
-                    # Is playing - show with animation
+                    # Is playing - show with default animation
                     cell_color = track_color
                     cell_animation = definitions.DEFAULT_ANIMATION
-                elif state and state.play_status in (ClipStates.CLIP_STATUS_CUED_TO_PLAY, ClipStates.CLIP_STATUS_CUED_TO_STOP):
+                elif state and state.play_status in (
+                    ClipStates.CLIP_STATUS_CUED_TO_PLAY,
+                    ClipStates.CLIP_STATUS_CUED_TO_STOP):
+
                     # Will start or will stop playing - show with animation
                     cell_color = track_color
                     cell_animation = definitions.DEFAULT_ANIMATION
 
-                if state and state.record_status in (ClipStates.CLIP_STATUS_CUED_TO_RECORD, ClipStates.CLIP_STATUS_CUED_TO_STOP_RECORDING):
+                if state and state.record_status in (
+                    ClipStates.CLIP_STATUS_CUED_TO_RECORD,
+                    ClipStates.CLIP_STATUS_CUED_TO_STOP_RECORDING):
+
                     # Will start or will stop recording
                     cell_color = definitions.RED
                     cell_animation = definitions.DEFAULT_ANIMATION

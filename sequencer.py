@@ -104,6 +104,7 @@ class Sequencer():
                         if current_time >= loop_time:
                             # Time to switch
                             clip.stop()
+                            clip.app.clip_triggering_mode.update_pads()
                             # Update loop time for next iteration
                             if clip.name in self.clip_loop_positions:
                                 del self.clip_loop_positions[clip.name]

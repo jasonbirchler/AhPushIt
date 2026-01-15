@@ -244,6 +244,11 @@ class Clip(BaseClass):
             next_clip = self.queued_clip
             self.queued_clip = None
             next_clip.play(quantize_start=False)
+            # Ensure both clips update their status and trigger UI refresh
+            self.update_status()
+            next_clip.update_status()
+            if self.app and self.app.is_mode_active('clip_triggering_mode'):
+                self.app.clip_triggering_mode.update_pads()
 
         self.update_status()
 
