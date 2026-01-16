@@ -112,47 +112,6 @@ class Sequencer():
     def start_on_next_bar(self):
         return 4 - (int(self.timeline.current_time) % 4)
 
-    def get_track_by_index(self, index):
-        """
-        Get a track by index
-        """
-        if index < 0 or index >= len(self.tracks):
-            print("ERROR: Track index out of range")
-            return None
-        return self.tracks[index]
-
-    def add_track(self, track):
-        """
-        Add a track to the timeline if there is space
-        """
-        if isinstance(track, iso.Track) and len(self.tracks) < definitions.GLOBAL_TIMELINE_MAX_TRACKS:
-            self.tracks.append(track)
-            self.timeline.schedule(track, quantize=self.quantize, remove_when_done=False)
-        else:
-            print(
-                f"ERROR: Track must be an isobar Track object,\
-                    and there can be a max of {definitions.GLOBAL_TIMELINE_MAX_TRACKS} tracks"
-            )
-
-    def remove_track(self, track):
-        """
-        Remove a track from the timeline
-        """
-        if track not in self.tracks:
-            print("ERROR: Track not found")
-            return
-        self.timeline.unschedule(track)
-        self.tracks.remove(track)
-
-    def update_track(self, track_idx:int, clip):
-        """
-        Update a track with a new clip
-        find track in timeline by index.
-        then update the track in the timeline with clip
-        """
-        track = self.timeline.tracks[track_idx]
-        track.update(clip)
-
     def mute_track(self, track_idx:int):
         """
         Mute a track

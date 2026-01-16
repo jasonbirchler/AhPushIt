@@ -2,6 +2,7 @@ import os
 import time
 import traceback
 from enum import IntEnum
+from datetime import datetime
 
 import push2_python.constants
 
@@ -501,8 +502,9 @@ class SettingsMode(definitions.PyshaMode):
 
         elif self.current_page == Pages.VARIOUS:
             if button_name == push2_python.constants.BUTTON_UPPER_ROW_1:
-                self.app.session.save(str(self.current_preset_save_number))
-                self.app.add_display_notification("Saved session in slot: {}".format(self.current_preset_save_number))
+                filename = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+                self.app.pm.save_project(filename)
+                self.app.add_display_notification(f"Saved session as: {filename}")
 
                 # Deactivate settings mode by setting current page to last page and calling "rotate settings page" method from app
                 self.current_page = self.n_pages - 1

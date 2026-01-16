@@ -3,6 +3,7 @@ import os
 from datetime import datetime
 from track import Track
 from clip import Clip
+from numpyencoder import NumpyEncoder
 
 class ProjectManager:
     def __init__(self, app):
@@ -21,15 +22,13 @@ class ProjectManager:
             "version": "1.0",
             "created": datetime.now().isoformat(),
             "bpm": self.app.seq.bpm,
-            "current_track": self.app.current_track,
-            "scale": self.app.seq.scale,
-            "key": self.app.seq.key,
+            "scale": str(self.app.seq.scale),
+            "key": str(self.app.seq.key),
             "tracks": []
         }
 
         # Save each track
-        for t in len(self.app.seq.tracks):
-            track = self.app.seq.tracks[t]
+        for t, track in enumerate(self.app.session.tracks):
             if track:
                 track_data = {
                     "index": t,
@@ -38,26 +37,34 @@ class ProjectManager:
                 }
 
                 # Save clips for this track
-                for c in len(track.clips):
-                    clip = track.clips[c]
-                    if clip:
-                        track_data["clip_data"].append({
-                            "index": c,
-                            "name": clip.name,
-                            "clip_length_in_beats": clip.clip_length_in_beats,
-                            "step_divisions":  clip.step_divisions,
-                            "beats_per_bar": clip.beats_per_bar,
-                            "notes": clip.notes,
-                            "durations": clip.durations,
-                            "amplitudes": clip.amplitudes
-                        })
+                if track.clips:
+                    for c, clip in enumerate(track.clips):
+                        if clip:
+                            track_data["clip_data"].append({
+                                "index": c,
+                                "name": clip.name,
+                                "clip_length_in_beats": clip.clip_length_in_beats,
+                                "step_divisions":  clip.step_divisions,
+                                "beats_per_bar": clip.beats_per_bar,
+                                "notes": clip.notes,
+                                "durations": clip.durations,
+                                "amplitudes": clip.amplitudes
+                            })
 
             project_data["tracks"].append(track_data)
 
         # Save to file
         filepath = os.path.join(self.projects_dir, f"{filename}.json")
-        with open(filepath, 'w') as f:
-            json.dump(project_data, f, indent=2)
+        with open(filepath, 'w', encoding="utf-8") as file:
+            json.dump(
+                project_data,
+                file,
+                indent=4,
+                sort_keys=False,
+                separators=(', ', ': '),
+                ensure_ascii=False,
+                cls=NumpyEncoder
+            )
         self.current_project_file = filename
         print(f"Project saved: {filepath}")
 

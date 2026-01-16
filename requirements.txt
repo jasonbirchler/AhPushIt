@@ -3,3 +3,4 @@ pycairo
 psutil
 isobar
 numpy
+numpyencoder
