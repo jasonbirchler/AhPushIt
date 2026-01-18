@@ -34,6 +34,11 @@ class Track(BaseClass):
         """Get the app instance through parent chain"""
         return self._parent.app if hasattr(self._parent, 'app') else None
 
+    @app.setter
+    def app(self, app):
+        """Set the app instance through parent chain"""
+        self._parent.app = app
+
     def add_clip(self, clip: 'Clip', position=None):
         # Note this method adds a Clip object in the local Trck object but does not create a clip in the backend
         # Ensure the clip has the correct parent

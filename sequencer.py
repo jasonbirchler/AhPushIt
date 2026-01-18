@@ -15,18 +15,7 @@ class Sequencer():
         self._quantize = 1
         self.device_names = []
         self.devices = []
-        self.tracks = []
         self.clip_loop_positions = {}  # Track clip loop positions for queuing
-
-        for i in range(8):
-            track = iso.Track(
-                timeline=self.timeline,
-                output_device=iso.MidiOutputDevice("IAC Driver Bus 1"),
-                name=f"{i}",
-                remove_when_done=False
-            )
-            track.event_stream = {}
-            self.tracks.append(track)
 
     def schedule_clip(self, clip, quantize_start=True):
         """
@@ -71,7 +60,7 @@ class Sequencer():
                 durations_list.append(0.25)
                 amplitudes_list.append(0)
 
-        # Track when this clip should loop
+        # Keep track of when this clip should loop
         total_duration = sum(durations_list)
         current_time = self.timeline.current_time
         quantize_offset = self.start_on_next_bar() if quantize_start else 0
@@ -181,9 +170,9 @@ class Sequencer():
         return self._key
 
     @key.setter
-    def key(self, root, scale):
-        """ Set the key from the given root and scale """
-        self._key = iso.Key(root, scale)
+    def key(self, key):
+        """ Set the key """
+        self._key = key
 
     @property
     def quantize(self):

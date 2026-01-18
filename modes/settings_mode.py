@@ -99,17 +99,6 @@ class SettingsMode(definitions.PyshaMode):
         self.update_buttons()
 
     def deactivate(self):
-        # Restore original device assignments for tracks that weren't modified
-        for track_idx, original_assignment in self.original_device_assignments.items():
-            if track_idx not in self.modified_tracks:
-                track = self.app.session.tracks[track_idx]
-                # Only restore if the current assignment differs from original
-                if (track.output_device_name != original_assignment['device_name'] or
-                    track.channel != original_assignment['channel']):
-                    track.output_device_name = original_assignment['device_name']
-                    track.channel = original_assignment['channel']
-                    print(f"Restored track {track_idx + 1} to original device: {original_assignment['device_name']}, channel: {original_assignment['channel']}")
-
         self.push.buttons.set_button_color(push2_python.constants.BUTTON_UPPER_ROW_1, definitions.BLACK)
         self.push.buttons.set_button_color(push2_python.constants.BUTTON_UPPER_ROW_2, definitions.BLACK)
         self.push.buttons.set_button_color(push2_python.constants.BUTTON_UPPER_ROW_3, definitions.BLACK)
@@ -512,8 +501,11 @@ class SettingsMode(definitions.PyshaMode):
                 return True
 
             if button_name == push2_python.constants.BUTTON_UPPER_ROW_2:
-                self.app.session.load(str(self.current_preset_load_number))
-                self.app.add_display_notification("Loaded session from slot: {}".format(self.current_preset_load_number))
+                filename = ""
+                if self.app.pm.load_project(filename):
+                    self.app.add_display_notification(f"Loaded project from file: {filename}.json")
+                else:
+                    self.app.add_display_notification(f"{filename}.json failed to load")
 
                 # Deactivate settings mode by setting current page to last page and calling "rotate settings page" method from app
                 self.current_page = self.n_pages - 1

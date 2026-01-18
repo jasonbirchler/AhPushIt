@@ -1,8 +1,10 @@
 import json
 import os
 from datetime import datetime
+import numpy as np
 from track import Track
 from clip import Clip
+import isobar as iso
 from numpyencoder import NumpyEncoder
 
 class ProjectManager:
@@ -79,40 +81,48 @@ class ProjectManager:
             with open(filepath, 'r') as f:
                 project_data = json.load(f)
 
-            # Clear current project
-            self._clear_current_project()
+            # Store current session/seq in case we need to restore it
+            tmp_session = self.app.session
+            tmp_seq = self.app.seq
 
             # Load BPM
-            self.app.seq.bpm(project_data.get("bpm", 120))
+            self.app.seq.bpm = project_data.get("bpm", 120)
 
             # Load scale and key
-            self.app.seq.scale(project_data.get("scale", "Chromatic"))
-            self.app.seq.key(project_data.get("key", "C"))
+            scale_parts = project_data.get("scale", "Chromatic").split(' ', 1)
+            scale_name = scale_parts[0]
+            key_str = project_data.get("key", "C").split(' ', 1)
+            key_parts = key_str[1]
+            root = key_parts[0] if key_parts[0] else 'C'
+            self.app.seq.scale = scale_name
+            self.app.seq.root = root
 
             # Load tracks
             for track_data in project_data["tracks"]:
                 track_idx = track_data["index"]
 
-                track = Track()
-                track.output_device_name = track_data["device"]
+                # If the track has no device, add it to the list as is
+                if not track_data.get("device"):
+                    empty_track = Track(parent=self.app.session)
+                    self.app.session.tracks[track_idx] = empty_track
+                # Otherwise convert JSON data to objects
+                else:
+                    track = Track(parent=self.app.session)
+                    track.output_device_name = track_data["device"]
+                    track.set_output_device_by_name(track_data["device"])
 
-                for clip_data in track_data["clip_data"]:
-                    clip = Clip()
-                    clip.name = clip_data["name"]
-                    clip.clip_length_in_beats = clip_data["clip_length_in_beats"]
-                    clip.step_divisions = clip_data["step_divisions"]
-                    clip.beats_per_bar = clip_data["beats_per_bar"]
-                    clip.notes = clip_data["notes"]
-                    clip.durations = clip_data["durations"]
-                    clip.amplitudes = clip_data["amplitudes"]
-                    track.clips[clip_data["index"]] = clip
+                    for clip_data in track_data["clip_data"]:
+                        clip = Clip(parent=track)
+                        clip.name = clip_data["name"]
+                        clip.clip_length_in_beats = clip_data["clip_length_in_beats"]
+                        clip.step_divisions = clip_data["step_divisions"]
+                        clip.beats_per_bar = clip_data["beats_per_bar"]
+                        clip.notes = np.array(clip_data["notes"], dtype=object)
+                        clip.durations = np.array(clip_data["durations"], dtype=np.float32)
+                        clip.amplitudes = np.array(clip_data["amplitudes"], dtype=np.uint8)
+                        track.clips[clip_data["index"]] = clip
 
-                self.app.seq.tracks[track_idx] = track
-
-            # Update UI
-            self.app.update_buttons()
-            self.app.update_pads()
-            self.app.refresh_display()
+                    self.app.session.tracks[track_idx] = track
 
             self.current_project_file = filename
             print(f"Project loaded: {filepath}")
@@ -120,22 +130,10 @@ class ProjectManager:
 
         except Exception as e:
             print(f"Error loading project: {e}")
+            print(f"Restoring previous session...")
+            self.app.session = tmp_session
+            self.app.seq = tmp_seq
             return False
-
-    def _clear_current_project(self):
-        """Clear current project state"""
-        # Stop sequencer
-        self.app.seq.stop()
-
-        # Clear all tracks
-        for i in len(self.app.tracks):
-            self.app.tracks[i] = None
-
-        # Reset to defaults
-        self.app.seq.bpm(120)
-        self.app.seq.scale("Chromatic")
-        self.app.seq.key("C")
-        self.current_project_file = None
 
     def list_projects(self):
         """List available project files"""
