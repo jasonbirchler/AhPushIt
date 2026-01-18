@@ -1,5 +1,6 @@
 {
     "type": "output",
+    "default_layout": "lrhythmic",
     "instrument_name": "DrumKid",
     "instrument_short_name": "DRUMKID",
     "illuminate_local_notes": false,

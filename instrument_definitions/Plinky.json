@@ -1,5 +1,6 @@
 {
   "type": "output",
+  "default_layout": "lmelodic",
   "instrument_name": "PlinkySynth MIDI",
   "instrument_short_name": "Plinky",
   "illuminate_local_notes": false,

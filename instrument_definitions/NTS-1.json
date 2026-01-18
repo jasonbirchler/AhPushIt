@@ -1,5 +1,6 @@
 {
     "type": "output",
+    "default_layout": "lmelodic",
     "instrument_name": "NTS-1 digital kit SOUND",
     "instrument_short_name": "NTS1",
     "illuminate_local_notes": false,
