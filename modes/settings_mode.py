@@ -51,6 +51,16 @@ class SettingsMode(definitions.PyshaMode):
     current_preset_save_number = 0
     current_preset_load_number = 0
 
+    # Project list state for SESSION page
+    project_files = []           # List of available project files
+    selected_project_index = 0   # Currently selected project index
+    project_list_offset = 0      # Scroll offset for display
+    waiting_for_confirmation = False  # Confirmation state flag
+    project_to_confirm = None    # Project filename awaiting confirmation
+    last_scroll_time = 0         # Timestamp of last scroll activity
+    scroll_text_offset = 0       # Horizontal scroll offset for long filenames
+    scroll_text_direction = 1    # Direction of horizontal scrolling (1 or -1)
+
     # Track selection state for hardware devices page
     # This property determines whether the mode starts with the device or channel selected
     track_selection_states = {}  # track_idx: 0=device, 1=channel
@@ -80,6 +90,16 @@ class SettingsMode(definitions.PyshaMode):
         # Initialize encoder accumulators
         for encoder_name in self.push.encoders.available_names:
             self.encoder_accumulators[encoder_name] = 0
+
+        # Initialize project list state
+        self.project_files = []
+        self.selected_project_index = 0
+        self.project_list_offset = 0
+        self.waiting_for_confirmation = False
+        self.project_to_confirm = None
+        self.last_scroll_time = current_time
+        self.scroll_text_offset = 0
+        self.scroll_text_direction = 1
 
     def activate(self):
         # Store original device assignments when entering settings mode
@@ -204,7 +224,73 @@ class SettingsMode(definitions.PyshaMode):
                     show_value(ctx, part_x, h, self.app.pm.current_project_file, color)
                 elif i == 1:  # Load session
                     show_title(ctx, part_x, h, 'LOAD PROJECT')
-                    show_value(ctx, part_x, h, self.current_preset_load_number, color)
+
+                    # Get project files if not already loaded
+                    if not self.project_files:
+                        self.project_files = self.app.pm.list_projects()
+
+                    # Display project list with scrolling
+                    if self.project_files:
+                        # Calculate visible items based on part height
+                        item_height = 16  # pixels per item
+                        visible_items = (part_h // item_height) - 2  # Leave space for title and some margin
+
+                        # Handle horizontal text scrolling for long filenames
+                        current_time = time.time()
+                        if current_time - self.last_scroll_time > 0.5:  # 500ms pause
+                            # Auto-scroll long text
+                            selected_project = self.project_files[self.selected_project_index] if self.project_files else ""
+                            if len(selected_project) > 20:  # If text is long
+                                self.scroll_text_offset += self.scroll_text_direction
+                                # Reverse direction at ends
+                                if self.scroll_text_offset > len(selected_project) * 6 or self.scroll_text_offset < 0:
+                                    self.scroll_text_direction *= -1
+
+                        # Draw visible project files
+                        for idx, project in enumerate(self.project_files[self.project_list_offset:self.project_list_offset + visible_items]):
+                            actual_idx = self.project_list_offset + idx
+                            y_pos = part_y + 30 + idx * item_height
+
+                            # Draw selection bar (fixed position for selected item)
+                            if actual_idx == self.selected_project_index:
+                                # Calculate y position relative to scroll offset
+                                selected_y = part_y + 30 + (self.selected_project_index - self.project_list_offset) * item_height
+                                if selected_y >= part_y + 30 and selected_y < part_y + 30 + visible_items * item_height:
+                                    ctx.set_source_rgb(1.0, 1.0, 1.0)  # White background
+                                    ctx.rectangle(part_x + 2, selected_y - 2, part_w - 6, item_height)
+                                    ctx.fill()
+
+                            # Draw project name
+                            if actual_idx == self.selected_project_index:
+                                ctx.set_source_rgb(0.0, 0.0, 0.0)  # Black text for selected item
+                            else:
+                                ctx.set_source_rgb(*color)  # Normal color
+
+                            ctx.select_font_face("Arial", 0, 0)
+                            ctx.set_font_size(12)
+
+                            # Apply horizontal scroll offset for selected item
+                            display_text = project
+                            if actual_idx == self.selected_project_index and len(project) > 20:
+                                # Create scrolling effect by offsetting the starting position
+                                text_width = len(project) * 6  # Approximate width
+                                visible_width = part_w - 10
+                                if text_width > visible_width:
+                                    # Calculate visible portion
+                                    start_pos = (self.scroll_text_offset // 6) % len(project)
+                                    display_text = project[start_pos:] + " " + project[:start_pos]
+                                    # Limit length to fit in space
+                                    display_text = display_text[:25]
+
+                            ctx.move_to(part_x + 4, y_pos + 10)
+                            ctx.show_text(display_text)
+                    else:
+                        # No projects available
+                        ctx.set_source_rgb(*color)
+                        ctx.select_font_face("Arial", 0, 0)
+                        ctx.set_font_size(12)
+                        ctx.move_to(part_x + 4, part_h // 2)
+                        ctx.show_text("No projects found")
                 elif i == 3:  # Save settings
                     show_title(ctx, part_x, h, 'SAVE SETTINGS')
                 elif i == 5:  # Re-send MIDI connection established (to push, not MIDI in/out device)
@@ -355,9 +441,32 @@ class SettingsMode(definitions.PyshaMode):
                     self.current_preset_save_number = 0
 
             elif encoder_name == push2_python.constants.ENCODER_TRACK2_ENCODER:
-                self.current_preset_load_number += increment
-                if self.current_preset_load_number < 0:
-                    self.current_preset_load_number = 0
+                if self.project_files:  # Only respond if we have projects
+                    # Change selection
+                    self.selected_project_index += increment
+
+                    # Clamp to valid range (no wrap-around)
+                    if self.selected_project_index < 0:
+                        self.selected_project_index = 0
+                    elif self.selected_project_index >= len(self.project_files):
+                        self.selected_project_index = len(self.project_files) - 1
+
+                    # Calculate visible items (using a reasonable default)
+                    item_height = 16
+                    visible_items = 5  # Default visible items
+
+                    # Adjust scroll offset to keep selection visible
+                    if self.selected_project_index < self.project_list_offset:
+                        self.project_list_offset = self.selected_project_index
+                    elif self.selected_project_index >= self.project_list_offset + visible_items:
+                        self.project_list_offset = self.selected_project_index - visible_items + 1
+
+                    # Update last scroll time for horizontal text scrolling
+                    self.last_scroll_time = time.time()
+
+                    # Clear any pending confirmation
+                    self.waiting_for_confirmation = False
+                    self.project_to_confirm = None
 
         elif self.current_page == Pages.DEVICES:
             track_encoders = [
@@ -477,19 +586,33 @@ class SettingsMode(definitions.PyshaMode):
                 return True
 
             if button_name == push2_python.constants.BUTTON_UPPER_ROW_2:
-                filename = ""
-                if self.app.pm.load_project(filename):
-                    self.app.add_display_notification(f"Loaded project from file: {filename}.json")
-                else:
-                    self.app.add_display_notification(f"{filename}.json failed to load")
+                if self.project_files:
+                    if not self.waiting_for_confirmation:
+                        # First press: show confirmation
+                        self.waiting_for_confirmation = True
+                        self.project_to_confirm = self.project_files[self.selected_project_index]
+                        self.app.add_display_notification(
+                            f"Press again to load: {self.project_to_confirm}"
+                        )
+                    else:
+                        # Second press: load the project
+                        if self.app.pm.load_project(self.project_to_confirm):
+                            self.app.add_display_notification(
+                                f"Loaded project: {self.project_to_confirm}"
+                            )
+                        else:
+                            self.app.add_display_notification(
+                                f"Failed to load: {self.project_to_confirm}"
+                            )
 
-                # Deactivate settings mode by setting current page to last page and calling "rotate settings page" method from app
-                self.current_page = self.n_pages - 1
-                self.app.toggle_and_rotate_settings_mode()
+                        # Exit settings mode
+                        self.current_page = self.n_pages - 1
+                        self.app.toggle_and_rotate_settings_mode()
+                        self.app.set_clip_triggering_mode()
 
-                self.app.set_clip_triggering_mode()
-                self.app.main_controls_mode.track_triggering_button_pressing_time = time.time()
-
+                        # Reset confirmation state
+                        self.waiting_for_confirmation = False
+                        self.project_to_confirm = None
                 return True
             if button_name == push2_python.constants.BUTTON_UPPER_ROW_4:
                 # Save current settings
