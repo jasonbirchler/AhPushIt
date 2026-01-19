@@ -127,12 +127,12 @@ class SettingsMode(definitions.PyshaMode):
         elif self.current_page == Pages.SESSION:
             self.push.buttons.set_button_color(push2_python.constants.BUTTON_UPPER_ROW_1, definitions.WHITE) # Save session
             self.push.buttons.set_button_color(push2_python.constants.BUTTON_UPPER_ROW_2, definitions.WHITE) # Load session
-            self.push.buttons.set_button_color(push2_python.constants.BUTTON_UPPER_ROW_3, definitions.GREEN, animation=definitions.DEFAULT_ANIMATION) # Reset MIDI
+            self.push.buttons.set_button_color(push2_python.constants.BUTTON_UPPER_ROW_8, definitions.OFF_BTN_COLOR) # empty
             self.push.buttons.set_button_color(push2_python.constants.BUTTON_UPPER_ROW_4, definitions.GREEN) # Save settings
-            self.push.buttons.set_button_color(push2_python.constants.BUTTON_UPPER_ROW_5, definitions.OFF_BTN_COLOR) # Version
-            self.push.buttons.set_button_color(push2_python.constants.BUTTON_UPPER_ROW_6, definitions.RED, animation=definitions.DEFAULT_ANIMATION) # Software Update
-            self.push.buttons.set_button_color(push2_python.constants.BUTTON_UPPER_ROW_7, definitions.RED, animation=definitions.DEFAULT_ANIMATION) # Restart
-            self.push.buttons.set_button_color(push2_python.constants.BUTTON_UPPER_ROW_8, definitions.OFF_BTN_COLOR) # FPS
+            self.push.buttons.set_button_color(push2_python.constants.BUTTON_UPPER_ROW_5, definitions.OFF_BTN_COLOR) # empty
+            self.push.buttons.set_button_color(push2_python.constants.BUTTON_UPPER_ROW_6, definitions.GREEN, animation=definitions.DEFAULT_ANIMATION) # Reset MIDI
+            self.push.buttons.set_button_color(push2_python.constants.BUTTON_UPPER_ROW_7, definitions.RED, animation=definitions.DEFAULT_ANIMATION) # Software Update
+            self.push.buttons.set_button_color(push2_python.constants.BUTTON_UPPER_ROW_8, definitions.RED, animation=definitions.DEFAULT_ANIMATION) # Restart
 
         elif self.current_page == Pages.DEVICES:
             self.push.buttons.set_button_color(push2_python.constants.BUTTON_UPPER_ROW_1, definitions.WHITE)
@@ -200,32 +200,30 @@ class SettingsMode(definitions.PyshaMode):
 
             elif self.current_page == Pages.SESSION:
                 if i == 0:  # Save session
-                    show_title(ctx, part_x, h, 'SAVE SESSION')
-                    show_value(ctx, part_x, h, self.current_preset_save_number, color)
+                    show_title(ctx, part_x, h, 'SAVE PROJECT')
+                    show_value(ctx, part_x, h, self.app.pm.current_project_file, color)
                 elif i == 1:  # Load session
-                    show_title(ctx, part_x, h, 'LOAD SESSION')
+                    show_title(ctx, part_x, h, 'LOAD PROJECT')
                     show_value(ctx, part_x, h, self.current_preset_load_number, color)
-                elif i == 2:  # Re-send MIDI connection established (to push, not MIDI in/out device)
-                    show_title(ctx, part_x, h, 'RESET MIDI')
                 elif i == 3:  # Save settings
                     show_title(ctx, part_x, h, 'SAVE SETTINGS')
-                elif i ==4: # definitions.VERSION info (Shepherd Controller version)
-                    show_title(ctx, part_x, h, 'C VERSION')
-                    show_value(ctx, part_x, h, definitions.VERSION, color)
-                elif i == 5:  # Software update
+                elif i == 5:  # Re-send MIDI connection established (to push, not MIDI in/out device)
+                    show_title(ctx, part_x, h, 'RESET MIDI')
+                elif i == 6:  # Software update
                     show_title(ctx, part_x, h, 'SW UPDATE')
                     if is_running_sw_update:
                         show_value(ctx, part_x, h, is_running_sw_update, color)
-                elif i == 6:  # Restart app(s)
+                elif i == 7:  # Restart button + FPS indicator / Version info
                     show_title(ctx, part_x, h, 'RESTART')
-                elif i == 7:  # FPS indicator
-                    show_title(ctx, part_x, h, 'FPS')
-                    show_value(ctx, part_x, h, self.app.actual_frame_rate, color)
+                    draw_text_at(ctx, part_x, h - 32, 'FPS', 12, [0.5,0.5,0.5])
+                    draw_text_at(ctx, part_x + 30, h - 32, self.app.actual_frame_rate, 18, color)
+                    draw_text_at(ctx, part_x, h - 15, f"Version {definitions.VERSION}", font_size=12, color=color)
 
             elif self.current_page == Pages.DEVICES:
                 try:
                     track = self.app.session.tracks[i]
-                    show_title(ctx, part_x, h, 'TRACK {}'.format(i+1))
+                    track_color = definitions.COLORS_NAMES_RGB[i % 8]
+                    show_title(ctx, part_x, h, 'TRACK {}'.format(i+1), color=track_color)
 
                     # Format device name to fit available space
                     device_short_name = track.device_short_name if track else "NONE"
@@ -292,7 +290,7 @@ class SettingsMode(definitions.PyshaMode):
         if self.current_page == Pages.PERFORMANCE:
 
             # Draw polyAT velocity curve
-            ctx.set_source_rgb(0.6, 0.6, 0.6)
+            ctx.set_source_rgb(1,0.5,0)
             ctx.set_line_width(1)
             data = self.app.melodic_mode.get_poly_at_curve()
             n = len(data)
@@ -493,14 +491,14 @@ class SettingsMode(definitions.PyshaMode):
                 self.app.main_controls_mode.track_triggering_button_pressing_time = time.time()
 
                 return True
-            if button_name == push2_python.constants.BUTTON_UPPER_ROW_3:
-                self.app.on_midi_push_connection_established()
-                return True
             if button_name == push2_python.constants.BUTTON_UPPER_ROW_4:
                 # Save current settings
                 self.app.save_current_settings_to_file()
                 return True
-            if button_name == push2_python.constants.BUTTON_UPPER_ROW_5:
+            if button_name == push2_python.constants.BUTTON_UPPER_ROW_6:
+                self.app.on_midi_push_connection_established()
+                return True
+            if button_name == push2_python.constants.BUTTON_UPPER_ROW_7:
                 # Run software update code
                 global is_running_sw_update
                 is_running_sw_update = "Starting"
@@ -509,7 +507,7 @@ class SettingsMode(definitions.PyshaMode):
                 else:
                     run_sw_update(do_pip_install=True)
                 return True
-            if button_name == push2_python.constants.BUTTON_UPPER_ROW_6:
+            if button_name == push2_python.constants.BUTTON_UPPER_ROW_8:
                 # Restart apps
                 restart_apps()
                 return True

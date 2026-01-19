@@ -53,7 +53,38 @@ TURQUOISE = 'turquoise'
 GREEN = 'green'
 LIME = 'lime'
 
-COLORS_NAMES = [ORANGE, YELLOW, TURQUOISE, LIME, RED, PINK, PURPLE, BLUE, CYAN, GREEN, BLACK, GRAY_DARK, GRAY_LIGHT, WHITE]
+COLORS_NAMES = [
+    ORANGE,
+    YELLOW,
+    TURQUOISE,
+    LIME,
+    RED,
+    PINK,
+    PURPLE,
+    BLUE,
+    CYAN,
+    GREEN,
+    BLACK,
+    GRAY_DARK,
+    GRAY_LIGHT,
+    WHITE
+]
+COLORS_NAMES_RGB = [
+    ORANGE_RGB,
+    YELLOW_RGB,
+    TURQUOISE_RGB,
+    LIME_RGB,
+    RED_RGB,
+    PINK_RGB,
+    PURPLE_RGB,
+    BLUE_RGB,
+    CYAN_RGB,
+    GREEN_RGB,
+    BLACK_RGB,
+    GRAY_DARK_RGB,
+    GRAY_LIGHT_RGB,
+    WHITE_RGB
+]
 
 def get_color_rgb(color_name):
     return globals().get('{0}_RGB'.format(color_name.upper()), [0, 0, 0])
