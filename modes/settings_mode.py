@@ -11,6 +11,9 @@ from utils import draw_text_at, show_title, show_value
 
 is_running_sw_update = ''
 
+MAX_WIDTH_BEFORE_SCROLL = 18
+PAUSE_BEFORE_HORIZONTAL_SCROLL = 1.0
+
 """
 This enum determines the order in which the settings pages display
 The order is arbitrary and can be arranged by personal preference
@@ -237,14 +240,11 @@ class SettingsMode(definitions.PyshaMode):
 
                         # Handle horizontal text scrolling for long filenames
                         current_time = time.time()
-                        if current_time - self.last_scroll_time > 0.5:  # 500ms pause
+                        if current_time - self.last_scroll_time > PAUSE_BEFORE_HORIZONTAL_SCROLL:  # 500ms pause
                             # Auto-scroll long text
                             selected_project = self.project_files[self.selected_project_index] if self.project_files else ""
-                            if len(selected_project) > 20:  # If text is long
+                            if len(selected_project) > MAX_WIDTH_BEFORE_SCROLL:  # If text is long
                                 self.scroll_text_offset += self.scroll_text_direction
-                                # Reverse direction at ends
-                                if self.scroll_text_offset > len(selected_project) * 6 or self.scroll_text_offset < 0:
-                                    self.scroll_text_direction *= -1
 
                         # Draw visible project files
                         for idx, project in enumerate(self.project_files[self.project_list_offset:self.project_list_offset + visible_items]):
@@ -267,11 +267,11 @@ class SettingsMode(definitions.PyshaMode):
                                 ctx.set_source_rgb(*color)  # Normal color
 
                             ctx.select_font_face("Arial", 0, 0)
-                            ctx.set_font_size(12)
+                            ctx.set_font_size(14)
 
                             # Apply horizontal scroll offset for selected item
                             display_text = project
-                            if actual_idx == self.selected_project_index and len(project) > 20:
+                            if actual_idx == self.selected_project_index and len(project) > MAX_WIDTH_BEFORE_SCROLL:
                                 # Create scrolling effect by offsetting the starting position
                                 text_width = len(project) * 6  # Approximate width
                                 visible_width = part_w - 10
