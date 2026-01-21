@@ -7,6 +7,8 @@ from base_class import BaseClass
 from clip import Clip
 from track import Track
 
+DEVICES_TO_IGNORE = ['Ableton Push', 'RtMidi', 'Through', 'pisound-ctl']
+
 
 class Session(BaseClass):
     """
@@ -157,12 +159,13 @@ class Session(BaseClass):
     def _get_safe_input_device_names(self):
         """Get input device names excluding system-related devices"""
         return [name for name in iso.get_midi_input_names()
-                if 'Ableton Push' not in name and 'RtMidi' not in name and 'Through' not in name]
+                if not any(device in name for device in DEVICES_TO_IGNORE)
+        ]
 
     def _get_safe_output_device_names(self):
         """Get input device names excluding system-related devices"""
         return [name for name in iso.get_midi_output_names()
-                if 'Ableton Push' not in name and 'RtMidi' not in name and 'Through' not in name]
+                if not any(device in name for device in DEVICES_TO_IGNORE)]
 
 
     ############################################################################
