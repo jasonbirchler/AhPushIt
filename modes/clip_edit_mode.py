@@ -182,15 +182,15 @@ class ClipEditMode(definitions.PyshaMode):
             if self.mode == self.MODE_CLIP:
                 if self.selected_clip_idx is not None:
 
-                    # Slot 1, clip name
+                    # Column 1, clip name
                     show_title(ctx, part_w * 0, h, 'CLIP', color=track_color_rgb)
                     show_value(ctx, part_w * 0, h, self.clip.name, color=track_color_rgb)
 
-                    # Slot 2, clip length
+                    # Column 2, clip length
                     show_title(ctx, part_w * 1, h, 'LENGTH')
                     show_value(ctx, part_w * 1, h, '{:.1f}'.format(self.clip.clip_length_in_beats))
 
-                    # Slot 3, quantization
+                    # Column 3, quantization
                     show_title(ctx, part_w * 2, h, 'QUANTIZATION')
                     quantization_step_labels = {
                         0.25: '16th note',
@@ -199,13 +199,9 @@ class ClipEditMode(definitions.PyshaMode):
                         0.0: '-'
                     }
                     if self.clip:
-                        show_value(ctx, part_w * 2, h, '{}'.format(quantization_step_labels.get(self.clip.current_quantization_step, self.clip.current_quantization_step)))
+                        show_value(ctx, part_w * 2, h, f'{quantization_step_labels.get(self.clip.current_quantization_step, self.clip.current_quantization_step)}')
 
-                    # Slot 4, bpm multiplier
-                    show_title(ctx, part_w * 3, h, 'BPM MULTIPLIER')
-                    show_value(ctx, part_w * 3, h, '{:.3f}'.format(self.clip.bpm_multiplier))
-
-                    # Slot 5, window position
+                    # Column 5, window position
                     show_title(ctx, part_w * 4, h, 'WINDOW')
                     show_value(ctx, part_w * 4, h, f'S:{self.clip.window_step_offset} N:{self.clip.window_note_offset}')
 
@@ -463,10 +459,11 @@ class ClipEditMode(definitions.PyshaMode):
 
             elif encoder_name == push2_python.constants.ENCODER_TRACK2_ENCODER:
                 # Edit clip length
-                increment = increment * 4.0
                 new_length = self.clip.clip_length_in_beats + increment
                 if new_length < 1.0:
                     new_length = 1.0
+                if new_length > 32.0:
+                    new_length = 32.0
                 self.clip.set_length(new_length)
                 self.update_pads()
                 return True  # Don't trigger this encoder moving in any other mode
