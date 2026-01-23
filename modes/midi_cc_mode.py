@@ -38,11 +38,6 @@ class MIDICCControl(object):
         name_height = 20
         show_text(ctx, x_part, margin_top, self.name, height=name_height, font_color=definitions.WHITE)
 
-        # Param value
-        val_height = 30
-        color = self.get_color_func()
-        show_text(ctx, x_part, margin_top + name_height, self.value_labels_map.get(str(self.value), str(self.value)), height=val_height, font_color=color)
-
         # Knob
         ctx.save()
 
@@ -52,7 +47,7 @@ class MIDICCControl(object):
 
         display_w = push2_python.constants.DISPLAY_LINE_PIXELS
         x = (display_w // 8) * x_part
-        y = margin_top + name_height + val_height + radius + 5
+        y = margin_top + name_height + radius + 5
         
         start_rad = (90 + circle_break_degrees // 2) * (math.pi / 180)
         end_rad = (90 - circle_break_degrees // 2) * (math.pi / 180)
@@ -75,10 +70,22 @@ class MIDICCControl(object):
         ctx.stroke()
 
         # Outer circle
+        color = self.get_color_func()
         ctx.arc(xc, yc, radius, start_rad, get_rad_for_value(self.value))
         ctx.set_source_rgb(* definitions.get_color_rgb_float(color))
         ctx.set_line_width(3)
         ctx.stroke()
+
+        # Value text centered in circle
+        ctx.select_font_face("Arial", 0, 0)
+        ctx.set_font_size(18)
+        value_text = self.value_labels_map.get(str(self.value), str(self.value))
+        text_extents = ctx.text_extents(value_text)
+        text_x = math.floor(xc - text_extents.width / 2)
+        text_y = yc + text_extents.height / 2
+        ctx.move_to(text_x, text_y)
+        ctx.set_source_rgb(*definitions.get_color_rgb_float(color))
+        ctx.show_text(value_text)
 
         ctx.restore()
     
