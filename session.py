@@ -187,17 +187,33 @@ class Session(BaseClass):
         print("Resetting timeline")
         self.global_timeline.reset()
 
+    ############################################################################
+    # Raw MIDI events
+    # ===============
+    # these aren't sent to the timeline, but straight out to the assigned device
+    # primarily used by the "keyboards" and MIDI CC knobs
+    ############################################################################
     def send_note(self, device_name: str, note: int, velocity: int, channel: int = 0):
         """Send a MIDI note on/off to an output device"""
         output_device = self.get_output_device(device_name)
         if output_device is None:
-            output_device = iso.MidiOutputDevice()
-        if output_device:
+            print(f"No output device found: {device_name}")
+            pass
+        else:
             if velocity > 0:
                 print(f"Sending note ON: {note} vel={velocity} to {device_name}")
                 output_device.note_on(note, velocity, channel)
             else:
                 print(f"Sending note OFF: {note} to {device_name}")
                 output_device.note_off(note, channel)
-        else:
+
+    def send_cc(self, device_name: str, cc_number: int, value: int, channel: int = 0):
+        """Send a MIDI control change message to an output device"""
+        output_device = self.get_output_device(device_name)
+        if output_device is None:
+            # no reason to send CC's if there's no device
             print(f"No output device found: {device_name}")
+            pass
+        else:
+            print(f"Sending CC: {cc_number} val={value} to {device_name}")
+            output_device.control(control=cc_number, value=value, channel=channel)
