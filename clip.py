@@ -161,6 +161,28 @@ class Clip(BaseClass):
 
         return notes_to_render
 
+    def get_note_range(self):
+        """Get the highest and lowest notes in the clip.
+        
+        Returns:
+            tuple: (lowest, highest) MIDI note values, or (None, None) if clip is empty.
+        """
+        all_notes = self.notes[self.notes is not None]
+        if len(all_notes) == 0:
+            return None, None
+        return int(np.min(all_notes)), int(np.max(all_notes))
+
+    def get_unique_notes(self):
+        """Get all unique note values in the clip.
+        
+        Returns:
+            list: Sorted list of unique MIDI note values, or empty list if clip is empty.
+        """
+        all_notes = self.notes[self.notes is not None]
+        if len(all_notes) == 0:
+            return []
+        return sorted(set(int(n) for n in all_notes))
+
     def get_status(self) -> ClipStatus:
         if self.will_start_recording_at >= 0.0:
             record_status = ClipStates.CLIP_STATUS_CUED_TO_RECORD

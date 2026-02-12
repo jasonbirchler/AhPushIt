@@ -106,10 +106,35 @@ class ClipEditMode(definitions.PyshaMode):
 
 
     def reset_window_to_clip(self):
-        """Reset window position to show the beginning of the clip"""
+        """Reset window position to center notes on the pads.
+        
+        Finds the highest and lowest notes in the clip, calculates the midpoint,
+        finds the actual note nearest to that midpoint, and centers that note
+        on row 4 of the Push pads.
+        """
         if self.clip:
             self.clip.window_step_offset = 0
-            self.clip.window_note_offset = 60  # Middle C
+            
+            # Get note range and center on pads
+            lowest, highest = self.clip.get_note_range()
+            if lowest is not None and highest is not None:
+                # Calculate mathematical midpoint
+                midpoint = (highest + lowest) / 2
+                
+                # Find the actual note nearest to the midpoint
+                unique_notes = self.clip.get_unique_notes()
+                nearest_note = min(unique_notes, key=lambda n: abs(n - midpoint))
+                
+                # Center that note on row 4 (pad index 4)
+                # Row 4 displays note: window_note_offset + 3
+                # So: window_note_offset = nearest_note - 3
+                self.clip.window_note_offset = nearest_note - 3
+                
+                # Clamp to valid MIDI range (0-120 to ensure 8 notes fit in 0-127)
+                self.clip.window_note_offset = clamp(self.clip.window_note_offset, 0, 120)
+            else:
+                # Empty clip - default to Middle C
+                self.clip.window_note_offset = 60
 
     def set_clip_mode(self, new_clip_idx):
         self.selected_event_position = None
