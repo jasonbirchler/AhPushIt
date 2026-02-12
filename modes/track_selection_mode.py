@@ -47,22 +47,48 @@ class TrackSelectionMode(definitions.PyshaMode):
                     json_file_path = os.path.join(definitions.INSTRUMENT_DEFINITION_FOLDER, filename)
                     with open(json_file_path, 'r', encoding='utf-8') as file:
                         self.devices_info[device_short_name] = json.load(file)
-                    print('- {}'.format(device_short_name))
+                    print(f'- {device_short_name}')
         except FileNotFoundError:
             # No definitions file present
+            print(f'No definition file found for {device_short_name}')
             pass
 
     def get_settings_to_save(self):
         return {}
 
+    def get_device_definition_name(self, device_name):
+        """
+        Match a full MIDI device name to its definition file name.
+        For example, 'NTS-1 digital kit SOUND' matches 'NTS-1'.
+        Returns the definition name if found, otherwise returns the original device_name.
+        """
+        if device_name is None:
+            return None
+        
+        # Check for exact match first
+        if device_name in self.devices_info:
+            return device_name
+        
+        # Check if any definition name is contained in the device name
+        for def_name in self.devices_info.keys():
+            # Case-insensitive match: check if definition name is in the device name
+            if def_name.upper() in device_name.upper():
+                return def_name
+        
+        # No match found, return original name
+        return device_name
+
     def get_all_distinct_device_short_names(self):
         return list(set([track.output_device_name for track in self.app.session.tracks]))
 
     def get_current_track_device_info(self):
-        return self.devices_info.get(self.get_selected_track().output_device_name, {})
+        output_device_name = self.get_selected_track().output_device_name
+        definition_name = self.get_device_definition_name(output_device_name)
+        return self.devices_info.get(definition_name, {})
 
     def get_current_track_device_short_name(self):
-        return self.get_selected_track().output_device_name
+        full_name = self.get_selected_track().output_device_name
+        return self.get_device_definition_name(full_name)
     
     def get_track_color(self, track_idx: int):
         return definitions.COLORS_NAMES[track_idx % 8]
@@ -158,6 +184,13 @@ class TrackSelectionMode(definitions.PyshaMode):
     def deactivate(self):
         for button_name in self.track_button_names:
             self.push.buttons.set_button_color(button_name, definitions.BLACK)
+
+    def check_for_delayed_actions(self):
+        track = self.get_selected_track()
+
+        if track.reload_track_info:
+            track.reload_track_info = False
+            self.load_hardware_devices_info()
 
     def update_buttons(self):
         if self.app.session is None or self.app.session.tracks is None:

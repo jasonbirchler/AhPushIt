@@ -28,6 +28,7 @@ class Track(BaseClass):
         self._send_clock = False
         self._output_device = iso.MidiOutputDevice(self.output_device_name, send_clock=self.send_clock)
         self._device_short_name = None
+        self._reload_track_info = False
 
     @property
     def app(self):
@@ -60,6 +61,7 @@ class Track(BaseClass):
         self.output_device = iso.MidiOutputDevice(device_name=device_name, send_clock=True)
         # Invalidate the cached short name so it gets regenerated with the new device name
         self._device_short_name = None
+        self.reload_track_info = True
 
     def _generate_short_name(self) -> str:
         """
@@ -118,3 +120,14 @@ class Track(BaseClass):
     def send_clock(self, value: bool) -> None:
         """Set whether clock is being sent"""
         self._send_clock = value
+
+    @property
+    def reload_track_info(self) -> bool:
+        """Get track reload state"""
+        return self._reload_track_info
+
+    @reload_track_info.setter
+    def reload_track_info(self, value: bool) -> None:
+        """Set track reload state"""
+        self._reload_track_info = value
+

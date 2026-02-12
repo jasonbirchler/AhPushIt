@@ -532,6 +532,8 @@ class SettingsMode(definitions.PyshaMode):
                         # Mark this track as modified by the user
                         self.modified_tracks.add(track_num)
                         print(f"Track {track_num + 1}: Changed device from '{current_hw_device_name}' to '{next_device_name}'")
+                        # Notify MIDI CC mode to reload definitions for this device
+                        self.app.midi_cc_mode.new_track_selected()
 
                     elif selection_state == 1:  # Channel selection only
                         # Get current channel from track
@@ -704,6 +706,8 @@ class SettingsMode(definitions.PyshaMode):
                         # Mark this track as modified by the user
                         self.modified_tracks.add(track_num)
                         print(f"Track {track_num + 1}: Changed device from '{current_hw_device_name}' to '{next_device_name}'")
+                        # Notify MIDI CC mode to reload definitions for this device
+                        self.app.midi_cc_mode.new_track_selected()
                     elif selection_state == 1:  # Channel selection only
                         hw_device = track.get_output_device()
                         if hw_device:

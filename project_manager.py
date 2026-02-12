@@ -126,6 +126,10 @@ class ProjectManager:
 
             self.current_project_file = filename
             print(f"Project loaded: {filepath}")
+            
+            # Notify MIDI CC mode to reload definitions for all tracks
+            self.app.midi_cc_mode.new_track_selected()
+            
             return True
 
         except Exception as e:

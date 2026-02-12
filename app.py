@@ -308,7 +308,7 @@ class PyshaApp(object):
         if not self.push.midi_is_configured():
             self.push.configure_midi()
 
-        # Call dalyed actions in active modes
+        # Call delayed actions in active modes
         for mode in self.active_modes:
             mode.check_for_delayed_actions()
 

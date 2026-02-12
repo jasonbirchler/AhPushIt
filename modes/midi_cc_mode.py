@@ -130,36 +130,74 @@ class MIDICCMode(PyshaMode):
                 )
 
     def initialize(self, settings=None):
-        for instrument_short_name in self.get_all_distinct_instrument_short_names_helper():
-            try:
-                midi_cc = json.load(open(os.path.join(definitions.INSTRUMENT_DEFINITION_FOLDER, '{}.json'.format(instrument_short_name)))).get('midi_cc', None)
-            except FileNotFoundError:
-                midi_cc = None
-
-            if midi_cc is not None:
-                # Create MIDI CC mappings for instruments with definitions
-                self.instrument_midi_control_ccs[instrument_short_name] = []
-                for section in midi_cc:
-                    section_name = section['section']
-                    for name, cc_number in section['controls']:
-                        control = MIDICCControl(cc_number, name, section_name, self.get_current_track_color_helper, self.send_midi_cc)
-                        if section.get('control_value_label_maps', {}).get(name, False):
-                            control.value_labels_map = section['control_value_label_maps'][name]
-                        self.instrument_midi_control_ccs[instrument_short_name].append(control)
-                print('Loaded {0} MIDI cc mappings for instrument {1}'.format(len(self.instrument_midi_control_ccs[instrument_short_name]), instrument_short_name))
-            else:
-                # No definition file for instrument exists, or no midi CC were defined for that instrument
-                self.instrument_midi_control_ccs[instrument_short_name] = []
-                for i in range(0, 128):
-                    section_s = (i // 16) * 16
-                    section_e = section_s + 15
-                    control = MIDICCControl(i, 'CC {0}'.format(i), '{0} to {1}'.format(section_s, section_e), self.get_current_track_color_helper, self.send_midi_cc)
-                    self.instrument_midi_control_ccs[instrument_short_name].append(control)
-                print('Loaded default MIDI cc mappings for instrument {0}'.format(instrument_short_name))
+        # Get distinct device names from tracks and resolve them to definition names
+        all_device_names = self.get_all_distinct_instrument_short_names_helper()
+        
+        for device_name in all_device_names:
+            # Resolve to definition name using the helper
+            definition_name = self.app.track_selection_mode.get_device_definition_name(device_name)
+            self._load_instrument_definition(definition_name)
       
         # Fill in current page and section variables
         for instrument_short_name in self.instrument_midi_control_ccs:
-            self.current_selected_section_and_page[instrument_short_name] = (self.instrument_midi_control_ccs[instrument_short_name][0].section, 0)
+            if self.instrument_midi_control_ccs[instrument_short_name]:
+                self.current_selected_section_and_page[instrument_short_name] = (self.instrument_midi_control_ccs[instrument_short_name][0].section, 0)
+            else:
+                # Empty list (shouldn't happen now, but just in case)
+                self.current_selected_section_and_page[instrument_short_name] = ('0 to 15', 0)
+        
+        # Initialize active_midi_control_ccs for the current track
+        self.active_midi_control_ccs = self.get_midi_cc_controls_for_current_track_section_and_page()
+
+    def _load_instrument_definition(self, definition_name):
+        """
+        Load MIDI CC mappings for an instrument definition.
+        This method loads from the JSON definition file if available,
+        otherwise creates default CC 0-127 mappings.
+        """
+        # Skip if already loaded
+        if definition_name in self.instrument_midi_control_ccs:
+            return
+        
+        # For None (no device assigned), create default CC mappings
+        if definition_name is None:
+            self.instrument_midi_control_ccs[None] = []
+            for i in range(0, 128):
+                section_s = (i // 16) * 16
+                section_e = section_s + 15
+                control = MIDICCControl(i, 'CC {0}'.format(i), '{0} to {1}'.format(section_s, section_e), self.get_current_track_color_helper, self.send_midi_cc)
+                self.instrument_midi_control_ccs[None].append(control)
+            print('Loaded default MIDI cc mappings for no device')
+            return
+        
+        try:
+            definition_path = os.path.join(definitions.INSTRUMENT_DEFINITION_FOLDER, '{}.json'.format(definition_name))
+            with open(definition_path, 'r', encoding='utf-8') as f:
+                definition_data = json.load(f)
+            midi_cc = definition_data.get('midi_cc', None)
+        except (FileNotFoundError, json.JSONDecodeError):
+            midi_cc = None
+
+        if midi_cc is not None:
+            # Create MIDI CC mappings for instruments with definitions
+            self.instrument_midi_control_ccs[definition_name] = []
+            for section in midi_cc:
+                section_name = section['section']
+                for name, cc_number in section['controls'].items():
+                    control = MIDICCControl(cc_number, name, section_name, self.get_current_track_color_helper, self.send_midi_cc)
+                    if section.get('control_value_label_maps', {}).get(name, False):
+                        control.value_labels_map = section['control_value_label_maps'][name]
+                    self.instrument_midi_control_ccs[definition_name].append(control)
+            print('Loaded {0} MIDI cc mappings for instrument {1}'.format(len(self.instrument_midi_control_ccs[definition_name]), definition_name))
+        else:
+            # No definition file for instrument exists, or no midi CC were defined for that instrument
+            self.instrument_midi_control_ccs[definition_name] = []
+            for i in range(0, 128):
+                section_s = (i // 16) * 16
+                section_e = section_s + 15
+                control = MIDICCControl(i, 'CC {0}'.format(i), '{0} to {1}'.format(section_s, section_e), self.get_current_track_color_helper, self.send_midi_cc)
+                self.instrument_midi_control_ccs[definition_name].append(control)
+            print('Loaded default MIDI cc mappings for instrument {0}'.format(definition_name))
 
     def get_all_distinct_instrument_short_names_helper(self):
         return self.app.track_selection_mode.get_all_distinct_device_short_names()
@@ -180,19 +218,17 @@ class MIDICCMode(PyshaMode):
 
     def get_currently_selected_midi_cc_section_and_page(self):
         current_short_name = self.get_current_track_instrument_short_name_helper()
+        
+        # Ensure definition is loaded for this device
+        self._load_instrument_definition(current_short_name)
+        
         # Ensure the current device has proper MIDI CC mappings initialized
         if current_short_name not in self.current_selected_section_and_page:
             # Initialize default mappings for this device
-            self.current_selected_section_and_page[current_short_name] = ('0 to 15', 0)
-            # Also ensure instrument_midi_control_ccs has mappings for this device
-            if current_short_name not in self.instrument_midi_control_ccs:
-                self.instrument_midi_control_ccs[current_short_name] = []
-                for i in range(0, 128):
-                    section_s = (i // 16) * 16
-                    section_e = section_s + 15
-                    control = MIDICCControl(i, 'CC {0}'.format(i), '{0} to {1}'.format(section_s, section_e), self.get_current_track_color_helper, self.send_midi_cc)
-                    self.instrument_midi_control_ccs[current_short_name].append(control)
-                print('Initialized default MIDI cc mappings for new device {0}'.format(current_short_name))
+            if current_short_name in self.instrument_midi_control_ccs and self.instrument_midi_control_ccs[current_short_name]:
+                self.current_selected_section_and_page[current_short_name] = (self.instrument_midi_control_ccs[current_short_name][0].section, 0)
+            else:
+                self.current_selected_section_and_page[current_short_name] = ('0 to 15', 0)
 
         return self.current_selected_section_and_page[current_short_name]
 
@@ -231,6 +267,9 @@ class MIDICCMode(PyshaMode):
         return show_prev, show_next
 
     def new_track_selected(self):
+        # Ensure definition is loaded for the current track's device
+        definition_name = self.get_current_track_instrument_short_name_helper()
+        self._load_instrument_definition(definition_name)
         self.active_midi_control_ccs = self.get_midi_cc_controls_for_current_track_section_and_page()
 
     def activate(self):

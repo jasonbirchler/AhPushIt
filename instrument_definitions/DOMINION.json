@@ -1,4 +1,6 @@
 {
+    "type": "output",
+    "default_layout": "lmelodic",
     "instrument_name": "Dominion",
     "instrument_short_name": "DOMINION",
     "illuminate_local_notes": false,
