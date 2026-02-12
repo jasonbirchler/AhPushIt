@@ -167,7 +167,7 @@ class Clip(BaseClass):
         Returns:
             tuple: (lowest, highest) MIDI note values, or (None, None) if clip is empty.
         """
-        all_notes = self.notes[self.notes is not None]
+        all_notes = self.notes[self.notes != None]
         if len(all_notes) == 0:
             return None, None
         return int(np.min(all_notes)), int(np.max(all_notes))
@@ -178,7 +178,7 @@ class Clip(BaseClass):
         Returns:
             list: Sorted list of unique MIDI note values, or empty list if clip is empty.
         """
-        all_notes = self.notes[self.notes is not None]
+        all_notes = self.notes[self.notes != None]
         if len(all_notes) == 0:
             return []
         return sorted(set(int(n) for n in all_notes))
