@@ -49,6 +49,7 @@ class ClipEditMode(definitions.PyshaMode):
     selected_generator_algorithm = 0
 
     default_note_duration = 0.25  # Default duration in beats (1/16 note)
+    should_follow_playhead = False  # When True, view scrolls to follow playhead during playback
 
     '''
     MODE_CLIP
@@ -144,10 +145,46 @@ class ClipEditMode(definitions.PyshaMode):
         self.selected_event_position = position
         self.mode = self.MODE_EVENT
 
+    def update_view_for_playhead(self):
+        """Update the view window to follow the playhead during playback.
+        
+        When should_follow_playhead is True:
+        - If playhead reaches the right edge of the visible window, scroll right by 8 steps
+        - If playhead wraps to the beginning, reset view to start
+        """
+        if not self.clip or not self.clip.playing or not self.should_follow_playhead:
+            return
+        
+        if self.clip.clip_length_in_beats <= 0:
+            return
+        
+        # Calculate current playhead step position
+        playhead_step = (self.clip.playhead_position_in_beats / self.clip.clip_length_in_beats) * self.clip.steps
+        playhead_step = int(playhead_step) % self.clip.steps
+        
+        window_start = self.clip.window_step_offset
+        window_end = window_start + 8
+        
+        # Check if playhead has moved past the right edge of the visible window
+        if playhead_step >= window_end:
+            # Scroll right by one page (8 steps)
+            new_offset = window_start + 8
+            max_offset = max(0, self.clip.steps - 8)
+            self.clip.window_step_offset = min(new_offset, max_offset)
+        
+        # Check if playhead has wrapped back to the beginning
+        # This is detected when playhead is near start but window is scrolled far right
+        elif playhead_step < 8 and window_start > 0:
+            # Reset view to beginning
+            self.clip.window_step_offset = 0
+
     def render_pads(self):
         """Render the current window of notes to pad colors"""
         if self.clip is None:
             return [], []
+
+        # Update view position if following playhead
+        self.update_view_for_playhead()
 
         track_idx = self.app.session.tracks.index(self.clip.track)
         track_color = self.app.track_selection_mode.get_track_color(track_idx)
@@ -242,10 +279,15 @@ class ClipEditMode(definitions.PyshaMode):
                     }
                     if self.clip:
                         show_value(ctx, part_w * 2, h, f'{quantization_step_labels.get(self.clip.current_quantization_step, self.clip.current_quantization_step)}')
+                    
+                    # Column 4, Playhead Follow
+                    show_title(ctx, part_w * 3, h, 'FOLLOW')
+                    show_value(ctx, part_w * 3, h, 'ON' if self.should_follow_playhead else 'OFF')
 
-                    # Column 5, window position
-                    show_title(ctx, part_w * 4, h, 'WINDOW')
-                    show_value(ctx, part_w * 4, h, f'S:{self.clip.window_step_offset} N:{self.clip.window_note_offset}')
+                    # Column 8, window position
+                    show_title(ctx, part_w * 7, h, 'Window Offset:')
+                    show_value(ctx, part_w * 7, h, f'Step: {self.clip.window_step_offset}')
+                    show_value(ctx, part_w * 7, h, f'Note: {self.clip.window_note_offset}', vertical_offset=22)
 
             elif self.mode == self.MODE_EVENT:
                 if self.event_data is not None:
@@ -307,7 +349,7 @@ class ClipEditMode(definitions.PyshaMode):
             self.push.buttons.set_button_color(push2_python.constants.BUTTON_SHIFT, definitions.WHITE)
             self.push.buttons.set_button_color(push2_python.constants.BUTTON_UPPER_ROW_2, definitions.BLACK)
             self.set_button_color_if_pressed(push2_python.constants.BUTTON_UPPER_ROW_3, animation=definitions.DEFAULT_ANIMATION)
-            self.push.buttons.set_button_color(push2_python.constants.BUTTON_UPPER_ROW_4, definitions.BLACK)
+            self.push.buttons.set_button_color(push2_python.constants.BUTTON_UPPER_ROW_4, definitions.WHITE)
             self.push.buttons.set_button_color(push2_python.constants.BUTTON_UPPER_ROW_5, definitions.BLACK)
             self.push.buttons.set_button_color(push2_python.constants.BUTTON_UPPER_ROW_6, definitions.BLACK)
             self.push.buttons.set_button_color(push2_python.constants.BUTTON_UPPER_ROW_7, definitions.BLACK)
@@ -417,20 +459,23 @@ class ClipEditMode(definitions.PyshaMode):
             if button_name == push2_python.constants.BUTTON_QUANTIZE:
                 self.quantize_helper()
                 return True
-            if button_name == push2_python.constants.BUTTON_UPPER_ROW_3:
-                self.quantize_helper()
-                return True
             if button_name == push2_python.constants.BUTTON_DELETE:
                 self.clip.clear()
-                return True
-            if button_name == push2_python.constants.BUTTON_UPPER_ROW_1:
-                self.clip.play_stop()
                 return True
             if button_name == push2_python.constants.BUTTON_RECORD:
                 self.clip.record_on_off()
                 return True
             if button_name == push2_python.constants.BUTTON_CLIP:
                 self.mode = self.MODE_GENERATOR
+                return True
+            if button_name == push2_python.constants.BUTTON_UPPER_ROW_1:
+                self.clip.play_stop()
+                return True
+            if button_name == push2_python.constants.BUTTON_UPPER_ROW_3:
+                self.quantize_helper()
+                return True
+            if button_name == push2_python.constants.BUTTON_UPPER_ROW_4:
+                self.should_follow_playhead = not self.should_follow_playhead
                 return True
 
         elif self.mode == self.MODE_GENERATOR:
