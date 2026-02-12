@@ -171,8 +171,15 @@ class TrackSelectionMode(definitions.PyshaMode):
     def update_display(self, ctx, w, h):
         if self.app.session is None or self.app.session.tracks is None:
             return
+        
+        display_w = push2_python.constants.DISPLAY_LINE_PIXELS
+        part_w = display_w // 8
+        
         # Draw track selector labels
         height = 20
+        playback_bar_height = 5
+        playback_bar_margin = 2
+        
         for i, track in enumerate(self.app.session.tracks):
             track_color = self.get_track_color(i)
             if self.selected_track == i:
@@ -186,6 +193,33 @@ class TrackSelectionMode(definitions.PyshaMode):
             # Use a default name if no device is assigned
             if device_short_name is None:
                 device_short_name = f"Track {i+1}"
+
+            # Draw playback indicator bar above track name
+            # Check if any clip in this track is playing
+            playing_clip = None
+            for clip in track.clips:
+                if clip is not None and clip.playing:
+                    playing_clip = clip
+                    break
+            
+            if playing_clip is not None:
+                # Draw the playback bar background
+                x1 = part_w * i
+                y1 = h - height - playback_bar_height - playback_bar_margin
+                
+                # Draw full-width bar in track color (darker)
+                ctx.save()
+                ctx.set_source_rgb(*definitions.get_color_rgb_float(track_color + '_darker1'))
+                ctx.rectangle(x1, y1, part_w, playback_bar_height)
+                ctx.fill()
+                
+                # Draw progress portion in track color
+                if playing_clip.clip_length_in_beats > 0:
+                    progress = (playing_clip.playhead_position_in_beats % playing_clip.clip_length_in_beats) / playing_clip.clip_length_in_beats
+                    ctx.set_source_rgb(*definitions.get_color_rgb_float(track_color))
+                    ctx.rectangle(x1, y1, part_w * progress, playback_bar_height)
+                    ctx.fill()
+                ctx.restore()
 
             show_text(ctx, i, h - height, device_short_name, height=height,
                     font_color=font_color, background_color=background_color)
