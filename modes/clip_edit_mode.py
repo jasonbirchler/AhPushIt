@@ -125,9 +125,7 @@ class ClipEditMode(definitions.PyshaMode):
                 unique_notes = self.clip.get_unique_notes()
                 nearest_note = min(unique_notes, key=lambda n: abs(n - midpoint))
                 
-                # Center that note on row 4 (pad index 4)
-                # Row 4 displays note: window_note_offset + 3
-                # So: window_note_offset = nearest_note - 3
+                # Center that note on row 4
                 self.clip.window_note_offset = nearest_note - 3
                 
                 # Clamp to valid MIDI range (0-120 to ensure 8 notes fit in 0-127)
@@ -168,6 +166,25 @@ class ClipEditMode(definitions.PyshaMode):
 
             if 0 <= pad_i < 8 and 0 <= pad_j < 8:
                 color_matrix[pad_i][pad_j] = track_color
+
+        # Draw playhead if clip is playing
+        if self.clip.playing and self.clip.clip_length_in_beats > 0:
+            # Calculate playhead step position (wraps around)
+            playhead_step = (self.clip.playhead_position_in_beats / self.clip.clip_length_in_beats) * self.clip.steps
+            playhead_step = int(playhead_step) % self.clip.steps
+
+            # Check if playhead is in the visible window
+            window_start = self.clip.window_step_offset
+            window_end = window_start + 8
+
+            if window_start <= playhead_step < window_end:
+                # Calculate the column (pad_j) for the playhead
+                playhead_pad_j = playhead_step - window_start
+
+                if 0 <= playhead_pad_j < 8:
+                    # Draw white vertical column for playhead
+                    for pad_i in range(8):
+                        color_matrix[pad_i][playhead_pad_j] = definitions.WHITE
 
         return color_matrix, animation_matrix
 

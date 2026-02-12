@@ -301,6 +301,9 @@ class PyshaApp(object):
         # Check for queued clips that need to switch
         self.seq.check_queued_clips()
 
+        # Update playhead positions for all playing clips
+        self.update_playhead_positions()
+
         # If MIDI not configured, make sure we try sending messages so it gets configured
         if not self.push.midi_is_configured():
             self.push.configure_midi()
@@ -316,6 +319,20 @@ class PyshaApp(object):
         if self.buttons_need_update:
             self.update_push2_buttons()
             self.buttons_need_update = False
+
+    def update_playhead_positions(self):
+        """Update playhead positions for all playing clips."""
+        if self.session is None:
+            return
+        for track in self.session.tracks:
+            for clip in track.clips:
+                if clip is not None and clip.playing:
+                    clip.update_playhead_position()
+        
+        # If clip edit mode is active with a playing clip, update pads for playhead animation
+        if self.is_mode_active(self.clip_edit_mode):
+            if self.clip_edit_mode.clip and self.clip_edit_mode.clip.playing:
+                self.pads_need_update = True
 
     def check_for_new_midi_devices(self):
         """Check for newly connected MIDI devices"""

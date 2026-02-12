@@ -69,6 +69,7 @@ class Clip(BaseClass):
         self._steps = int((self._clip_length_in_beats/self.beats_per_bar) * self._step_divisions)
         self.current_quantization_step = 0.0
         self.playhead_position_in_beats = 0.0
+        self._playback_start_time = 0.0  # Timeline time when clip started playing
         self.bpm_multiplier = 1.0
         self.wrap_events_across_clip_loop = False
         self.max_polyphony = 4
@@ -239,6 +240,11 @@ class Clip(BaseClass):
         # Mark clip as playing
         self.playing = True
         self.will_play_at = -1.0
+        
+        # Set playback start time for playhead tracking
+        if self.app and hasattr(self.app, 'global_timeline'):
+            self._playback_start_time = self.app.global_timeline.current_time
+        
         # Update the clip status by calling get_status()
         self.clip_status = self.get_status()
 
@@ -260,6 +266,8 @@ class Clip(BaseClass):
         # Mark clip as stopped
         self.playing = False
         self.will_stop_at = -1.0
+        self.playhead_position_in_beats = 0.0
+        self._playback_start_time = 0.0
 
         # If there's a queued clip, start it now without quantization
         if self.queued_clip:
@@ -406,3 +414,16 @@ class Clip(BaseClass):
         if self.playing:
             if self.app and hasattr(self.app, 'seq'):
                 self.app.seq.schedule_clip(self)
+
+    def update_playhead_position(self):
+        """Update the playhead position based on timeline time.
+        Should be called periodically from the main loop.
+        """
+        if self.playing and self.app and hasattr(self.app, 'global_timeline'):
+            current_time = self.app.global_timeline.current_time
+            elapsed_beats = current_time - self._playback_start_time
+            # Wrap around at clip length
+            if self.clip_length_in_beats > 0:
+                self.playhead_position_in_beats = elapsed_beats % self.clip_length_in_beats
+            else:
+                self.playhead_position_in_beats = 0.0
