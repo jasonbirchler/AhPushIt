@@ -41,6 +41,7 @@ class Session(BaseClass):
         self.track_schedules: Dict[str, object] = {}  # track_uuid -> schedule object
         self.track_clips: Dict[str, object] = {}  # track_uuid -> clip object
         self.pending_actions: List[Dict] = []  # List of {beat, action, clip}
+        self.pending_scene_transition = None  # {time, clips_to_stop, clips_to_start}
 
         # Initialize with 8 empty Track objects to match the 8 track buttons
         self.tracks = [Track(parent=self) for _ in range(8)]
@@ -84,7 +85,103 @@ class Session(BaseClass):
         return None
 
     def scene_play(self, scene_number):
+        """
+        Play all clips in the specified scene (row), stopping all clips in other scenes.
+        All changes are quantized to the next bar boundary.
+        If the scene is already playing, re-triggers all clips from the beginning.
+
+        Args:
+            scene_number: The scene/clip index (0-7) to play
+        """
         print(f'Trying to play scene {scene_number}')
+
+        # Track which clips need to be stopped and started
+        clips_to_stop = []
+        clips_to_start = []
+
+        # Collect all currently playing clips (to stop at next bar)
+        for track in self.tracks:
+            for clip in track.clips:
+                if clip is not None and clip.playing:
+                    clips_to_stop.append(clip)
+
+        # Collect all clips in the target scene (to start at next bar)
+        for track in self.tracks:
+            if scene_number < len(track.clips):
+                clip = track.clips[scene_number]
+                if clip is not None and not clip.is_empty():
+                    clips_to_start.append(clip)
+
+        # Calculate the time until the next bar
+        current_time = self.global_timeline.current_time
+        beats_until_next_bar = 4 - (int(current_time) % 4)
+
+        # Schedule stops and starts at the next bar
+        if beats_until_next_bar == 0:
+            beats_until_next_bar = 4  # If we're exactly on a bar line, wait for the next one
+
+        next_bar_time = current_time + beats_until_next_bar
+
+        # Mark clips with their scheduled stop/start times
+        for clip in clips_to_stop:
+            clip.will_stop_at = next_bar_time
+            clip.update_status()
+
+        for clip in clips_to_start:
+            clip.will_play_at = next_bar_time
+            clip.update_status()
+
+        # Update pads immediately to show cued state
+        if self.app and hasattr(self.app, 'clip_triggering_mode'):
+            self.app.clip_triggering_mode.update_pads()
+
+        # Store the pending scene transition to be executed by the sequencer
+        self.pending_scene_transition = {
+            'time': next_bar_time,
+            'clips_to_stop': clips_to_stop,
+            'clips_to_start': clips_to_start
+        }
+
+    def check_pending_scene_transition(self):
+        """Check and execute pending scene transition if it's time."""
+        if self.pending_scene_transition is None:
+            return
+
+        current_time = self.global_timeline.current_time
+        transition = self.pending_scene_transition
+
+        if current_time >= transition['time']:
+            # Execute the transition
+            for clip in transition['clips_to_stop']:
+                if clip.playing:
+                    clip.stop()
+
+            for clip in transition['clips_to_start']:
+                clip.play(quantize_start=False)
+                clip.will_play_at = -1.0
+                clip.update_status()
+
+            # Clear the pending transition
+            self.pending_scene_transition = None
+
+            # Update pads to reflect new state
+            if self.app and hasattr(self.app, 'clip_triggering_mode'):
+                self.app.clip_triggering_mode.update_pads()
+
+    def scene_stop(self, scene_number):
+        """
+        Stop all clips in the specified scene (row).
+
+        Args:
+            scene_number: The scene/clip index (0-7) to stop
+        """
+        print(f'Stopping scene {scene_number}')
+
+        for track in self.tracks:
+            if scene_number < len(track.clips):
+                clip = track.clips[scene_number]
+                if clip is not None and clip.playing:
+                    clip.stop()
 
     def set_bpm(self, new_bpm):
         print(f'Trying to set bpm to {new_bpm}')

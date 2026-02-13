@@ -301,6 +301,9 @@ class PyshaApp(object):
         # Check for queued clips that need to switch
         self.seq.check_queued_clips()
 
+        # Check for pending scene transitions
+        self.session.check_pending_scene_transition()
+
         # Update playhead positions for all playing clips
         self.update_playhead_positions()
 

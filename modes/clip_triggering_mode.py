@@ -289,6 +289,7 @@ class ClipTriggeringMode(definitions.PyshaMode):
             self.app.session.scene_play(triggered_scene_row)
             self.selected_scene = triggered_scene_row
             self.app.buttons_need_update = True
+            self.app.pads_need_update = True
             return True
 
         if button_name == self.duplicate_button:
