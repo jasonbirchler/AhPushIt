@@ -58,13 +58,6 @@ class Session(BaseClass):
     ############################################################################
     # Session Management
     ############################################################################
-    def _add_track(self, track: Track, position=None):
-        # Note this method adds a Track object in the local Session object but does not create a track in the backend
-        if position is None:
-            self.tracks.append(track)
-        else:
-            self.tracks.insert(position, track)
-
     def get_track_by_idx(self, track_idx=None) -> Optional[Track]:
         try:
             return self.tracks[track_idx]

@@ -68,8 +68,8 @@ class PyshaApp(object):
         else:
             settings = {}
 
-        # initialize timeline in app to make access simpler
-        # from session and sequencer
+        # initialize timeline in app
+        # to make access from session and sequencer simpler
         self.global_timeline = iso.Timeline()
         self.session = Session(self)
         self.seq = Sequencer(self)
