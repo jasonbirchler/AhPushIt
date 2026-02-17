@@ -1,3 +1,4 @@
+import sys
 import json
 import os
 import platform
@@ -237,13 +238,13 @@ class PyshaApp(object):
 
     def init_push(self):
         print('Configuring Push...')
-        real_push_available = any(['Ableton Push' in port_name for port_name in iso.get_midi_output_names()])
-        self.using_push_simulator = not real_push_available
+        print('Configuring Push...')
+        use_simulator = '--simulator' in sys.argv or '-s' in sys.argv
         simulator_port = 6128
-        if self.using_push_simulator:
-            print('Using Push2 simulator at http://localhost:{}'.format(simulator_port))
-        self.push = push2_python.Push2(run_simulator=self.using_push_simulator, simulator_port=simulator_port,
-                                       simulator_use_virtual_midi_out=self.using_push_simulator)
+        if use_simulator:
+            print(f'Using Push2 simulator at http://localhost:{simulator_port}')
+        self.push = push2_python.Push2(run_simulator=use_simulator, simulator_port=simulator_port,
+                                       simulator_use_virtual_midi_out=use_simulator)
         # Initialize MIDI in/out for Push's Live port_name
         # This isn't treated as a device like other in/out ports
         # because it's ports are used for communication with this app
@@ -384,8 +385,10 @@ class PyshaApp(object):
         # Do initial configuration of Push
         print('Doing initial Push config...')
 
-        # Force configure MIDI out (in case it wasn't...)
-        self.push.configure_midi_out()
+        # Only configure MIDI out if not in simulator mode
+        # In simulator mode, there's no physical Push2 MIDI device
+        if self.push.simulator_controller is None:
+            self.push.configure_midi_out()
 
         # Configure custom color palette
         app.push.color_palette = {}
