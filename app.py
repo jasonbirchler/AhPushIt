@@ -5,6 +5,18 @@ import platform
 import time
 import traceback
 
+# Patch engineio Payload to increase max_decode_packets limit
+# This fixes "Too many packets in payload" error when browser sends many messages
+# The browser client (socket.io.js 4.0.1) may batch messages differently than the server expects
+try:
+    import engineio.payload
+    if hasattr(engineio.payload.Payload, 'max_decode_packets'):
+        original_limit = engineio.payload.Payload.max_decode_packets
+        engineio.payload.Payload.max_decode_packets = 100
+        print(f'[PATCH] Increased max_decode_packets from {original_limit} to 100')
+except ImportError:
+    pass  # engineio might not be installed
+
 import cairo
 import isobar as iso
 import numpy
