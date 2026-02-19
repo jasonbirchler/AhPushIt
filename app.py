@@ -349,6 +349,11 @@ class PyshaApp(object):
         if self.is_mode_active(self.clip_edit_mode):
             if self.clip_edit_mode.clip and self.clip_edit_mode.clip.playing:
                 self.pads_need_update = True
+        
+        # Check if recording clip has stopped playing
+        if self.clip_edit_mode.is_recording:
+            if self.clip_edit_mode.clip and not self.clip_edit_mode.clip.playing:
+                self.clip_edit_mode.on_clip_stop()
 
     def check_for_new_midi_devices(self):
         """Check for newly connected MIDI devices"""

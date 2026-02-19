@@ -1,12 +1,11 @@
-import math
-import traceback
 from typing import Optional
 
 import push2_python
 
 import definitions
-from utils import clamp, clamp01, draw_clip, show_title, show_value
+from utils import clamp, show_title, show_value
 from clip import Clip
+from definitions import ClipStates
 
 from .generator_algorithms import RandomGeneratorAlgorithm, RandomGeneratorAlgorithmPlus
 
@@ -50,6 +49,9 @@ class ClipEditMode(definitions.PyshaMode):
 
     default_note_duration = 0.25  # Default duration in beats (1/16 note)
     should_follow_playhead = False  # When True, view scrolls to follow playhead during playback
+
+    # Note capture state for recording
+    pending_recorded_notes = {}  # {midi_note: {'start_beat': float, 'velocity': int}}
 
     '''
     MODE_CLIP
@@ -104,7 +106,120 @@ class ClipEditMode(definitions.PyshaMode):
     def generator_algorithm(self):
         return self.generator_algorithms[self.selected_generator_algorithm]
 
+    @property
+    def is_recording(self) -> bool:
+        """Check if actively recording."""
+        return self.clip is not None and self.clip.recording
 
+    @property
+    def is_armed(self) -> bool:
+        """Check if armed for recording."""
+        return self.clip is not None and self.clip.will_start_recording_at >= 0.0
+
+    def arm_recording(self) -> None:
+        """Arm recording for the selected clip."""
+        if self.clip is None:
+            return
+        # Set will_start_recording_at to 0 to indicate "armed" state
+        self.clip.will_start_recording_at = 0.0
+        self.clip.will_stop_recording_at = -1.0
+        self.clip.update_status()
+        self.pending_recorded_notes = {}
+        self.update_buttons()
+
+    def start_recording(self) -> None:
+        """Begin recording - switch to melodic mode and start capture."""
+        if self.clip is None:
+            return
+        
+        # Set clip to recording state
+        self.clip.recording = True
+        self.clip.will_start_recording_at = -1.0
+        self.clip.will_stop_recording_at = -1.0
+        self.clip.update_status()
+        self.pending_recorded_notes = {}
+        
+        # Set up callbacks on melodic mode
+        self.app.melodic_mode.note_on_callback = self.capture_note_on
+        self.app.melodic_mode.note_off_callback = self.capture_note_off
+        
+        # Switch to melodic mode (this will activate melodic mode and update pads/buttons)
+        self.app.set_mode_for_xor_group(self.app.melodic_mode)
+
+    def stop_recording(self) -> None:
+        """Stop recording and return to clip view."""
+        # Clear callbacks on melodic mode
+        self.app.melodic_mode.note_on_callback = None
+        self.app.melodic_mode.note_off_callback = None
+        
+        # Discard any pending notes that weren't completed
+        self.pending_recorded_notes = {}
+        
+        # Clear recording state on clip
+        if self.clip is not None:
+            self.clip.recording = False
+            self.clip.will_start_recording_at = -1.0
+            self.clip.will_stop_recording_at = -1.0
+            self.clip.update_status()
+        
+        # Return to clip edit mode
+        self.app.set_mode_for_xor_group(self.app.clip_edit_mode)
+        
+        self.update_buttons()
+        self.update_pads()
+
+    def on_clip_stop(self):
+        """Called when the clip stops playing during recording."""
+        if self.is_recording:
+            self.stop_recording()
+            self.app.add_display_notification("Recording stopped (playback ended)")
+
+    def capture_note_on(self, midi_note: int, velocity: int) -> None:
+        """Callback for melodic mode note-on events during recording."""
+        if self.clip is None or not self.is_recording:
+            return
+        
+        # Get current playhead position
+        start_beat = self.clip.playhead_position_in_beats
+        
+        # Store pending note with start time and velocity
+        self.pending_recorded_notes[midi_note] = {
+            'start_beat': start_beat,
+            'velocity': velocity
+        }
+
+    def capture_note_off(self, midi_note: int) -> None:
+        """Callback for melodic mode note-off events during recording."""
+        if self.clip is None or not self.is_recording:
+            return
+        
+        # Get pending note data
+        pending = self.pending_recorded_notes.pop(midi_note, None)
+        if pending is None:
+            return
+        
+        # Get current playhead position
+        end_beat = self.clip.playhead_position_in_beats
+        
+        # Calculate duration, handling wrap-around
+        duration = end_beat - pending['start_beat']
+        if duration <= 0:
+            # Playhead wrapped around
+            duration += self.clip.clip_length_in_beats
+        
+        # Ensure minimum duration
+        duration = max(duration, 0.0625)  # Minimum 1/16 note
+        
+        # Add note to clip
+        self.clip.add_note_at_beat(
+            pending['start_beat'],
+            midi_note,
+            duration,
+            pending['velocity']
+        )
+        
+        # Update pads to show the new note
+        self.update_pads()
 
     def reset_window_to_clip(self):
         """Reset window position to center notes on the pads.
@@ -326,7 +441,6 @@ class ClipEditMode(definitions.PyshaMode):
 
 
     def activate(self):
-        print("DEBUG: ClipEditMode.activate() called")
         # Clear the display to hide previous interface
         if self.app.use_push2_display:
             self.push.display.send_to_display(self.push.display.prepare_frame(self.push.display.make_black_frame()))
@@ -346,78 +460,232 @@ class ClipEditMode(definitions.PyshaMode):
 
     def update_buttons(self):
         if self.mode == self.MODE_CLIP:
-            self.push.buttons.set_button_color(push2_python.constants.BUTTON_SHIFT, definitions.WHITE)
-            self.push.buttons.set_button_color(push2_python.constants.BUTTON_UPPER_ROW_2, definitions.BLACK)
-            self.set_button_color_if_pressed(push2_python.constants.BUTTON_UPPER_ROW_3, animation=definitions.DEFAULT_ANIMATION)
-            self.push.buttons.set_button_color(push2_python.constants.BUTTON_UPPER_ROW_4, definitions.WHITE)
-            self.push.buttons.set_button_color(push2_python.constants.BUTTON_UPPER_ROW_5, definitions.BLACK)
-            self.push.buttons.set_button_color(push2_python.constants.BUTTON_UPPER_ROW_6, definitions.BLACK)
-            self.push.buttons.set_button_color(push2_python.constants.BUTTON_UPPER_ROW_7, definitions.BLACK)
-            self.push.buttons.set_button_color(push2_python.constants.BUTTON_UPPER_ROW_8, definitions.BLACK)
+            # Set state for all buttons
+            self.push.buttons.set_button_color(
+                push2_python.constants.BUTTON_SHIFT,
+                definitions.WHITE
+            )
+            self.push.buttons.set_button_color(
+                push2_python.constants.BUTTON_UPPER_ROW_2,
+                definitions.BLACK
+            )
+            self.set_button_color_if_pressed(
+                push2_python.constants.BUTTON_UPPER_ROW_3,
+                animation=definitions.DEFAULT_ANIMATION
+            )
+            self.push.buttons.set_button_color(
+                push2_python.constants.BUTTON_UPPER_ROW_4,
+                definitions.WHITE
+            )
+            self.push.buttons.set_button_color(
+                push2_python.constants.BUTTON_UPPER_ROW_5,
+                definitions.BLACK
+            )
+            self.push.buttons.set_button_color(
+                push2_python.constants.BUTTON_UPPER_ROW_6,
+                definitions.BLACK
+            )
+            self.push.buttons.set_button_color(
+                push2_python.constants.BUTTON_UPPER_ROW_7,
+                definitions.BLACK
+            )
+            self.push.buttons.set_button_color(
+                push2_python.constants.BUTTON_UPPER_ROW_8,
+                definitions.BLACK
+            )
 
-            self.push.buttons.set_button_color(push2_python.constants.BUTTON_CLIP, definitions.OFF_BTN_COLOR)
+            self.push.buttons.set_button_color(
+                push2_python.constants.BUTTON_CLIP,
+                definitions.OFF_BTN_COLOR
+            )
 
-            self.set_button_color_if_pressed(push2_python.constants.BUTTON_DOUBLE_LOOP, animation=definitions.DEFAULT_ANIMATION)
-            self.set_button_color_if_pressed(push2_python.constants.BUTTON_QUANTIZE, animation=definitions.DEFAULT_ANIMATION)
-            self.set_button_color_if_pressed(push2_python.constants.BUTTON_DELETE, animation=definitions.DEFAULT_ANIMATION)
+            self.set_button_color_if_pressed(
+                push2_python.constants.BUTTON_DOUBLE_LOOP,
+                animation=definitions.DEFAULT_ANIMATION
+            )
+            self.set_button_color_if_pressed(
+                push2_python.constants.BUTTON_QUANTIZE,
+                animation=definitions.DEFAULT_ANIMATION
+            )
+            self.set_button_color_if_pressed(
+                push2_python.constants.BUTTON_DELETE,
+                animation=definitions.DEFAULT_ANIMATION
+            )
 
             if self.clip is not None:
-                if self.clip.recording or self.clip.will_start_recording_at > -1.0:
-                    if self.clip.recording:
-                        self.push.buttons.set_button_color(push2_python.constants.BUTTON_RECORD, definitions.RED)
-                    else:
-                        self.push.buttons.set_button_color(push2_python.constants.BUTTON_RECORD, definitions.RED, animation=definitions.DEFAULT_ANIMATION)
+                # Record button state - use Clip's status
+                record_status = self.clip.clip_status.record_status
+                if record_status == ClipStates.CLIP_STATUS_RECORDING:
+                    # Actively recording - solid red
+                    self.push.buttons.set_button_color(
+                        push2_python.constants.BUTTON_RECORD,
+                        definitions.RED
+                    )
+                elif record_status == ClipStates.CLIP_STATUS_CUED_TO_RECORD:
+                    # Armed for recording - blinking red
+                    self.push.buttons.set_button_color(
+                        push2_python.constants.BUTTON_RECORD,
+                        definitions.RED,
+                        animation=definitions.DEFAULT_ANIMATION
+                    )
+                elif record_status == ClipStates.CLIP_STATUS_CUED_TO_STOP_RECORDING:
+                    # Cued to stop recording - blinking red (faster)
+                    self.push.buttons.set_button_color(
+                        push2_python.constants.BUTTON_RECORD,
+                        definitions.RED,
+                        animation=definitions.FAST_ANIMATION
+                    )
                 else:
-                    self.push.buttons.set_button_color(push2_python.constants.BUTTON_RECORD, definitions.WHITE)
+                    self.push.buttons.set_button_color(
+                        push2_python.constants.BUTTON_RECORD,
+                        definitions.WHITE
+                    )
 
                 track_idx = self.app.session.tracks.index(self.clip.track)
                 track_color = self.app.track_selection_mode.get_track_color(track_idx)
                 if self.clip.playing or self.clip.will_play_at > -1.0:
                     if self.clip.playing:
-                        self.push.buttons.set_button_color(push2_python.constants.BUTTON_UPPER_ROW_1, track_color)
+                        self.push.buttons.set_button_color(
+                            push2_python.constants.BUTTON_UPPER_ROW_1,
+                            track_color
+                        )
                     else:
-                        self.push.buttons.set_button_color(push2_python.constants.BUTTON_UPPER_ROW_1, track_color, animation=definitions.DEFAULT_ANIMATION)
+                        self.push.buttons.set_button_color(
+                            push2_python.constants.BUTTON_UPPER_ROW_1,
+                            track_color,
+                            animation=definitions.DEFAULT_ANIMATION
+                        )
                 else:
-                    self.push.buttons.set_button_color(push2_python.constants.BUTTON_UPPER_ROW_1, track_color + '_darker1')
+                    self.push.buttons.set_button_color(
+                        push2_python.constants.BUTTON_UPPER_ROW_1,
+                        track_color + '_darker1'
+                    )
 
         elif self.mode == self.MODE_EVENT:
-            self.push.buttons.set_button_color(push2_python.constants.BUTTON_UPPER_ROW_1, definitions.BLACK)
-            self.push.buttons.set_button_color(push2_python.constants.BUTTON_UPPER_ROW_2, definitions.BLACK)
-            self.push.buttons.set_button_color(push2_python.constants.BUTTON_UPPER_ROW_3, definitions.BLACK)
-            self.push.buttons.set_button_color(push2_python.constants.BUTTON_UPPER_ROW_4, definitions.BLACK)
-            self.push.buttons.set_button_color(push2_python.constants.BUTTON_UPPER_ROW_5, definitions.BLACK)
-            self.push.buttons.set_button_color(push2_python.constants.BUTTON_UPPER_ROW_6, definitions.BLACK)
-            self.push.buttons.set_button_color(push2_python.constants.BUTTON_UPPER_ROW_7, definitions.BLACK)
-            self.push.buttons.set_button_color(push2_python.constants.BUTTON_UPPER_ROW_8, definitions.BLACK)
+            self.push.buttons.set_button_color(
+                push2_python.constants.BUTTON_UPPER_ROW_1,
+                definitions.BLACK
+            )
+            self.push.buttons.set_button_color(
+                push2_python.constants.BUTTON_UPPER_ROW_2,
+                definitions.BLACK
+            )
+            self.push.buttons.set_button_color(
+                push2_python.constants.BUTTON_UPPER_ROW_3,
+                definitions.BLACK
+            )
+            self.push.buttons.set_button_color(
+                push2_python.constants.BUTTON_UPPER_ROW_4,
+                definitions.BLACK
+            )
+            self.push.buttons.set_button_color(
+                push2_python.constants.BUTTON_UPPER_ROW_5,
+                definitions.BLACK
+            )
+            self.push.buttons.set_button_color(
+                push2_python.constants.BUTTON_UPPER_ROW_6,
+                definitions.BLACK
+            )
+            self.push.buttons.set_button_color(
+                push2_python.constants.BUTTON_UPPER_ROW_7,
+                definitions.BLACK
+            )
+            self.push.buttons.set_button_color(
+                push2_python.constants.BUTTON_UPPER_ROW_8,
+                definitions.BLACK
+            )
 
-            self.push.buttons.set_button_color(push2_python.constants.BUTTON_DOUBLE_LOOP, definitions.BLACK)
-            self.push.buttons.set_button_color(push2_python.constants.BUTTON_QUANTIZE, definitions.BLACK)
-            self.push.buttons.set_button_color(push2_python.constants.BUTTON_DELETE, definitions.BLACK)
+            self.push.buttons.set_button_color(
+                push2_python.constants.BUTTON_DOUBLE_LOOP,
+                definitions.BLACK
+            )
+            self.push.buttons.set_button_color(
+                push2_python.constants.BUTTON_QUANTIZE,
+                definitions.BLACK
+            )
+            self.push.buttons.set_button_color(
+                push2_python.constants.BUTTON_DELETE,
+                definitions.BLACK
+            )
 
-            self.push.buttons.set_button_color(push2_python.constants.BUTTON_CLIP, definitions.BLACK)
+            self.push.buttons.set_button_color(
+                push2_python.constants.BUTTON_CLIP,
+                definitions.BLACK
+            )
 
         elif self.mode == self.MODE_GENERATOR:
-            self.set_button_color_if_pressed(push2_python.constants.BUTTON_UPPER_ROW_1, animation=definitions.DEFAULT_ANIMATION) # generate sequence button
-            self.push.buttons.set_button_color(push2_python.constants.BUTTON_UPPER_ROW_2, definitions.BLACK)
-            self.push.buttons.set_button_color(push2_python.constants.BUTTON_UPPER_ROW_3, definitions.BLACK)
-            self.push.buttons.set_button_color(push2_python.constants.BUTTON_UPPER_ROW_4, definitions.BLACK)
-            self.push.buttons.set_button_color(push2_python.constants.BUTTON_UPPER_ROW_5, definitions.BLACK)
-            self.push.buttons.set_button_color(push2_python.constants.BUTTON_UPPER_ROW_6, definitions.BLACK)
-            self.push.buttons.set_button_color(push2_python.constants.BUTTON_UPPER_ROW_7, definitions.BLACK)
-            self.push.buttons.set_button_color(push2_python.constants.BUTTON_UPPER_ROW_8, definitions.BLACK)
+            self.set_button_color_if_pressed( # generate sequence button
+                push2_python.constants.BUTTON_UPPER_ROW_1,
+                animation=definitions.DEFAULT_ANIMATION
+            )
+            self.push.buttons.set_button_color(
+                push2_python.constants.BUTTON_UPPER_ROW_2,
+                definitions.BLACK
+            )
+            self.push.buttons.set_button_color(
+                push2_python.constants.BUTTON_UPPER_ROW_3,
+                definitions.BLACK
+            )
+            self.push.buttons.set_button_color(
+                push2_python.constants.BUTTON_UPPER_ROW_4,
+                definitions.BLACK
+            )
+            self.push.buttons.set_button_color(
+                push2_python.constants.BUTTON_UPPER_ROW_5,
+                definitions.BLACK
+            )
+            self.push.buttons.set_button_color(
+                push2_python.constants.BUTTON_UPPER_ROW_6,
+                definitions.BLACK
+            )
+            self.push.buttons.set_button_color(
+                push2_python.constants.BUTTON_UPPER_ROW_7,
+                definitions.BLACK
+            )
+            self.push.buttons.set_button_color(
+                push2_python.constants.BUTTON_UPPER_ROW_8,
+                definitions.BLACK
+            )
 
-            self.push.buttons.set_button_color(push2_python.constants.BUTTON_DOUBLE_LOOP, definitions.BLACK)
-            self.push.buttons.set_button_color(push2_python.constants.BUTTON_QUANTIZE, definitions.BLACK)
-            self.push.buttons.set_button_color(push2_python.constants.BUTTON_DELETE, definitions.BLACK)
+            self.push.buttons.set_button_color(
+                push2_python.constants.BUTTON_DOUBLE_LOOP,
+                definitions.BLACK
+            )
+            self.push.buttons.set_button_color(
+                push2_python.constants.BUTTON_QUANTIZE,
+                definitions.BLACK
+            )
+            self.push.buttons.set_button_color(
+                push2_python.constants.BUTTON_DELETE,
+                definitions.BLACK
+            )
 
-            self.push.buttons.set_button_color(push2_python.constants.BUTTON_CLIP, definitions.WHITE)
+            self.push.buttons.set_button_color(
+                push2_python.constants.BUTTON_CLIP,
+                definitions.WHITE
+            )
 
         if self.mode == self.MODE_CLIP or self.mode == self.MODE_EVENT:
-            self.push.buttons.set_button_color(push2_python.constants.BUTTON_OCTAVE_UP, definitions.WHITE)
-            self.push.buttons.set_button_color(push2_python.constants.BUTTON_OCTAVE_DOWN, definitions.WHITE)
-            self.push.buttons.set_button_color(push2_python.constants.BUTTON_PAGE_LEFT, definitions.WHITE)
-            self.push.buttons.set_button_color(push2_python.constants.BUTTON_PAGE_RIGHT, definitions.WHITE)
-            self.push.buttons.set_button_color(push2_python.constants.BUTTON_SHIFT, definitions.WHITE)
+            self.push.buttons.set_button_color(
+                push2_python.constants.BUTTON_OCTAVE_UP,
+                definitions.WHITE
+            )
+            self.push.buttons.set_button_color(
+                push2_python.constants.BUTTON_OCTAVE_DOWN,
+                definitions.WHITE
+            )
+            self.push.buttons.set_button_color(
+                push2_python.constants.BUTTON_PAGE_LEFT,
+                definitions.WHITE
+            )
+            self.push.buttons.set_button_color(
+                push2_python.constants.BUTTON_PAGE_RIGHT,
+                definitions.WHITE
+            )
+            self.push.buttons.set_button_color(
+                push2_python.constants.BUTTON_SHIFT,
+                definitions.WHITE
+            )
 
     def update_pads(self):
         if self.clip is None:
@@ -453,6 +721,8 @@ class ClipEditMode(definitions.PyshaMode):
                 return True
 
         if self.mode == self.MODE_CLIP:
+            record_status = self.clip.clip_status.record_status
+
             if button_name == push2_python.constants.BUTTON_DOUBLE_LOOP:
                 self.clip.double()
                 return True
@@ -463,13 +733,39 @@ class ClipEditMode(definitions.PyshaMode):
                 self.clip.clear()
                 return True
             if button_name == push2_python.constants.BUTTON_RECORD:
-                self.clip.record_on_off()
+                # Handle record button based on current clip state
+                if record_status == ClipStates.CLIP_STATUS_NO_RECORDING:
+                    # Arm recording
+                    self.arm_recording()
+                    self.app.add_display_notification("Recording armed - press Play to start")
+                elif record_status == ClipStates.CLIP_STATUS_CUED_TO_RECORD:
+                    # Cancel arming
+                    self.clip.will_start_recording_at = -1.0
+                    self.clip.update_status()
+                    self.update_buttons()
+                    self.app.add_display_notification("Recording cancelled")
+                elif record_status == ClipStates.CLIP_STATUS_RECORDING:
+                    # Stop recording
+                    self.stop_recording()
+                    self.app.add_display_notification("Recording stopped")
+                elif record_status == ClipStates.CLIP_STATUS_CUED_TO_STOP_RECORDING:
+                    # Already cued to stop, just clear the cue
+                    self.clip.will_stop_recording_at = -1.0
+                    self.clip.update_status()
+                    self.update_buttons()
+                return True
+            if button_name == push2_python.constants.BUTTON_PLAY:
+                # Play button - check if armed for recording
+                if self.is_armed:
+                    # Start playback and recording
+                    self.clip.play()
+                    self.start_recording()
+                    self.app.add_display_notification("Recording started")
+                else:
+                    self.clip.play_stop()
                 return True
             if button_name == push2_python.constants.BUTTON_CLIP:
                 self.mode = self.MODE_GENERATOR
-                return True
-            if button_name == push2_python.constants.BUTTON_UPPER_ROW_1:
-                self.clip.play_stop()
                 return True
             if button_name == push2_python.constants.BUTTON_UPPER_ROW_3:
                 self.quantize_helper()

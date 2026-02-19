@@ -2,6 +2,7 @@ import definitions
 import mido
 import push2_python.constants
 import time
+from typing import Callable, Optional
 
 
 class MelodicMode(definitions.PyshaMode):
@@ -35,6 +36,12 @@ class MelodicMode(definitions.PyshaMode):
     latest_velocity_value = (0, 0)
     last_time_at_params_edited = None
     modulation_wheel_mode = False
+    
+    # Callbacks for recording
+    note_on_callback: Optional[Callable[[int, int], None]] = None
+    """Callback for note-on events during recording: (midi_note, velocity)"""
+    note_off_callback: Optional[Callable[[int], None]] = None
+    """Callback for note-off events during recording: (midi_note)"""
 
     def initialize(self, settings=None):
         if settings is not None:
@@ -180,6 +187,13 @@ class MelodicMode(definitions.PyshaMode):
         self.push.buttons.set_button_color(
             push2_python.constants.BUTTON_SHIFT, definitions.BLACK
         )
+        self.push.buttons.set_button_color(
+            push2_python.constants.BUTTON_RECORD, definitions.BLACK
+        )
+        
+        # Clear recording callbacks if set
+        self.note_on_callback = None
+        self.note_off_callback = None
 
     def check_for_delayed_actions(self):
         if (
@@ -248,6 +262,17 @@ class MelodicMode(definitions.PyshaMode):
         self.update_octave_buttons()
         self.update_modulation_wheel_mode_button()
         self.update_accent_button()
+        
+        # Show record button if recording is active
+        if self.note_on_callback is not None or self.note_off_callback is not None:
+            # Recording is active - show solid red record button
+            self.push.buttons.set_button_color(
+                push2_python.constants.BUTTON_RECORD, definitions.RED
+            )
+        else:
+            self.push.buttons.set_button_color(
+                push2_python.constants.BUTTON_RECORD, definitions.OFF_BTN_COLOR
+            )
 
     def update_pads(self):
         color_matrix = []
@@ -302,6 +327,10 @@ class MelodicMode(definitions.PyshaMode):
                         velocity_to_send
                     )
 
+            # Call note_on_callback if set (for recording)
+            if self.note_on_callback is not None:
+                self.note_on_callback(midi_note, velocity_to_send)
+
             # Directly calling update pads method
             # because we want user to feel feedback as quick as possible
             self.update_pads()
@@ -309,7 +338,6 @@ class MelodicMode(definitions.PyshaMode):
 
     def on_pad_released(self, pad_n, pad_ij, velocity):
         midi_note = self.pad_ij_to_midi_note(pad_ij)
-        print(f"PAD RELEASED: note={midi_note}")
         if midi_note is not None:
             if (
                 self.app.track_selection_mode.get_current_track_info().get(
@@ -329,6 +357,10 @@ class MelodicMode(definitions.PyshaMode):
                         midi_note,
                         0  # velocity 0 = note off
                     )
+            
+            # Call note_off_callback if set (for recording)
+            if self.note_off_callback is not None:
+                self.note_off_callback(midi_note)
             
             # Directly calling update pads method because we want user to feel feedback as quick as possible
             self.update_pads()
@@ -388,3 +420,12 @@ class MelodicMode(definitions.PyshaMode):
                 {'Modulation wheel' if self.modulation_wheel_mode else 'Pitch bend'}"
             )
             return True
+
+        elif button_name == push2_python.constants.BUTTON_RECORD:
+            # Handle record button to stop recording if active
+            if self.note_on_callback is not None or self.note_off_callback is not None:
+                # Recording is active, stop it
+                if hasattr(self.app, 'clip_edit_mode'):
+                    self.app.clip_edit_mode.stop_recording()
+                    self.app.add_display_notification("Recording stopped")
+                return True

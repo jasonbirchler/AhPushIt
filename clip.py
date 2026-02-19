@@ -134,6 +134,32 @@ class Clip(BaseClass):
                     self._reschedule_if_playing()
                 return
 
+    def get_step_from_beat(self, beat: float) -> int:
+        """Convert beat position to step index.
+        
+        Args:
+            beat: Position in beats (0 to clip_length_in_beats)
+            
+        Returns:
+            Step index (0 to steps-1)
+        """
+        if self.clip_length_in_beats <= 0:
+            return 0
+        step = int((beat / self.clip_length_in_beats) * self.steps)
+        return step % self.steps
+
+    def add_note_at_beat(self, beat: float, midi_note: int, duration: float, velocity: int):
+        """Add a note at a specific beat position.
+        
+        Args:
+            beat: Position in beats (0 to clip_length_in_beats)
+            midi_note: MIDI note number
+            duration: Duration in beats
+            velocity: Note velocity (0-127)
+        """
+        step_idx = self.get_step_from_beat(beat)
+        self.add_note_at_step(step_idx, midi_note, duration, velocity)
+
     def get_notes_for_rendering(self) -> list:
         """Get all notes in the current window for rendering on pads"""
         notes_to_render = []
