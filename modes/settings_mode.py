@@ -493,7 +493,7 @@ class SettingsMode(definitions.PyshaMode):
                     self.encoder_accumulators[encoder_name] = 0  # Reset accumulator
 
                     if selection_state == 0:  # Device selection only
-                        available_devices = self.app.session.output_device_names
+                        available_devices = sorted(self.app.session.output_device_names)
 
                         # Check if there are any available devices
                         if not available_devices:
