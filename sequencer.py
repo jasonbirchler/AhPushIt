@@ -1,15 +1,17 @@
 import isobar as iso
 import definitions
 
-class Sequencer():
+
+class Sequencer:
     """
     Class that interfaces with isobar (Timeline and Tracks) to create a sequencer.
     """
+
     def __init__(self, app):
         self.app = app
         self.timeline = app.global_timeline
         self._bpm = 120.0
-        self._root = 'C'
+        self._root = "C"
         self._scale = iso.Scale.minor
         self._key = iso.Key(self._root, self._scale)
         self._quantize = 1
@@ -49,7 +51,9 @@ class Sequencer():
             if step_notes:
                 if len(step_notes) > 1:
                     notes_list.append(tuple(step_notes))
-                    durations_list.append(step_durations[0])  # Use first duration for all notes
+                    durations_list.append(
+                        step_durations[0]
+                    )  # Use first duration for all notes
                     amplitudes_list.append(tuple(step_amplitudes))
                 else:
                     notes_list.append(step_notes[0])
@@ -60,24 +64,38 @@ class Sequencer():
                 durations_list.append(0.25)
                 amplitudes_list.append(0)
 
-        # Keep track of when this clip should loop
-        total_duration = sum(durations_list)
+        # Calculate the actual start time for this clip
         current_time = self.timeline.current_time
-        quantize_offset = self.start_on_next_bar() if quantize_start else 0
-        next_loop_time = current_time + quantize_offset + total_duration
+        if quantize_start:
+            quantize_offset = self.start_on_next_bar()
+        else:
+            quantize_offset = 0
+        actual_start_time = current_time + quantize_offset
+
+        # Set the clip's playback start time to the actual scheduled start time
+        # This ensures playhead position stays in sync with audio output
+        clip._playback_start_time = actual_start_time
+
+        # Keep track of when this clip should loop (for queuing logic)
+        total_duration = (
+            sum(durations_list) * clip.clip_length_in_beats / (len(durations_list) or 1)
+        )
+        if clip.clip_length_in_beats > 0 and len(durations_list) > 0:
+            total_duration = clip.clip_length_in_beats
+        next_loop_time = actual_start_time + total_duration
         self.clip_loop_positions[clip.name] = next_loop_time
 
         self.timeline.schedule(
             {
                 "note": iso.PSequence(notes_list),
                 "duration": iso.PSequence(durations_list),
-                "amplitude": iso.PSequence(amplitudes_list)
+                "amplitude": iso.PSequence(amplitudes_list),
             },
             name=clip.name,
             quantize=quantize_offset,
             output_device=device,
             remove_when_done=False,
-            replace=True
+            replace=True,
         )
 
     def check_queued_clips(self):
@@ -101,14 +119,14 @@ class Sequencer():
     def start_on_next_bar(self):
         return 4 - (int(self.timeline.current_time) % 4)
 
-    def mute_track(self, track_idx:int):
+    def mute_track(self, track_idx: int):
         """
         Mute a track
         """
         track = self.timeline.tracks[track_idx]
         track.mute()
 
-    def unmute_track(self, track_idx:int):
+    def unmute_track(self, track_idx: int):
         """
         Unmute a track
         """
@@ -116,70 +134,70 @@ class Sequencer():
         track.unmute()
 
     def play(self):
-        """ Start the timeline in the background """
+        """Start the timeline in the background"""
         self.timeline.start()
 
     def stop(self):
-        """ Stop the timeline """
+        """Stop the timeline"""
         self.timeline.stop()
 
     def return_to_zero(self):
-        """ Return the timeline to zero """
+        """Return the timeline to zero"""
         self.timeline.reset()
 
     def stop_and_return_to_zero(self):
-        """ Stop the timeline and return to zero """
+        """Stop the timeline and return to zero"""
         self.timeline.stop()
         self.timeline.reset()
 
     # Getters and Setters
     @property
     def bpm(self):
-        """ Get the current BPM """
+        """Get the current BPM"""
         return self._bpm
 
     @bpm.setter
     def bpm(self, bpm):
-        """ Set the BPM and update the timeline tempo """
+        """Set the BPM and update the timeline tempo"""
         self._bpm = bpm
         self.timeline.tempo = bpm
 
     @property
     def root(self):
-        """ Get the current root note """
+        """Get the current root note"""
         return self._root
 
     @root.setter
     def root(self, root):
-        """ Set the root note and update the key """
+        """Set the root note and update the key"""
         self._root = root
 
     @property
     def scale(self):
-        """ Get the current scale """
+        """Get the current scale"""
         return self._scale
 
     @scale.setter
     def scale(self, scale):
-        """ Set the scale and update the key """
+        """Set the scale and update the key"""
         self._scale = scale
 
     @property
     def key(self):
-        """ Get the current key """
+        """Get the current key"""
         return self._key
 
     @key.setter
     def key(self, key):
-        """ Set the key """
+        """Set the key"""
         self._key = key
 
     @property
     def quantize(self):
-        """ Get the current quantize value """
+        """Get the current quantize value"""
         return self._quantize
 
     @quantize.setter
     def quantize(self, quantize):
-        """ Set the quantize value """
+        """Set the quantize value"""
         self._quantize = quantize

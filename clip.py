@@ -11,12 +11,14 @@ from definitions import ClipStates
 if TYPE_CHECKING:
     from track import Track
 
+
 class ClipStatus(NamedTuple):
     play_status: str
     record_status: str
     empty_status: str
     clip_length: float
     quantization_step: float
+
 
 class Clip(BaseClass):
     bpm_multiplier: float
@@ -39,19 +41,19 @@ class Clip(BaseClass):
     wrap_events_across_clip_loop: bool
 
     @property
-    def track(self) -> 'Track':
+    def track(self) -> "Track":
         """Get the parent track"""
         return self._parent
 
     @track.setter
-    def track(self, value: 'Track') -> None:
+    def track(self, value: "Track") -> None:
         """Set the parent track"""
         self._parent = value
 
     @property
     def app(self):
         """Get the app instance through parent chain"""
-        return self.track.app if hasattr(self._parent, 'app') else None
+        return self.track.app if hasattr(self._parent, "app") else None
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -66,7 +68,9 @@ class Clip(BaseClass):
         self._clip_length_in_beats = 4.0
         self.beats_per_bar = 4
         self._step_divisions = 16  # 1/16 notes
-        self._steps = int((self._clip_length_in_beats/self.beats_per_bar) * self._step_divisions)
+        self._steps = int(
+            (self._clip_length_in_beats / self.beats_per_bar) * self._step_divisions
+        )
         self.current_quantization_step = 0.0
         self.playhead_position_in_beats = 0.0
         self._playback_start_time = 0.0  # Timeline time when clip started playing
@@ -79,7 +83,7 @@ class Clip(BaseClass):
         self.notes = np.full((self.steps, self.max_polyphony), None, dtype=object)
         self.durations = np.zeros((self.steps, self.max_polyphony), dtype=np.float32)
         self.amplitudes = np.zeros((self.steps, self.max_polyphony), dtype=np.uint8)
-        
+
         # window for editing (viewport into the larger virtual grid)
         self.window_step_offset = 0
         self.window_note_offset = 60  # Start at middle C
@@ -98,7 +102,9 @@ class Clip(BaseClass):
             return midi_note in self.notes[step_idx]
         return False
 
-    def add_note_at_step(self, step_idx: int, midi_note: int, duration: float, velocity: int):
+    def add_note_at_step(
+        self, step_idx: int, midi_note: int, duration: float, velocity: int
+    ):
         """Add a note to the first available voice slot at a step"""
         if not (0 <= step_idx < self.steps):
             return
@@ -152,19 +158,21 @@ class Clip(BaseClass):
                 if self.window_note_offset <= note < self.window_note_offset + 8:
                     pad_i = 7 - (note - self.window_note_offset)
                     pad_j = step_j
-                    notes_to_render.append({
-                        'pad_i': pad_i,
-                        'pad_j': pad_j,
-                        'step_idx': step_idx,
-                        'note': note,
-                        'velocity': self.amplitudes[step_idx, voice]
-                    })
+                    notes_to_render.append(
+                        {
+                            "pad_i": pad_i,
+                            "pad_j": pad_j,
+                            "step_idx": step_idx,
+                            "note": note,
+                            "velocity": self.amplitudes[step_idx, voice],
+                        }
+                    )
 
         return notes_to_render
 
     def get_note_range(self):
         """Get the highest and lowest notes in the clip.
-        
+
         Returns:
             tuple: (lowest, highest) MIDI note values, or (None, None) if clip is empty.
         """
@@ -175,7 +183,7 @@ class Clip(BaseClass):
 
     def get_unique_notes(self):
         """Get all unique note values in the clip.
-        
+
         Returns:
             list: Sorted list of unique MIDI note values, or empty list if clip is empty.
         """
@@ -213,7 +221,7 @@ class Clip(BaseClass):
             record_status=record_status,
             empty_status=empty_status,
             clip_length=self.clip_length_in_beats,
-            quantization_step=self.current_quantization_step
+            quantization_step=self.current_quantization_step,
         )
 
     def is_empty(self):
@@ -233,18 +241,15 @@ class Clip(BaseClass):
         if self.track is None:
             return
 
-        if self.app and hasattr(self.app, 'seq'):
-            # Call session to schedule the clip start
+        if self.app and hasattr(self.app, "seq"):
+            # Call session to schedule the clip start.
+            # schedule_clip will set _playback_start_time to the actual scheduled start time
             self.app.seq.schedule_clip(self, quantize_start=quantize_start)
 
-        # Mark clip as playing
+        # Mark clip as playing after timing has been set by schedule_clip
         self.playing = True
         self.will_play_at = -1.0
-        
-        # Set playback start time for playhead tracking
-        if self.app and hasattr(self.app, 'global_timeline'):
-            self._playback_start_time = self.app.global_timeline.current_time
-        
+
         # Update the clip status by calling get_status()
         self.clip_status = self.get_status()
 
@@ -253,7 +258,7 @@ class Clip(BaseClass):
         if self.track is None:
             return
 
-        if self.app and hasattr(self.app, 'global_timeline'):
+        if self.app and hasattr(self.app, "global_timeline"):
             # Find and unschedule the clip from timeline by name
             for track in self.app.global_timeline.tracks:
                 if track.name == self.name:
@@ -277,7 +282,7 @@ class Clip(BaseClass):
             # Ensure both clips update their status and trigger UI refresh
             self.update_status()
             next_clip.update_status()
-            if self.app and self.app.is_mode_active('clip_triggering_mode'):
+            if self.app and self.app.is_mode_active("clip_triggering_mode"):
                 self.app.clip_triggering_mode.update_pads()
 
         self.update_status()
@@ -321,7 +326,9 @@ class Clip(BaseClass):
     def clip_length_in_beats(self, value: float) -> None:
         """Set the clip length in beats and update dependent properties"""
         self._clip_length_in_beats = value
-        new_steps = int((self._clip_length_in_beats/self.beats_per_bar) * self.step_divisions)
+        new_steps = int(
+            (self._clip_length_in_beats / self.beats_per_bar) * self.step_divisions
+        )
 
         # Resize arrays if step count changed
         if new_steps != self._steps:
@@ -351,7 +358,9 @@ class Clip(BaseClass):
     def step_divisions(self, value: int) -> None:
         """Set the step divisions and update dependent properties"""
         self._step_divisions = value
-        new_steps = int((self.clip_length_in_beats/self.beats_per_bar) * self._step_divisions)
+        new_steps = int(
+            (self.clip_length_in_beats / self.beats_per_bar) * self._step_divisions
+        )
 
         # Resize arrays if step count changed
         if new_steps != self._steps:
@@ -398,32 +407,34 @@ class Clip(BaseClass):
             self.durations = new_durations
             self.amplitudes = new_amplitudes
 
-
     def get_sequence_data_for_timeline(self):
         """Get sequence data in the format expected by timeline scheduling"""
         # Flatten the polyphonic data for sequencing
         # This will need to be updated when implementing actual sequencing
         return {
-            'note': self.notes,
-            'duration': self.durations,
-            'amplitude': self.amplitudes
+            "note": self.notes,
+            "duration": self.durations,
+            "amplitude": self.amplitudes,
         }
 
     def _reschedule_if_playing(self):
         """Helper method to trigger reschedule if clip is playing"""
         if self.playing:
-            if self.app and hasattr(self.app, 'seq'):
+            if self.app and hasattr(self.app, "seq"):
                 self.app.seq.schedule_clip(self)
 
     def update_playhead_position(self):
         """Update the playhead position based on timeline time.
         Should be called periodically from the main loop.
         """
-        if self.playing and self.app and hasattr(self.app, 'global_timeline'):
+        if self.playing and self.app and hasattr(self.app, "global_timeline"):
             current_time = self.app.global_timeline.current_time
             elapsed_beats = current_time - self._playback_start_time
-            # Wrap around at clip length
+            # If we haven't reached the scheduled start time yet, playhead is at 0
+            # Use max(0, ...) to handle negative elapsed (pre-start) correctly
             if self.clip_length_in_beats > 0:
-                self.playhead_position_in_beats = elapsed_beats % self.clip_length_in_beats
+                self.playhead_position_in_beats = (
+                    max(0.0, elapsed_beats) % self.clip_length_in_beats
+                )
             else:
                 self.playhead_position_in_beats = 0.0
