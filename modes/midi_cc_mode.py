@@ -300,9 +300,10 @@ class MIDICCMode(PyshaMode):
 
     def update_display(self, ctx, w, h):
 
-        if not self.app.is_mode_active(self.app.settings_mode):
-            # If settings mode is active, don't draw the upper parts of the screen because settings page will
-            # "cover them"
+        if (not self.app.is_mode_active(self.app.settings_mode)
+                and not self.app.is_mode_active(self.app.add_track_mode)):
+            # If settings mode or add track mode is active, do not draw the upper parts
+            # of the screen because those pages will "cover them"
 
             # Draw MIDI CCs section names
             section_names = self.get_current_track_midi_cc_sections()[0:8]

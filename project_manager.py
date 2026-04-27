@@ -7,6 +7,7 @@ from clip import Clip
 import isobar as iso
 from numpyencoder import NumpyEncoder
 
+
 class ProjectManager:
     def __init__(self, app):
         self.app = app
@@ -26,7 +27,7 @@ class ProjectManager:
             "bpm": self.app.seq.bpm,
             "scale": str(self.app.seq.scale),
             "key": str(self.app.seq.key),
-            "tracks": []
+            "tracks": [],
         }
 
         # Save each track
@@ -35,37 +36,41 @@ class ProjectManager:
                 track_data = {
                     "index": t,
                     "device": track.output_device_name if track else None,
-                    "clip_data": []
+                    "input_device": track.input_device_name,
+                    "input_channel": track.input_channel,
+                    "clip_data": [],
                 }
 
                 # Save clips for this track
                 if track.clips:
                     for c, clip in enumerate(track.clips):
                         if clip:
-                            track_data["clip_data"].append({
-                                "index": c,
-                                "name": clip.name,
-                                "clip_length_in_beats": clip.clip_length_in_beats,
-                                "step_divisions":  clip.step_divisions,
-                                "beats_per_bar": clip.beats_per_bar,
-                                "notes": clip.notes,
-                                "durations": clip.durations,
-                                "amplitudes": clip.amplitudes
-                            })
+                            track_data["clip_data"].append(
+                                {
+                                    "index": c,
+                                    "name": clip.name,
+                                    "clip_length_in_beats": clip.clip_length_in_beats,
+                                    "step_divisions": clip.step_divisions,
+                                    "beats_per_bar": clip.beats_per_bar,
+                                    "notes": clip.notes,
+                                    "durations": clip.durations,
+                                    "amplitudes": clip.amplitudes,
+                                }
+                            )
 
             project_data["tracks"].append(track_data)
 
         # Save to file
         filepath = os.path.join(self.projects_dir, f"{filename}.json")
-        with open(filepath, 'w', encoding="utf-8") as file:
+        with open(filepath, "w", encoding="utf-8") as file:
             json.dump(
                 project_data,
                 file,
                 indent=4,
                 sort_keys=False,
-                separators=(', ', ': '),
+                separators=(", ", ": "),
                 ensure_ascii=False,
-                cls=NumpyEncoder
+                cls=NumpyEncoder,
             )
         self.current_project_file = filename
         print(f"Project saved: {filepath}")
@@ -78,7 +83,7 @@ class ProjectManager:
             return False
 
         try:
-            with open(filepath, 'r') as f:
+            with open(filepath, "r") as f:
                 project_data = json.load(f)
 
             # Store current session/seq in case we need to restore it
@@ -89,11 +94,11 @@ class ProjectManager:
             self.app.seq.bpm = project_data.get("bpm", 120)
 
             # Load scale and key
-            scale_parts = project_data.get("scale", "Chromatic").split(' ', 1)
+            scale_parts = project_data.get("scale", "Chromatic").split(" ", 1)
             scale_name = scale_parts[0]
-            key_str = project_data.get("key", "C").split(' ', 1)
+            key_str = project_data.get("key", "C").split(" ", 1)
             key_parts = key_str[1]
-            root = key_parts[0] if key_parts[0] else 'C'
+            root = key_parts[0] if key_parts[0] else "C"
             self.app.seq.scale = scale_name
             self.app.seq.root = root
 
@@ -110,6 +115,9 @@ class ProjectManager:
                     track = Track(parent=self.app.session)
                     track.output_device_name = track_data["device"]
                     track.set_output_device_by_name(track_data["device"])
+                    track.channel = track_data.get("channel", 0)
+                    track.input_device_name = track_data.get("input_device")
+                    track.input_channel = track_data.get("input_channel", -1)
 
                     for clip_data in track_data["clip_data"]:
                         clip = Clip(parent=track)
@@ -118,18 +126,22 @@ class ProjectManager:
                         clip.step_divisions = clip_data["step_divisions"]
                         clip.beats_per_bar = clip_data["beats_per_bar"]
                         clip.notes = np.array(clip_data["notes"], dtype=object)
-                        clip.durations = np.array(clip_data["durations"], dtype=np.float32)
-                        clip.amplitudes = np.array(clip_data["amplitudes"], dtype=np.uint8)
+                        clip.durations = np.array(
+                            clip_data["durations"], dtype=np.float32
+                        )
+                        clip.amplitudes = np.array(
+                            clip_data["amplitudes"], dtype=np.uint8
+                        )
                         track.clips[clip_data["index"]] = clip
 
                     self.app.session.tracks[track_idx] = track
 
             self.current_project_file = filename
             print(f"Project loaded: {filepath}")
-            
+
             # Notify MIDI CC mode to reload definitions for all tracks
             self.app.midi_cc_mode.new_track_selected()
-            
+
             return True
 
         except Exception as e:
@@ -143,5 +155,5 @@ class ProjectManager:
         """List available project files"""
         if not os.path.exists(self.projects_dir):
             return []
-        files = [f[:-5] for f in os.listdir(self.projects_dir) if f.endswith('.json')]
+        files = [f[:-5] for f in os.listdir(self.projects_dir) if f.endswith(".json")]
         return sorted(files)

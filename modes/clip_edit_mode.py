@@ -262,15 +262,42 @@ class ClipEditMode(definitions.PyshaMode):
                 if self.selected_clip_idx is not None:
 
                     # Column 1, clip name
-                    show_title(ctx, part_w * 0, h, 'CLIP', color=track_color_rgb)
-                    show_value(ctx, part_w * 0, h, self.clip.name, color=track_color_rgb)
+                    show_title(
+                        ctx,
+                        part_w * 0,
+                        h,
+                        'CLIP',
+                        color=track_color_rgb
+                    )
+                    show_value(
+                        ctx,
+                        part_w * 0,
+                        h,
+                        self.clip.name,
+                        color=track_color_rgb
+                    )
 
                     # Column 2, clip length
-                    show_title(ctx, part_w * 1, h, 'LENGTH')
-                    show_value(ctx, part_w * 1, h, '{:.1f}'.format(self.clip.clip_length_in_beats))
+                    show_title(
+                        ctx,
+                        part_w * 1,
+                        h,
+                        'LENGTH'
+                    )
+                    show_value(
+                        ctx,
+                        part_w * 1,
+                        h,
+                        '{:.1f}'.format(self.clip.clip_length_in_beats)
+                    )
 
                     # Column 3, quantization
-                    show_title(ctx, part_w * 2, h, 'QUANTIZATION')
+                    show_title(
+                        ctx,
+                        part_w * 2,
+                        h,
+                        'QUANTIZATION'
+                    )
                     quantization_step_labels = {
                         0.25: '16th note',
                         0.5: '8th note',

@@ -12,6 +12,7 @@ import push2_python
 
 import definitions
 from display_utils import show_notification
+from modes.add_track_mode import AddTrackMode
 from modes.clip_edit_mode import ClipEditMode
 from modes.clip_triggering_mode import ClipTriggeringMode
 from modes.main_controls_mode import MainControlsMode
@@ -29,12 +30,14 @@ from project_manager import ProjectManager
 buttons_pressed_state = {}
 pads_pressed_state = {}  # Track pad press times for long press detection
 
+
 class PyshaApp(object):
     """
     The App handles initializing everything at startup.
     App manages Push interface.
     Modes, MidiManger, Session are all children of App.
     """
+
     session: Session = None
     seq: Sequencer = None
     pm: ProjectManager = None
@@ -64,10 +67,10 @@ class PyshaApp(object):
     last_cp_value_recevied_time = 0
 
     def __init__(self):
-        if os.path.exists('settings.json'):
-            settings = json.load(open('settings.json'))
+        if os.path.exists("settings.json"):
+            self.settings = json.load(open("settings.json"))
         else:
-            settings = {}
+            self.settings = {}
 
         # initialize timeline in app
         # to make access from session and sequencer simpler
@@ -76,12 +79,18 @@ class PyshaApp(object):
         self.seq = Sequencer(self)
         self.pm = ProjectManager(self)
 
-        self.target_frame_rate = settings.get('target_frame_rate', 60)
-        self.use_push2_display = settings.get('use_push2_display', True)
+        self.target_frame_rate = self.settings.get("target_frame_rate", 60)
+        self.use_push2_display = self.settings.get("use_push2_display", True)
         self._last_midi_check_time = 0  # Initialize MIDI check timer
 
         self.init_push()
-        self.init_modes(settings)
+        self.init_modes(self.settings)
+
+        # Handle project loading based on auto_open_last_project setting
+        if self.settings.get("auto_open_last_project", True):
+            last_proj = self.settings.get("last_project")
+            if last_proj:
+                self.pm.load_project(last_proj)
 
     # Mode-related functions
     def init_modes(self, settings):
@@ -103,20 +112,25 @@ class PyshaApp(object):
         # Add modes to active_modes, but exclude clip_triggering_mode and clip_edit_mode
         # since they're in the same XOR group as melodic_mode
         # and melodic_mode should be the default active mode for pads
-        self.active_modes += [
-            self.track_selection_mode,
-            self.midi_cc_mode
-        ]
+        self.active_modes += [self.track_selection_mode, self.midi_cc_mode]
 
         # Note: clip_triggering_mode and clip_edit_mode are intentionally NOT added to active_modes here
         # because they're in the same XOR group as melodic_mode and melodic_mode is the default
 
-        self.track_selection_mode.select_track_as_active(self.track_selection_mode.selected_track)
+        self.add_track_mode = AddTrackMode(self, settings=settings)
+
+        self.track_selection_mode.select_track_as_active(
+            self.track_selection_mode.selected_track
+        )
 
         self.settings_mode = SettingsMode(self, settings=settings)
 
     def get_all_modes(self):
-        return [getattr(self, element) for element in vars(self) if isinstance(getattr(self, element), definitions.PyshaMode)]
+        return [
+            getattr(self, element)
+            for element in vars(self)
+            if isinstance(getattr(self, element), definitions.PyshaMode)
+        ]
 
     def is_mode_active(self, mode):
         return mode in self.active_modes
@@ -125,27 +139,32 @@ class PyshaApp(object):
         if self.is_mode_active(self.settings_mode):
             rotation_finished = self.settings_mode.move_to_next_page()
             if rotation_finished:
-                self.active_modes = [mode for mode in self.active_modes if mode != self.settings_mode]
+                self.active_modes = [
+                    mode for mode in self.active_modes if mode != self.settings_mode
+                ]
                 self.settings_mode.deactivate()
         else:
             self.active_modes.append(self.settings_mode)
             self.settings_mode.activate()
 
     def set_mode_for_xor_group(self, mode_to_set):
-        '''This activates the mode_to_set, but makes sure that if any other modes are currently activated
+        """This activates the mode_to_set, but makes sure that if any other modes are currently activated
         for the same xor_group, these other modes get deactivated. This also stores a reference to the
         latest active mode for xor_group, so once a mode gets unset, the previously active one can be
-        automatically set'''
+        automatically set"""
 
         if not self.is_mode_active(mode_to_set):
-
             # First deactivate all existing modes for that xor group
             new_active_modes = []
             for mode in self.active_modes:
-                if mode.xor_group is not None and mode.xor_group == mode_to_set.xor_group:
+                if (
+                    mode.xor_group is not None
+                    and mode.xor_group == mode_to_set.xor_group
+                ):
                     mode.deactivate()
-                    self.previously_active_mode_for_xor_group[
-                        mode.xor_group] = mode  # Store last mode that was active for the group
+                    self.previously_active_mode_for_xor_group[mode.xor_group] = (
+                        mode  # Store last mode that was active for the group
+                    )
                 else:
                     new_active_modes.append(mode)
 
@@ -155,26 +174,35 @@ class PyshaApp(object):
             new_active_modes.append(mode_to_set)
             mode_to_set.activate()
 
+    def set_add_track_mode(self):
+        self.set_mode_for_xor_group(self.add_track_mode)
+
+    def unset_add_track_mode(self):
+        self.unset_mode_for_xor_group(self.add_track_mode)
+
     def unset_mode_for_xor_group(self, mode_to_unset):
-        '''This deactivates the mode_to_unset and reactivates the previous mode that was active for this xor_group.
+        """This deactivates the mode_to_unset and reactivates the previous mode that was active for this xor_group.
         This allows to make sure that one (and onyl one) mode will be always active for a given xor_group.
-        '''
+        """
 
         if self.is_mode_active(mode_to_unset):
-
             # Deactivate the mode to unset
-            self.active_modes = [mode for mode in self.active_modes if mode != mode_to_unset]
+            self.active_modes = [
+                mode for mode in self.active_modes if mode != mode_to_unset
+            ]
             mode_to_unset.deactivate()
 
             # Activate the previous mode that was activated for the same xor_group. If none listed, activate a default one
-            previous_mode = self.previously_active_mode_for_xor_group.get(mode_to_unset.xor_group, None)
+            previous_mode = self.previously_active_mode_for_xor_group.get(
+                mode_to_unset.xor_group, None
+            )
             if previous_mode is not None:
                 del self.previously_active_mode_for_xor_group[mode_to_unset.xor_group]
                 self.set_mode_for_xor_group(previous_mode)
             else:
                 # Enable default
                 # TODO: here we hardcoded the default mode for a specific xor_group, I should clean this a little bit in the future...
-                if mode_to_unset.xor_group == 'pads':
+                if mode_to_unset.xor_group == "pads":
                     self.set_mode_for_xor_group(self.melodic_mode)
 
     def toggle_melodic_rhythmic_slice_modes(self):
@@ -217,19 +245,16 @@ class PyshaApp(object):
 
     def save_current_settings_to_file(self):
         # NOTE: when saving device names, eliminate the last bit with XX:Y numbers as this might vary across runs
-        # if different devices are connected 
+        # if different devices are connected
         settings = {
-            'midi_in_default_channel': self.midi_in_channel,
-            'default_midi_in_device_name': self.midi_in.name[:-4] if self.midi_in is not None else None,
-            'default_notes_midi_in_device_name': self.notes_midi_in.name[:-4] if self.notes_midi_in is not None else None,
-            'use_push2_display': self.use_push2_display,
-            'target_frame_rate': self.target_frame_rate,
+            "use_push2_display": self.use_push2_display,
+            "target_frame_rate": self.target_frame_rate,
         }
         for mode in self.get_all_modes():
             mode_settings = mode.get_settings_to_save()
             if mode_settings:
                 settings.update(mode_settings)
-        json.dump(settings, open('settings.json', 'w'))
+        json.dump(settings, open("settings.json", "w"))
 
     # Push2-related functions
     def add_display_notification(self, text):
@@ -237,14 +262,17 @@ class PyshaApp(object):
         self.notification_time = time.time()
 
     def init_push(self):
-        print('Configuring Push...')
-        print('Configuring Push...')
-        use_simulator = '--simulator' in sys.argv or '-s' in sys.argv
+        print("Configuring Push...")
+        print("Configuring Push...")
+        use_simulator = "--simulator" in sys.argv or "-s" in sys.argv
         simulator_port = 6128
         if use_simulator:
-            print(f'Using Push2 simulator at http://localhost:{simulator_port}')
-        self.push = push2_python.Push2(run_simulator=use_simulator, simulator_port=simulator_port,
-                                       simulator_use_virtual_midi_out=use_simulator)
+            print(f"Using Push2 simulator at http://localhost:{simulator_port}")
+        self.push = push2_python.Push2(
+            run_simulator=use_simulator,
+            simulator_port=simulator_port,
+            simulator_use_virtual_midi_out=use_simulator,
+        )
         # Initialize MIDI in/out for Push's Live port_name
         # This isn't treated as a device like other in/out ports
         # because it's ports are used for communication with this app
@@ -271,7 +299,10 @@ class PyshaApp(object):
     def update_push2_display(self):
         if self.use_push2_display:
             # Prepare cairo canvas
-            w, h = push2_python.constants.DISPLAY_LINE_PIXELS, push2_python.constants.DISPLAY_N_LINES
+            w, h = (
+                push2_python.constants.DISPLAY_LINE_PIXELS,
+                push2_python.constants.DISPLAY_N_LINES,
+            )
             surface = cairo.ImageSurface(cairo.FORMAT_RGB16_565, w, h)
             ctx = cairo.Context(surface)
 
@@ -283,14 +314,24 @@ class PyshaApp(object):
             if self.notification_text is not None:
                 time_since_notification_started = time.time() - self.notification_time
                 if time_since_notification_started < definitions.NOTIFICATION_TIME:
-                    show_notification(ctx, self.notification_text, opacity=1 - time_since_notification_started/definitions.NOTIFICATION_TIME)
+                    show_notification(
+                        ctx,
+                        self.notification_text,
+                        opacity=1
+                        - time_since_notification_started
+                        / definitions.NOTIFICATION_TIME,
+                    )
                 else:
                     self.notification_text = None
 
             # Convert cairo data to numpy array and send to push
             buf = surface.get_data()
-            frame = numpy.ndarray(shape=(h, w), dtype=numpy.uint16, buffer=buf).transpose()
-            self.push.display.display_frame(frame, input_format=push2_python.constants.FRAME_FORMAT_RGB565)
+            frame = numpy.ndarray(
+                shape=(h, w), dtype=numpy.uint16, buffer=buf
+            ).transpose()
+            self.push.display.display_frame(
+                frame, input_format=push2_python.constants.FRAME_FORMAT_RGB565
+            )
 
     def check_for_delayed_actions(self):
         # Check for new MIDI devices periodically
@@ -329,10 +370,12 @@ class PyshaApp(object):
         if self.session is None:
             return
         for track in self.session.tracks:
+            if track is None:
+                continue
             for clip in track.clips:
                 if clip is not None and clip.playing:
                     clip.update_playhead_position()
-        
+
         # If clip edit mode is active with a playing clip, update pads for playhead animation
         if self.is_mode_active(self.clip_edit_mode):
             if self.clip_edit_mode.clip and self.clip_edit_mode.clip.playing:
@@ -352,10 +395,10 @@ class PyshaApp(object):
             self.actual_frame_rate = self.current_frame_rate_measurement
             self.current_frame_rate_measurement = 0
             self.current_frame_rate_measurement_second = now
-            print('{0} fps'.format(self.actual_frame_rate))
+            print("{0} fps".format(self.actual_frame_rate))
 
     def run_loop(self):
-        print('Pysha is runnnig...')
+        print("Pysha is runnnig...")
         try:
             while True:
                 before_draw_time = time.time()
@@ -371,19 +414,21 @@ class PyshaApp(object):
                 after_draw_time = time.time()
 
                 # Calculate sleep time to approximate the target frame rate
-                sleep_time = (1.0 / self.target_frame_rate) - (after_draw_time - before_draw_time)
+                sleep_time = (1.0 / self.target_frame_rate) - (
+                    after_draw_time - before_draw_time
+                )
                 if sleep_time > 0:
                     time.sleep(sleep_time)
 
         except KeyboardInterrupt:
-            print('Exiting Pysha...')
-            self.push.buttons.set_all_buttons_color('black')
+            print("Exiting Pysha...")
+            self.push.buttons.set_all_buttons_color("black")
             self.push.pads.set_all_pads_to_black()
             self.push.f_stop.set()
 
     def on_midi_push_connection_established(self):
         # Do initial configuration of Push
-        print('Doing initial Push config...')
+        print("Doing initial Push config...")
 
         # Only configure MIDI out if not in simulator mode
         # In simulator mode, there's no physical Push2 MIDI device
@@ -393,7 +438,12 @@ class PyshaApp(object):
         # Configure custom color palette
         app.push.color_palette = {}
         for count, color_name in enumerate(definitions.COLORS_NAMES):
-            app.push.set_color_palette_entry(count, [color_name, color_name], rgb=definitions.get_color_rgb_float(color_name), allow_overwrite=True)
+            app.push.set_color_palette_entry(
+                count,
+                [color_name, color_name],
+                rgb=definitions.get_color_rgb_float(color_name),
+                allow_overwrite=True,
+            )
         app.push.reapply_color_palette()
 
         # Initialize all buttons to black, initialize all pads to off
@@ -408,14 +458,17 @@ class PyshaApp(object):
         app.update_push2_buttons()
         app.update_push2_pads()
 
+
 # Bind push action handlers with class methods
 @push2_python.on_encoder_touched()
 def on_encoder_touched(_, encoder_name):
     print(f"encoder {encoder_name} touched")
 
+
 @push2_python.on_encoder_released()
 def on_encoder_released(_, encoder_name):
     print(f"encoder {encoder_name} released")
+
 
 @push2_python.on_encoder_rotated()
 def on_encoder_rotated(_, encoder_name, increment):
@@ -425,27 +478,29 @@ def on_encoder_rotated(_, encoder_name, increment):
             if action_performed:
                 break  # If mode took action, stop event propagation
     except NameError as e:
-       print('Error:  {}'.format(str(e)))
-       traceback.print_exc()
+        print("Error:  {}".format(str(e)))
+        traceback.print_exc()
 
 
 @push2_python.on_pad_pressed()
 def on_pad_pressed(_, pad_n, pad_ij, velocity):
     try:
         # Track pad press time for long press detection
-        pads_pressed_state[pad_n] = {'time': time.time(), 'handled': False}
-        print(f"Pad pressed event: pad_n={pad_n}, velocity={velocity}, active_modes={[type(m).__name__ for m in app.active_modes[::-1]]}")
+        pads_pressed_state[pad_n] = {"time": time.time(), "handled": False}
+        print(
+            f"Pad pressed event: pad_n={pad_n}, velocity={velocity}, active_modes={[type(m).__name__ for m in app.active_modes[::-1]]}"
+        )
 
         for mode in app.active_modes[::-1]:
             action_performed = mode.on_pad_pressed(pad_n, pad_ij, velocity)
             print(f"  Mode {type(mode).__name__} returned {action_performed}")
             if action_performed:
                 print(f"  -> {type(mode).__name__} handled the event")
-                pads_pressed_state[pad_n]['handled'] = True
+                pads_pressed_state[pad_n]["handled"] = True
                 break  # If mode took action, stop event propagation
     except NameError as e:
-       print('Error:  {}'.format(str(e)))
-       traceback.print_exc()
+        print("Error:  {}".format(str(e)))
+        traceback.print_exc()
 
 
 @push2_python.on_pad_released()
@@ -454,7 +509,7 @@ def on_pad_released(_, pad_n, pad_ij, velocity):
         press_state = pads_pressed_state.get(pad_n, None)
         is_long_press = False
         if press_state is not None:
-            press_time = press_state.get('time', time.time())
+            press_time = press_state.get("time", time.time())
             if time.time() - press_time > definitions.BUTTON_QUICK_PRESS_TIME:
                 is_long_press = True
             del pads_pressed_state[pad_n]
@@ -462,7 +517,7 @@ def on_pad_released(_, pad_n, pad_ij, velocity):
         # Call long press handler first if applicable
         if is_long_press:
             for mode in app.active_modes[::-1]:
-                if hasattr(mode, 'on_pad_long_pressed'):
+                if hasattr(mode, "on_pad_long_pressed"):
                     action_performed = mode.on_pad_long_pressed(pad_n, pad_ij, velocity)
                     if action_performed:
                         # Long press was handled, skip regular release
@@ -474,8 +529,8 @@ def on_pad_released(_, pad_n, pad_ij, velocity):
             if action_performed:
                 break
     except NameError as e:
-       print('Error:  {}'.format(str(e)))
-       traceback.print_exc()
+        print("Error:  {}".format(str(e)))
+        traceback.print_exc()
 
 
 @push2_python.on_pad_aftertouch()
@@ -486,8 +541,8 @@ def on_pad_aftertouch(_, pad_n, pad_ij, velocity):
             if action_performed:
                 break  # If mode took action, stop event propagation
     except NameError as e:
-       print('Error:  {}'.format(str(e)))
-       traceback.print_exc()
+        print("Error:  {}".format(str(e)))
+        traceback.print_exc()
 
 
 @push2_python.on_button_pressed()
@@ -499,7 +554,7 @@ def on_button_pressed(_, name):
             if action_performed:
                 break  # If mode took action, stop event propagation
     except NameError as e:
-        print(f'Error:  {str(e)}')
+        print(f"Error:  {str(e)}")
         traceback.print_exc()
 
 
@@ -512,8 +567,8 @@ def on_button_released(_, name):
             if action_performed:
                 break  # If mode took action, stop event propagation
     except NameError as e:
-       print('Error:  {}'.format(str(e)))
-       traceback.print_exc()
+        print("Error:  {}".format(str(e)))
+        traceback.print_exc()
 
 
 @push2_python.on_touchstrip()
@@ -524,8 +579,8 @@ def on_touchstrip(_, value):
             if action_performed:
                 break  # If mode took action, stop event propagation
     except NameError as e:
-       print('Error:  {}'.format(str(e)))
-       traceback.print_exc()
+        print("Error:  {}".format(str(e)))
+        traceback.print_exc()
 
 
 @push2_python.on_sustain_pedal()
@@ -536,7 +591,7 @@ def on_sustain_pedal(_, sustain_on):
             if action_performed:
                 break  # If mode took action, stop event propagation
     except NameError as e:
-        print('Error:  {}'.format(str(e)))
+        print("Error:  {}".format(str(e)))
         traceback.print_exc()
 
 
@@ -550,7 +605,7 @@ def on_midi_connected(_):
     except NameError as e:
         global midi_connected_received_before_app
         midi_connected_received_before_app = True
-        print('Error:  {}'.format(str(e)))
+        print("Error:  {}".format(str(e)))
         traceback.print_exc()
 
 
@@ -559,6 +614,6 @@ if __name__ == "__main__":
     app = PyshaApp()
     if midi_connected_received_before_app:
         # App received the "on_midi_connected" call before it was initialized. Do it now!
-        print('Missed MIDI initialization call, doing it now...')
+        print("Missed MIDI initialization call, doing it now...")
         app.on_midi_push_connection_established()
     app.run_loop()

@@ -13,6 +13,8 @@ class Track(BaseClass):
     channel: int
     input_monitoring: bool
     output_device_name: str
+    input_device_name: str = None
+    input_channel: int = -1
     remove_when_done: bool = False
     timeline: iso.Timeline
 
@@ -22,6 +24,8 @@ class Track(BaseClass):
         self.channel = 0
         self.input_monitoring = False
         self.output_device_name = None
+        self.input_device_name = None
+        self.input_channel = -1
         
         self.clips: List[Clip] = [None, None, None, None, None, None, None, None]
 
@@ -52,6 +56,14 @@ class Track(BaseClass):
     def set_input_monitoring(self, enabled):
         self.input_monitoring = enabled
 
+    def set_input_device_by_name(self, name) -> None:
+        """Set the input device by name"""
+        self.input_device_name = name
+
+    def set_input_channel(self, channel) -> None:
+        """Set the input channel (-1 for All, 1-16 for specific)"""
+        self.input_channel = channel
+
     def set_active_ui_notes_monitoring(self):
         print("implement set_active_ui_notes_monitoring in a way that doesn't require WS")
 
@@ -72,7 +84,12 @@ class Track(BaseClass):
             return self._device_short_name
         else:
             if self.output_device_name is None:
-                self.output_device_name = self._output_device.midi.name
+                # No output device assigned - fall back to Track N
+                try:
+                    idx = self.parent.tracks.index(self)
+                    return f"Track {idx + 1}"
+                except (AttributeError, ValueError):
+                    return "Track"
 
             if len(self.output_device_name) < definitions.MAX_DEVICE_NAME_CHARS:
                 return self.output_device_name

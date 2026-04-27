@@ -57,6 +57,8 @@ class ClipTriggeringMode(definitions.PyshaMode):
             current_track_playing_clips_info = []
             current_track_will_play_clips_info = []
             track = self.app.session.get_track_by_idx(track_num)
+            if track is None:
+                continue
             for clip_num in range(0, len(track.clips)):
                 clip = self.app.session.get_clip_by_idx(track_num, clip_num)
                 if clip is None:

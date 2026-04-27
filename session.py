@@ -7,7 +7,7 @@ from base_class import BaseClass
 from clip import Clip
 from track import Track
 
-DEVICES_TO_IGNORE = ['Ableton Push', 'RtMidi', 'Through', 'pisound-ctl']
+DEVICES_TO_IGNORE = ["Ableton Push", "RtMidi", "Through", "pisound-ctl"]
 
 
 class Session(BaseClass):
@@ -16,6 +16,7 @@ class Session(BaseClass):
     Session owns the list of tracks and their clips, manages MIDI devices, and handles scheduling.
     Sessions can be saved and loaded.
     """
+
     tracks: List[Track] = []
 
     bpm: float = 100
@@ -43,8 +44,8 @@ class Session(BaseClass):
         self.pending_actions: List[Dict] = []  # List of {beat, action, clip}
         self.pending_scene_transition = None  # {time, clips_to_stop, clips_to_start}
 
-        # Initialize with 8 empty Track objects to match the 8 track buttons
-        self.tracks = [Track(parent=self) for _ in range(8)]
+        # Initialize with 8 empty slots (None) to allow manual track creation
+        self.tracks = [None] * 8
 
         # Perform device setup
         self.initialize_devices()
@@ -55,7 +56,6 @@ class Session(BaseClass):
         # The parent of Session is the PyshaApp object itself
         return self._parent
 
-
     ############################################################################
     # Session Management
     ############################################################################
@@ -63,8 +63,46 @@ class Session(BaseClass):
         try:
             return self.tracks[track_idx]
         except Exception as e:
-            print('ERROR selecting track: {}'.format(e))
+            print("ERROR selecting track: {}".format(e))
         return None
+
+    def get_next_free_track_index(self) -> Optional[int]:
+        """Return the first free track slot index (0-7) or None if full."""
+        return next((i for i, t in enumerate(self.tracks) if t is None), None)
+
+    def create_track(
+        self,
+        output_device_name: str,
+        channel: int,
+        input_device_name: str = None,
+        input_channel: int = None,
+    ) -> Optional["Track"]:
+        """Create a new track in the first free slot.
+
+        Args:
+            output_device_name: MIDI output device name
+            channel: MIDI output channel (0-15 internal)
+            input_device_name: MIDI input device name (None for no input)
+            input_channel: MIDI input channel (-1 for All, 1-16 for specific)
+
+        Returns:
+            Track if created, None if no free slots
+        """
+        if len([t for t in self.tracks if t is not None]) >= 8:
+            return None
+
+        i = self.get_next_free_track_index()
+        if i is None:
+            return None
+
+        track = Track(parent=self)
+        track.set_output_device_by_name(output_device_name)
+        track.channel = channel
+        track.input_device_name = input_device_name
+        track.input_channel = input_channel
+
+        self.tracks[i] = track
+        return track
 
     def get_clip_by_idx(self, track_idx=None, clip_idx=None) -> Optional[Clip]:
         try:
@@ -73,6 +111,8 @@ class Session(BaseClass):
                 return None
 
             track = self.tracks[track_idx]
+            if track is None:
+                return None
 
             # Check if clip exists in this track
             if clip_idx is None or clip_idx >= len(track.clips):
@@ -93,7 +133,7 @@ class Session(BaseClass):
         Args:
             scene_number: The scene/clip index (0-7) to play
         """
-        print(f'Trying to play scene {scene_number}')
+        print(f"Trying to play scene {scene_number}")
 
         # Track which clips need to be stopped and started
         clips_to_stop = []
@@ -101,6 +141,8 @@ class Session(BaseClass):
 
         # Collect all currently playing clips (to stop at next bar)
         for track in self.tracks:
+            if track is None:
+                continue
             for clip in track.clips:
                 if clip is not None and clip.playing:
                     clips_to_stop.append(clip)
@@ -118,7 +160,9 @@ class Session(BaseClass):
 
         # Schedule stops and starts at the next bar
         if beats_until_next_bar == 0:
-            beats_until_next_bar = 4  # If we're exactly on a bar line, wait for the next one
+            beats_until_next_bar = (
+                4  # If we're exactly on a bar line, wait for the next one
+            )
 
         next_bar_time = current_time + beats_until_next_bar
 
@@ -132,14 +176,14 @@ class Session(BaseClass):
             clip.update_status()
 
         # Update pads immediately to show cued state
-        if self.app and hasattr(self.app, 'clip_triggering_mode'):
+        if self.app and hasattr(self.app, "clip_triggering_mode"):
             self.app.clip_triggering_mode.update_pads()
 
         # Store the pending scene transition to be executed by the sequencer
         self.pending_scene_transition = {
-            'time': next_bar_time,
-            'clips_to_stop': clips_to_stop,
-            'clips_to_start': clips_to_start
+            "time": next_bar_time,
+            "clips_to_stop": clips_to_stop,
+            "clips_to_start": clips_to_start,
         }
 
     def check_pending_scene_transition(self):
@@ -150,13 +194,13 @@ class Session(BaseClass):
         current_time = self.global_timeline.current_time
         transition = self.pending_scene_transition
 
-        if current_time >= transition['time']:
+        if current_time >= transition["time"]:
             # Execute the transition
-            for clip in transition['clips_to_stop']:
+            for clip in transition["clips_to_stop"]:
                 if clip.playing:
                     clip.stop()
 
-            for clip in transition['clips_to_start']:
+            for clip in transition["clips_to_start"]:
                 clip.play(quantize_start=False)
                 clip.will_play_at = -1.0
                 clip.update_status()
@@ -165,7 +209,7 @@ class Session(BaseClass):
             self.pending_scene_transition = None
 
             # Update pads to reflect new state
-            if self.app and hasattr(self.app, 'clip_triggering_mode'):
+            if self.app and hasattr(self.app, "clip_triggering_mode"):
                 self.app.clip_triggering_mode.update_pads()
 
     def scene_stop(self, scene_number):
@@ -175,29 +219,30 @@ class Session(BaseClass):
         Args:
             scene_number: The scene/clip index (0-7) to stop
         """
-        print(f'Stopping scene {scene_number}')
+        print(f"Stopping scene {scene_number}")
 
         for track in self.tracks:
+            if track is None:
+                continue
             if scene_number < len(track.clips):
                 clip = track.clips[scene_number]
                 if clip is not None and clip.playing:
                     clip.stop()
 
     def set_bpm(self, new_bpm):
-        print(f'Trying to set bpm to {new_bpm}')
+        print(f"Trying to set bpm to {new_bpm}")
         self.bpm = new_bpm
 
     def set_scale(self, new_scale):
-        print(f'Trying to set scale to {new_scale}')
+        print(f"Trying to set scale to {new_scale}")
         self.scale = new_scale
 
     def set_key(self, new_key):
-        print(f'Trying to set scale to {new_key}')
+        print(f"Trying to set scale to {new_key}")
         self.key = new_key
 
     def set_fixed_velocity(self, velocity):
-        print(f'Trying to set fixed velocity to {velocity}')
-
+        print(f"Trying to set fixed velocity to {velocity}")
 
     ############################################################################
     # Device Management
@@ -237,26 +282,30 @@ class Session(BaseClass):
         merge them into the existing device lists
         """
         try:
-            self.input_device_names = list(set(
-                self.input_device_names + self._get_safe_input_device_names()
-            ))
-            self.output_device_names = list(set(
-                self.output_device_names + self._get_safe_output_device_names()
-            ))
+            self.input_device_names = list(
+                set(self.input_device_names + self._get_safe_input_device_names())
+            )
+            self.output_device_names = list(
+                set(self.output_device_names + self._get_safe_output_device_names())
+            )
         except Exception as e:
             print(f"Error checking for new MIDI devices: {e}")
 
     def _get_safe_input_device_names(self):
         """Get input device names excluding system-related devices"""
-        return [name for name in iso.get_midi_input_names()
-                if not any(device in name for device in DEVICES_TO_IGNORE)
+        return [
+            name
+            for name in iso.get_midi_input_names()
+            if not any(device in name for device in DEVICES_TO_IGNORE)
         ]
 
     def _get_safe_output_device_names(self):
         """Get input device names excluding system-related devices"""
-        return [name for name in iso.get_midi_output_names()
-                if not any(device in name for device in DEVICES_TO_IGNORE)]
-
+        return [
+            name
+            for name in iso.get_midi_output_names()
+            if not any(device in name for device in DEVICES_TO_IGNORE)
+        ]
 
     ############################################################################
     # Timeline Management

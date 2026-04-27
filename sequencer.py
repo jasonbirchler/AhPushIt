@@ -103,6 +103,8 @@ class Sequencer:
         current_time = self.timeline.current_time
 
         for track in self.app.session.tracks:
+            if track is None:
+                continue
             for clip in track.clips:
                 if clip and clip.playing and clip.queued_clip:
                     # Check if we've passed the loop point

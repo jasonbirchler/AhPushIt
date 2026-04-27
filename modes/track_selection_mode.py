@@ -21,8 +21,9 @@ class TrackSelectionMode(definitions.PyshaMode):
         push2_python.constants.BUTTON_LOWER_ROW_6,
         push2_python.constants.BUTTON_LOWER_ROW_7,
         push2_python.constants.BUTTON_LOWER_ROW_8
+
     ]
-    selected_track = 0
+    ADD_TRACK_BUTTON = push2_python.constants.BUTTON_ADD_TRACK
 
     def get_selected_track(self):
         return self.app.session.get_track_by_idx(self.selected_track)
@@ -31,6 +32,7 @@ class TrackSelectionMode(definitions.PyshaMode):
         if settings is not None:
             pass
         
+        self.selected_track = 0
         self.load_hardware_devices_info()
 
     def load_hardware_devices_info(self):
@@ -79,15 +81,21 @@ class TrackSelectionMode(definitions.PyshaMode):
         return device_name
 
     def get_all_distinct_device_short_names(self):
-        return list(set([track.output_device_name for track in self.app.session.tracks]))
+        return list(set([t.output_device_name for t in self.app.session.tracks if t and t.output_device_name]))
 
     def get_current_track_device_info(self):
-        output_device_name = self.get_selected_track().output_device_name
+        track = self.get_selected_track()
+        if track is None:
+            return {}
+        output_device_name = track.output_device_name
         definition_name = self.get_device_definition_name(output_device_name)
         return self.devices_info.get(definition_name, {})
 
     def get_current_track_device_short_name(self):
-        full_name = self.get_selected_track().output_device_name
+        track = self.get_selected_track()
+        if track is None:
+            return None
+        full_name = track.output_device_name
         return self.get_device_definition_name(full_name)
     
     def get_track_color(self, track_idx: int):
@@ -151,7 +159,8 @@ class TrackSelectionMode(definitions.PyshaMode):
         # Enabled input monitoring for the selected track only
         tracks = self.app.session.tracks
         for i in range(0, len(tracks)):
-            tracks[i].set_input_monitoring(i == track_idx)
+            if tracks[i] is not None:
+                tracks[i].set_input_monitoring(i == track_idx)
 
     def select_track_as_active(self, track_idx):
         # Selects a track
@@ -172,6 +181,18 @@ class TrackSelectionMode(definitions.PyshaMode):
                 pass
             track.set_active_ui_notes_monitoring()
             
+    def update_buttons(self):
+        if self.app.session is None:
+            self.app.buttons_need_update = True
+            return
+        
+        # Update ADD_TRACK button
+        occupied = sum(1 for t in self.app.session.tracks if t is not None)
+        if occupied < 8:
+            self.push.buttons.set_button_color(self.ADD_TRACK_BUTTON, definitions.WHITE)
+        else:
+            self.push.buttons.set_button_color(self.ADD_TRACK_BUTTON, definitions.OFF_BTN_COLOR)
+
     def activate(self):
         self.update_buttons()
         self.update_pads()
@@ -187,19 +208,14 @@ class TrackSelectionMode(definitions.PyshaMode):
 
     def check_for_delayed_actions(self):
         track = self.get_selected_track()
+        if track is None:
+            return
 
         if track.reload_track_info:
             track.reload_track_info = False
             self.load_hardware_devices_info()
 
-    def update_buttons(self):
-        if self.app.session is None or self.app.session.tracks is None:
-            # Schedule retry for when session becomes available
-            self.app.buttons_need_update = True
-            return
-        for count, name in enumerate(self.track_button_names):
-            color = self.get_track_color(count)
-            self.push.buttons.set_button_color(name, color)
+
             
     def update_display(self, ctx, w, h):
         if self.app.session is None or self.app.session.tracks is None:
@@ -214,6 +230,8 @@ class TrackSelectionMode(definitions.PyshaMode):
         playback_bar_margin = 2
         
         for i, track in enumerate(self.app.session.tracks):
+            if track is None:
+                continue
             track_color = self.get_track_color(i)
             if self.selected_track == i:
                 background_color = track_color
@@ -254,10 +272,14 @@ class TrackSelectionMode(definitions.PyshaMode):
                     ctx.fill()
                 ctx.restore()
 
+            if track is None: continue
             show_text(ctx, i, h - height, device_short_name, height=height,
                     font_color=font_color, background_color=background_color)
 
     def on_button_pressed(self, button_name, long_press=False):
+       if button_name == self.ADD_TRACK_BUTTON:
+            self.app.set_add_track_mode()
+            return True
        if button_name in self.track_button_names:
             track_idx = self.track_button_names.index(button_name)
             track = self.app.session.get_track_by_idx(track_idx)
