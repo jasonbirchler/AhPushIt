@@ -44,7 +44,7 @@ class MainControlsMode(definitions.PyshaMode):
             self.push.buttons.set_button_color(SETTINGS_BUTTON, definitions.BLACK)
             self.push.buttons.set_button_color(SETTINGS_BUTTON, definitions.WHITE, animation=definitions.DEFAULT_ANIMATION)
         else:
-            self.push.buttons.set_button_color(SETTINGS_BUTTON, definitions.OFF_BTN_COLOR)
+            self.push.buttons.set_button_color(SETTINGS_BUTTON, definitions.WHITE)
 
         # Clip triggering mode button
         if self.app.is_mode_active(self.app.clip_triggering_mode):
