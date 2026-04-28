@@ -180,12 +180,20 @@ class TrackSelectionMode(definitions.PyshaMode):
                 # Might fail if MIDICCMode/PresetSelectionMode/ClipTriggeringMode not initialized
                 pass
             track.set_active_ui_notes_monitoring()
-            
+
     def update_buttons(self):
         if self.app.session is None:
             self.app.buttons_need_update = True
             return
-        
+
+        # Update track buttons with their colors
+        for count, name in enumerate(self.track_button_names):
+            if count < len(self.app.session.tracks) and self.app.session.tracks[count] is not None:
+                color = self.get_track_color(count)
+            else:
+                color = definitions.BLACK
+            self.push.buttons.set_button_color(name, color)
+
         # Update ADD_TRACK button
         occupied = sum(1 for t in self.app.session.tracks if t is not None)
         if occupied < 8:
