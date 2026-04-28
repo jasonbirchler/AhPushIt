@@ -244,17 +244,23 @@ class PyshaApp(object):
         self.unset_mode_for_xor_group(self.preset_selection_mode)
 
     def save_current_settings_to_file(self):
-        # NOTE: when saving device names, eliminate the last bit with XX:Y numbers as this might vary across runs
-        # if different devices are connected
-        settings = {
-            "use_push2_display": self.use_push2_display,
-            "target_frame_rate": self.target_frame_rate,
-        }
+        # Start with a copy of current settings to preserve any existing keys
+        settings = self.settings.copy()
+        # Update with current app-level settings
+        settings["use_push2_display"] = self.use_push2_display
+        settings["target_frame_rate"] = self.target_frame_rate
+        # Include the currently loaded project (if any) so auto_open_last_project can load it
+        if self.pm.current_project_file is not None:
+            settings["last_project"] = self.pm.current_project_file
+        # Gather settings from all modes
         for mode in self.get_all_modes():
             mode_settings = mode.get_settings_to_save()
             if mode_settings:
                 settings.update(mode_settings)
+        # Write to file
         json.dump(settings, open("settings.json", "w"))
+        # Update in-memory settings to match the saved state
+        self.settings = settings
 
     # Push2-related functions
     def add_display_notification(self, text):

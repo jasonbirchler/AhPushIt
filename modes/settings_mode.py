@@ -451,6 +451,9 @@ class SettingsMode(definitions.PyshaMode):
                 return True
             if button_name == push2_python.constants.BUTTON_UPPER_ROW_5:
                 self.auto_open_last_project = not self.auto_open_last_project
+                # Also update the app's settings dict to reflect the change immediately
+                self.app.settings['auto_open_last_project'] = self.auto_open_last_project
+                self.app.save_current_settings_to_file()
                 return True
             if button_name == push2_python.constants.BUTTON_UPPER_ROW_6:
                 self.app.on_midi_push_connection_established()
