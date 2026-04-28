@@ -1,19 +1,38 @@
-import math
-import traceback
+"""Mode for editing a track's clips"""
 from typing import Optional
 
 import push2_python
 
 import definitions
-from utils import clamp, clamp01, draw_clip, show_title, show_value
+from utils import clamp, show_title, show_value
 from clip import Clip
 
 from .generator_algorithms import RandomGeneratorAlgorithm, RandomGeneratorAlgorithmPlus
 
 
 class ClipEditMode(definitions.PyshaMode):
+    """
+    MODE_CLIP
+    Slot 1 = select clip (Slot 1 button triggers clip play/stop)
+    Slot 2 = clip length
+    Slot 3 = quantization
+    Slot 4 = bpm multiplier
+    Slot 5 = view scale
+    Slots 5-8 = clip preview 
 
-    xor_group = 'pads'
+    MODE_EVENT
+    Slot 1 = midi note
+    Slot 2 = timestamp
+    Slot 3 = duration (rotating ecoder sets quantized duration, encoder + shift sets without quantization)
+    Slot 4 = utime
+    Slot 5 = chance
+    Slots 6-8 = clip preview 
+
+    MODE_GENERATOR
+    Slot 1 = algorithm (Slot 1 button triggers generation)
+    Slot 2-x = allgorithm paramters
+    """
+    xor_group = "pads"
     buttons_used = [
         push2_python.constants.BUTTON_UPPER_ROW_1,
         push2_python.constants.BUTTON_UPPER_ROW_2,
@@ -35,9 +54,9 @@ class ClipEditMode(definitions.PyshaMode):
         push2_python.constants.BUTTON_CLIP,
     ]
 
-    MODE_CLIP = 'mode_clip'
-    MODE_EVENT = 'mdoe_event'
-    MODE_GENERATOR = 'mode_generator'
+    MODE_CLIP = "mode_clip"
+    MODE_EVENT = "mdoe_event"
+    MODE_GENERATOR = "mode_generator"
     mode = MODE_CLIP
 
     selected_clip_idx = None
@@ -49,35 +68,15 @@ class ClipEditMode(definitions.PyshaMode):
     selected_generator_algorithm = 0
 
     default_note_duration = 0.25  # Default duration in beats (1/16 note)
-    should_follow_playhead = False  # When True, view scrolls to follow playhead during playback
-
-    '''
-    MODE_CLIP
-    Slot 1 = select clip (Slot 1 button triggers clip play/stop)
-    Slot 2 = clip length
-    Slot 3 = quantization
-    Slot 4 = bpm multiplier
-    Slot 5 = view scale
-    Slots 5-8 = clip preview 
-
-    MODE_EVENT
-    Slot 1 = midi note
-    Slot 2 = timestamp
-    Slot 3 = duration (rotating ecoder sets quantized duration, encoder + shift sets without quantization)
-    Slot 4 = utime
-    Slot 5 = chance
-    Slots 6-8 = clip preview 
-
-    MODE_GENERATOR
-    Slot 1 = algorithm (Slot 1 button triggers generation)
-    Slot 2-x = allgorithm paramters
-    '''
+    should_follow_playhead = (
+        False  # When True, view scrolls to follow playhead during playback
+    )
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.generator_algorithms = [
             RandomGeneratorAlgorithm(),
-            RandomGeneratorAlgorithmPlus()
+            RandomGeneratorAlgorithmPlus(),
         ]
 
     @property
@@ -93,10 +92,14 @@ class ClipEditMode(definitions.PyshaMode):
         if self.selected_event_position is not None and self.clip is not None:
             if 0 <= self.selected_event_position < len(self.clip.notes):
                 return {
-                    'position': self.selected_event_position,
-                    'note': self.clip.notes[self.selected_event_position],
-                    'duration': self.clip.durations[self.selected_event_position] if self.selected_event_position < len(self.clip.durations) else 0.5,
-                    'amplitude': self.clip.amplitudes[self.selected_event_position] if self.selected_event_position < len(self.clip.amplitudes) else 64,
+                    "position": self.selected_event_position,
+                    "note": self.clip.notes[self.selected_event_position],
+                    "duration": self.clip.durations[self.selected_event_position]
+                    if self.selected_event_position < len(self.clip.durations)
+                    else 0.5,
+                    "amplitude": self.clip.amplitudes[self.selected_event_position]
+                    if self.selected_event_position < len(self.clip.amplitudes)
+                    else 64,
                 }
         return None
 
@@ -104,33 +107,33 @@ class ClipEditMode(definitions.PyshaMode):
     def generator_algorithm(self):
         return self.generator_algorithms[self.selected_generator_algorithm]
 
-
-
     def reset_window_to_clip(self):
         """Reset window position to center notes on the pads.
-        
+
         Finds the highest and lowest notes in the clip, calculates the midpoint,
         finds the actual note nearest to that midpoint, and centers that note
         on row 4 of the Push pads.
         """
         if self.clip:
             self.clip.window_step_offset = 0
-            
+
             # Get note range and center on pads
             lowest, highest = self.clip.get_note_range()
             if lowest is not None and highest is not None:
                 # Calculate mathematical midpoint
                 midpoint = (highest + lowest) / 2
-                
+
                 # Find the actual note nearest to the midpoint
                 unique_notes = self.clip.get_unique_notes()
                 nearest_note = min(unique_notes, key=lambda n: abs(n - midpoint))
-                
+
                 # Center that note on row 4
                 self.clip.window_note_offset = nearest_note - 3
-                
+
                 # Clamp to valid MIDI range (0-120 to ensure 8 notes fit in 0-127)
-                self.clip.window_note_offset = clamp(self.clip.window_note_offset, 0, 120)
+                self.clip.window_note_offset = clamp(
+                    self.clip.window_note_offset, 0, 120
+                )
             else:
                 # Empty clip - default to Middle C
                 self.clip.window_note_offset = 60
@@ -147,31 +150,33 @@ class ClipEditMode(definitions.PyshaMode):
 
     def update_view_for_playhead(self):
         """Update the view window to follow the playhead during playback.
-        
+
         When should_follow_playhead is True:
         - If playhead reaches the right edge of the visible window, scroll right by 8 steps
         - If playhead wraps to the beginning, reset view to start
         """
         if not self.clip or not self.clip.playing or not self.should_follow_playhead:
             return
-        
+
         if self.clip.clip_length_in_beats <= 0:
             return
-        
+
         # Calculate current playhead step position
-        playhead_step = (self.clip.playhead_position_in_beats / self.clip.clip_length_in_beats) * self.clip.steps
+        playhead_step = (
+            self.clip.playhead_position_in_beats / self.clip.clip_length_in_beats
+        ) * self.clip.steps
         playhead_step = int(playhead_step) % self.clip.steps
-        
+
         window_start = self.clip.window_step_offset
         window_end = window_start + 8
-        
+
         # Check if playhead has moved past the right edge of the visible window
         if playhead_step >= window_end:
             # Scroll right by one page (8 steps)
             new_offset = window_start + 8
             max_offset = max(0, self.clip.steps - 8)
             self.clip.window_step_offset = min(new_offset, max_offset)
-        
+
         # Check if playhead has wrapped back to the beginning
         # This is detected when playhead is near start but window is scrolled far right
         elif playhead_step < 8 and window_start > 0:
@@ -191,15 +196,18 @@ class ClipEditMode(definitions.PyshaMode):
 
         # Initialize color and animation matrices
         color_matrix = [[definitions.BLACK for _ in range(8)] for _ in range(8)]
-        animation_matrix = [[push2_python.constants.ANIMATION_STATIC for _ in range(8)] for _ in range(8)]
+        animation_matrix = [
+            [push2_python.constants.ANIMATION_STATIC for _ in range(8)]
+            for _ in range(8)
+        ]
 
         # Get notes in current window
         notes_to_render = self.clip.get_notes_for_rendering()
 
         # Light up pads for each note
         for note_data in notes_to_render:
-            pad_i = note_data['pad_i']
-            pad_j = note_data['pad_j']
+            pad_i = note_data["pad_i"]
+            pad_j = note_data["pad_j"]
 
             if 0 <= pad_i < 8 and 0 <= pad_j < 8:
                 color_matrix[pad_i][pad_j] = track_color
@@ -207,7 +215,9 @@ class ClipEditMode(definitions.PyshaMode):
         # Draw playhead if clip is playing
         if self.clip.playing and self.clip.clip_length_in_beats > 0:
             # Calculate playhead step position (wraps around)
-            playhead_step = (self.clip.playhead_position_in_beats / self.clip.clip_length_in_beats) * self.clip.steps
+            playhead_step = (
+                self.clip.playhead_position_in_beats / self.clip.clip_length_in_beats
+            ) * self.clip.steps
             playhead_step = int(playhead_step) % self.clip.steps
 
             # Check if playhead is in the visible window
@@ -228,12 +238,12 @@ class ClipEditMode(definitions.PyshaMode):
     def quantize_helper(self):
         current_quantization_step = self.clip.current_quantization_step
         if current_quantization_step == 0.0:
-            next_quantization_step = 4.0/16.0
-        elif current_quantization_step == 4.0/16.0:
-            next_quantization_step = 4.0/8.0
-        elif current_quantization_step == 4.0/8.0:
-            next_quantization_step = 4.0/4.0
-        elif current_quantization_step == 4.0/4.0:
+            next_quantization_step = 4.0 / 16.0
+        elif current_quantization_step == 4.0 / 16.0:
+            next_quantization_step = 4.0 / 8.0
+        elif current_quantization_step == 4.0 / 8.0:
+            next_quantization_step = 4.0 / 4.0
+        elif current_quantization_step == 4.0 / 4.0:
             next_quantization_step = 0.0
         else:
             next_quantization_step = 0.0
@@ -249,7 +259,9 @@ class ClipEditMode(definitions.PyshaMode):
         ctx.rectangle(0, 0, w, h)
         ctx.fill()
 
-        if self.clip is not None and not self.app.is_mode_active(self.app.settings_mode):
+        if self.clip is not None and not self.app.is_mode_active(
+            self.app.settings_mode
+        ):
             part_w = w // 8
             track_color_rgb = None
 
@@ -260,103 +272,104 @@ class ClipEditMode(definitions.PyshaMode):
 
             if self.mode == self.MODE_CLIP:
                 if self.selected_clip_idx is not None:
-
                     # Column 1, clip name
-                    show_title(
-                        ctx,
-                        part_w * 0,
-                        h,
-                        'CLIP',
-                        color=track_color_rgb
-                    )
+                    show_title(ctx, part_w * 0, h, "CLIP", color=track_color_rgb)
                     show_value(
-                        ctx,
-                        part_w * 0,
-                        h,
-                        self.clip.name,
-                        color=track_color_rgb
+                        ctx, part_w * 0, h, self.clip.name, color=track_color_rgb
                     )
 
                     # Column 2, clip length
-                    show_title(
-                        ctx,
-                        part_w * 1,
-                        h,
-                        'LENGTH'
-                    )
+                    show_title(ctx, part_w * 1, h, "LENGTH")
                     show_value(
                         ctx,
                         part_w * 1,
                         h,
-                        '{:.1f}'.format(self.clip.clip_length_in_beats)
+                        "{:.1f}".format(self.clip.clip_length_in_beats),
                     )
 
                     # Column 3, quantization
-                    show_title(
-                        ctx,
-                        part_w * 2,
-                        h,
-                        'QUANTIZATION'
-                    )
+                    show_title(ctx, part_w * 2, h, "QUANTIZATION")
                     quantization_step_labels = {
-                        0.25: '16th note',
-                        0.5: '8th note',
-                        1.0: '4th note',
-                        0.0: '-'
+                        0.25: "16th note",
+                        0.5: "8th note",
+                        1.0: "4th note",
+                        0.0: "-",
                     }
                     if self.clip:
-                        show_value(ctx, part_w * 2, h, f'{quantization_step_labels.get(self.clip.current_quantization_step, self.clip.current_quantization_step)}')
-                    
+                        show_value(
+                            ctx,
+                            part_w * 2,
+                            h,
+                            f"{quantization_step_labels.get(self.clip.current_quantization_step, self.clip.current_quantization_step)}",
+                        )
+
                     # Column 4, Playhead Follow
-                    show_title(ctx, part_w * 3, h, 'FOLLOW')
-                    show_value(ctx, part_w * 3, h, 'ON' if self.should_follow_playhead else 'OFF')
+                    show_title(ctx, part_w * 3, h, "FOLLOW")
+                    show_value(
+                        ctx,
+                        part_w * 3,
+                        h,
+                        "ON" if self.should_follow_playhead else "OFF",
+                    )
 
                     # Column 8, window position
-                    show_title(ctx, part_w * 7, h, 'Window Offset:')
-                    show_value(ctx, part_w * 7, h, f'Step: {self.clip.window_step_offset}')
-                    show_value(ctx, part_w * 7, h, f'Note: {self.clip.window_note_offset}', vertical_offset=22)
+                    show_title(ctx, part_w * 7, h, "Window Offset:")
+                    show_value(
+                        ctx, part_w * 7, h, f"Step: {self.clip.window_step_offset}"
+                    )
+                    show_value(
+                        ctx,
+                        part_w * 7,
+                        h,
+                        f"Note: {self.clip.window_note_offset}",
+                        vertical_offset=22,
+                    )
 
             elif self.mode == self.MODE_EVENT:
                 if self.event_data is not None:
                     # Slot 1, midi note
-                    show_title(ctx, part_w * 0, h, 'NOTE')
-                    show_value(ctx, part_w * 0, h, self.event_data['note'])
+                    show_title(ctx, part_w * 0, h, "NOTE")
+                    show_value(ctx, part_w * 0, h, self.event_data["note"])
 
                     # Slot 2, position (replaces timestamp for simplicity)
-                    show_title(ctx, part_w * 1, h, 'POSITION')
-                    show_value(ctx, part_w * 1, h, self.event_data['position'])
+                    show_title(ctx, part_w * 1, h, "POSITION")
+                    show_value(ctx, part_w * 1, h, self.event_data["position"])
 
                     # Slot 3, duration
-                    show_title(ctx, part_w * 2, h, 'DURATION')
-                    show_value(ctx, part_w * 2, h, '{:.3f}'.format(self.event_data['duration']))
+                    show_title(ctx, part_w * 2, h, "DURATION")
+                    show_value(
+                        ctx, part_w * 2, h, "{:.3f}".format(self.event_data["duration"])
+                    )
 
                     # Slot 4, amplitude (velocity)
-                    show_title(ctx, part_w * 3, h, 'VELOCITY')
-                    show_value(ctx, part_w * 3, h, self.event_data['amplitude'])
+                    show_title(ctx, part_w * 3, h, "VELOCITY")
+                    show_value(ctx, part_w * 3, h, self.event_data["amplitude"])
 
                     # Slot 5, empty
-                    show_title(ctx, part_w * 4, h, '-')
-                    show_value(ctx, part_w * 4, h, '-')
+                    show_title(ctx, part_w * 4, h, "-")
+                    show_value(ctx, part_w * 4, h, "-")
 
             elif self.mode == self.MODE_GENERATOR:
-                show_title(ctx, part_w * 0, h, 'ALGORITHM')
+                show_title(ctx, part_w * 0, h, "ALGORITHM")
                 show_value(ctx, part_w * 0, h, self.generator_algorithm.name)
 
-                for i, parameter in enumerate(self.generator_algorithm.get_algorithm_parameters()):
-                    show_title(ctx, part_w * (i + 1), h, parameter['display_name'])
-                    if parameter['type'] == float:
-                        label = '{:.3f}'.format(parameter['value'])
+                for i, parameter in enumerate(
+                    self.generator_algorithm.get_algorithm_parameters()
+                ):
+                    show_title(ctx, part_w * (i + 1), h, parameter["display_name"])
+                    if parameter["type"] == float:
+                        label = "{:.3f}".format(parameter["value"])
                     else:
-                        label = '{}'.format(parameter['value'])
+                        label = "{}".format(parameter["value"])
                     show_value(ctx, part_w * (i + 1), h, label)
-
-
 
     def activate(self):
         print("DEBUG: ClipEditMode.activate() called")
         # Clear the display to hide previous interface
         if self.app.use_push2_display:
-            self.push.display.send_to_display(self.push.display.prepare_frame(self.push.display.make_black_frame()))
+            self.push.display.send_to_display(
+                self.push.display.prepare_frame(self.push.display.make_black_frame())
+            )
 
         self.update_buttons()
         self.update_pads()
@@ -373,78 +386,182 @@ class ClipEditMode(definitions.PyshaMode):
 
     def update_buttons(self):
         if self.mode == self.MODE_CLIP:
-            self.push.buttons.set_button_color(push2_python.constants.BUTTON_SHIFT, definitions.WHITE)
-            self.push.buttons.set_button_color(push2_python.constants.BUTTON_UPPER_ROW_2, definitions.BLACK)
-            self.set_button_color_if_pressed(push2_python.constants.BUTTON_UPPER_ROW_3, animation=definitions.DEFAULT_ANIMATION)
-            self.push.buttons.set_button_color(push2_python.constants.BUTTON_UPPER_ROW_4, definitions.WHITE)
-            self.push.buttons.set_button_color(push2_python.constants.BUTTON_UPPER_ROW_5, definitions.BLACK)
-            self.push.buttons.set_button_color(push2_python.constants.BUTTON_UPPER_ROW_6, definitions.BLACK)
-            self.push.buttons.set_button_color(push2_python.constants.BUTTON_UPPER_ROW_7, definitions.BLACK)
-            self.push.buttons.set_button_color(push2_python.constants.BUTTON_UPPER_ROW_8, definitions.BLACK)
+            self.push.buttons.set_button_color(
+                push2_python.constants.BUTTON_SHIFT, definitions.WHITE
+            )
+            self.push.buttons.set_button_color(
+                push2_python.constants.BUTTON_UPPER_ROW_2, definitions.BLACK
+            )
+            self.set_button_color_if_pressed(
+                push2_python.constants.BUTTON_UPPER_ROW_3,
+                animation=definitions.DEFAULT_ANIMATION,
+            )
+            self.push.buttons.set_button_color(
+                push2_python.constants.BUTTON_UPPER_ROW_4, definitions.WHITE
+            )
+            self.push.buttons.set_button_color(
+                push2_python.constants.BUTTON_UPPER_ROW_5, definitions.BLACK
+            )
+            self.push.buttons.set_button_color(
+                push2_python.constants.BUTTON_UPPER_ROW_6, definitions.BLACK
+            )
+            self.push.buttons.set_button_color(
+                push2_python.constants.BUTTON_UPPER_ROW_7, definitions.BLACK
+            )
+            self.push.buttons.set_button_color(
+                push2_python.constants.BUTTON_UPPER_ROW_8, definitions.BLACK
+            )
 
-            self.push.buttons.set_button_color(push2_python.constants.BUTTON_CLIP, definitions.OFF_BTN_COLOR)
+            self.push.buttons.set_button_color(
+                push2_python.constants.BUTTON_CLIP, definitions.OFF_BTN_COLOR
+            )
 
-            self.set_button_color_if_pressed(push2_python.constants.BUTTON_DOUBLE_LOOP, animation=definitions.DEFAULT_ANIMATION)
-            self.set_button_color_if_pressed(push2_python.constants.BUTTON_QUANTIZE, animation=definitions.DEFAULT_ANIMATION)
-            self.set_button_color_if_pressed(push2_python.constants.BUTTON_DELETE, animation=definitions.DEFAULT_ANIMATION)
+            self.set_button_color_if_pressed(
+                push2_python.constants.BUTTON_DOUBLE_LOOP,
+                animation=definitions.DEFAULT_ANIMATION,
+            )
+            self.set_button_color_if_pressed(
+                push2_python.constants.BUTTON_QUANTIZE,
+                animation=definitions.DEFAULT_ANIMATION,
+            )
+            self.set_button_color_if_pressed(
+                push2_python.constants.BUTTON_DELETE,
+                animation=definitions.DEFAULT_ANIMATION,
+            )
 
             if self.clip is not None:
                 if self.clip.recording or self.clip.will_start_recording_at > -1.0:
                     if self.clip.recording:
-                        self.push.buttons.set_button_color(push2_python.constants.BUTTON_RECORD, definitions.RED)
+                        self.push.buttons.set_button_color(
+                            push2_python.constants.BUTTON_RECORD, definitions.RED
+                        )
                     else:
-                        self.push.buttons.set_button_color(push2_python.constants.BUTTON_RECORD, definitions.RED, animation=definitions.DEFAULT_ANIMATION)
+                        self.push.buttons.set_button_color(
+                            push2_python.constants.BUTTON_RECORD,
+                            definitions.RED,
+                            animation=definitions.DEFAULT_ANIMATION,
+                        )
                 else:
-                    self.push.buttons.set_button_color(push2_python.constants.BUTTON_RECORD, definitions.WHITE)
+                    self.push.buttons.set_button_color(
+                        push2_python.constants.BUTTON_RECORD, definitions.WHITE
+                    )
 
                 track_idx = self.app.session.tracks.index(self.clip.track)
                 track_color = self.app.track_selection_mode.get_track_color(track_idx)
                 if self.clip.playing or self.clip.will_play_at > -1.0:
                     if self.clip.playing:
-                        self.push.buttons.set_button_color(push2_python.constants.BUTTON_UPPER_ROW_1, track_color)
+                        self.push.buttons.set_button_color(
+                            push2_python.constants.BUTTON_UPPER_ROW_1, track_color
+                        )
                     else:
-                        self.push.buttons.set_button_color(push2_python.constants.BUTTON_UPPER_ROW_1, track_color, animation=definitions.DEFAULT_ANIMATION)
+                        self.push.buttons.set_button_color(
+                            push2_python.constants.BUTTON_UPPER_ROW_1,
+                            track_color,
+                            animation=definitions.DEFAULT_ANIMATION,
+                        )
                 else:
-                    self.push.buttons.set_button_color(push2_python.constants.BUTTON_UPPER_ROW_1, track_color + '_darker1')
+                    self.push.buttons.set_button_color(
+                        push2_python.constants.BUTTON_UPPER_ROW_1,
+                        track_color + "_darker1",
+                    )
 
         elif self.mode == self.MODE_EVENT:
-            self.push.buttons.set_button_color(push2_python.constants.BUTTON_UPPER_ROW_1, definitions.BLACK)
-            self.push.buttons.set_button_color(push2_python.constants.BUTTON_UPPER_ROW_2, definitions.BLACK)
-            self.push.buttons.set_button_color(push2_python.constants.BUTTON_UPPER_ROW_3, definitions.BLACK)
-            self.push.buttons.set_button_color(push2_python.constants.BUTTON_UPPER_ROW_4, definitions.BLACK)
-            self.push.buttons.set_button_color(push2_python.constants.BUTTON_UPPER_ROW_5, definitions.BLACK)
-            self.push.buttons.set_button_color(push2_python.constants.BUTTON_UPPER_ROW_6, definitions.BLACK)
-            self.push.buttons.set_button_color(push2_python.constants.BUTTON_UPPER_ROW_7, definitions.BLACK)
-            self.push.buttons.set_button_color(push2_python.constants.BUTTON_UPPER_ROW_8, definitions.BLACK)
+            self.push.buttons.set_button_color(
+                push2_python.constants.BUTTON_UPPER_ROW_1, definitions.BLACK
+            )
+            self.push.buttons.set_button_color(
+                push2_python.constants.BUTTON_UPPER_ROW_2, definitions.BLACK
+            )
+            self.push.buttons.set_button_color(
+                push2_python.constants.BUTTON_UPPER_ROW_3, definitions.BLACK
+            )
+            self.push.buttons.set_button_color(
+                push2_python.constants.BUTTON_UPPER_ROW_4, definitions.BLACK
+            )
+            self.push.buttons.set_button_color(
+                push2_python.constants.BUTTON_UPPER_ROW_5, definitions.BLACK
+            )
+            self.push.buttons.set_button_color(
+                push2_python.constants.BUTTON_UPPER_ROW_6, definitions.BLACK
+            )
+            self.push.buttons.set_button_color(
+                push2_python.constants.BUTTON_UPPER_ROW_7, definitions.BLACK
+            )
+            self.push.buttons.set_button_color(
+                push2_python.constants.BUTTON_UPPER_ROW_8, definitions.BLACK
+            )
 
-            self.push.buttons.set_button_color(push2_python.constants.BUTTON_DOUBLE_LOOP, definitions.BLACK)
-            self.push.buttons.set_button_color(push2_python.constants.BUTTON_QUANTIZE, definitions.BLACK)
-            self.push.buttons.set_button_color(push2_python.constants.BUTTON_DELETE, definitions.BLACK)
+            self.push.buttons.set_button_color(
+                push2_python.constants.BUTTON_DOUBLE_LOOP, definitions.BLACK
+            )
+            self.push.buttons.set_button_color(
+                push2_python.constants.BUTTON_QUANTIZE, definitions.BLACK
+            )
+            self.push.buttons.set_button_color(
+                push2_python.constants.BUTTON_DELETE, definitions.BLACK
+            )
 
-            self.push.buttons.set_button_color(push2_python.constants.BUTTON_CLIP, definitions.BLACK)
+            self.push.buttons.set_button_color(
+                push2_python.constants.BUTTON_CLIP, definitions.BLACK
+            )
 
         elif self.mode == self.MODE_GENERATOR:
-            self.set_button_color_if_pressed(push2_python.constants.BUTTON_UPPER_ROW_1, animation=definitions.DEFAULT_ANIMATION) # generate sequence button
-            self.push.buttons.set_button_color(push2_python.constants.BUTTON_UPPER_ROW_2, definitions.BLACK)
-            self.push.buttons.set_button_color(push2_python.constants.BUTTON_UPPER_ROW_3, definitions.BLACK)
-            self.push.buttons.set_button_color(push2_python.constants.BUTTON_UPPER_ROW_4, definitions.BLACK)
-            self.push.buttons.set_button_color(push2_python.constants.BUTTON_UPPER_ROW_5, definitions.BLACK)
-            self.push.buttons.set_button_color(push2_python.constants.BUTTON_UPPER_ROW_6, definitions.BLACK)
-            self.push.buttons.set_button_color(push2_python.constants.BUTTON_UPPER_ROW_7, definitions.BLACK)
-            self.push.buttons.set_button_color(push2_python.constants.BUTTON_UPPER_ROW_8, definitions.BLACK)
+            self.set_button_color_if_pressed(
+                push2_python.constants.BUTTON_UPPER_ROW_1,
+                animation=definitions.DEFAULT_ANIMATION,
+            )  # generate sequence button
+            self.push.buttons.set_button_color(
+                push2_python.constants.BUTTON_UPPER_ROW_2, definitions.BLACK
+            )
+            self.push.buttons.set_button_color(
+                push2_python.constants.BUTTON_UPPER_ROW_3, definitions.BLACK
+            )
+            self.push.buttons.set_button_color(
+                push2_python.constants.BUTTON_UPPER_ROW_4, definitions.BLACK
+            )
+            self.push.buttons.set_button_color(
+                push2_python.constants.BUTTON_UPPER_ROW_5, definitions.BLACK
+            )
+            self.push.buttons.set_button_color(
+                push2_python.constants.BUTTON_UPPER_ROW_6, definitions.BLACK
+            )
+            self.push.buttons.set_button_color(
+                push2_python.constants.BUTTON_UPPER_ROW_7, definitions.BLACK
+            )
+            self.push.buttons.set_button_color(
+                push2_python.constants.BUTTON_UPPER_ROW_8, definitions.BLACK
+            )
 
-            self.push.buttons.set_button_color(push2_python.constants.BUTTON_DOUBLE_LOOP, definitions.BLACK)
-            self.push.buttons.set_button_color(push2_python.constants.BUTTON_QUANTIZE, definitions.BLACK)
-            self.push.buttons.set_button_color(push2_python.constants.BUTTON_DELETE, definitions.BLACK)
+            self.push.buttons.set_button_color(
+                push2_python.constants.BUTTON_DOUBLE_LOOP, definitions.BLACK
+            )
+            self.push.buttons.set_button_color(
+                push2_python.constants.BUTTON_QUANTIZE, definitions.BLACK
+            )
+            self.push.buttons.set_button_color(
+                push2_python.constants.BUTTON_DELETE, definitions.BLACK
+            )
 
-            self.push.buttons.set_button_color(push2_python.constants.BUTTON_CLIP, definitions.WHITE)
+            self.push.buttons.set_button_color(
+                push2_python.constants.BUTTON_CLIP, definitions.WHITE
+            )
 
         if self.mode == self.MODE_CLIP or self.mode == self.MODE_EVENT:
-            self.push.buttons.set_button_color(push2_python.constants.BUTTON_OCTAVE_UP, definitions.WHITE)
-            self.push.buttons.set_button_color(push2_python.constants.BUTTON_OCTAVE_DOWN, definitions.WHITE)
-            self.push.buttons.set_button_color(push2_python.constants.BUTTON_PAGE_LEFT, definitions.WHITE)
-            self.push.buttons.set_button_color(push2_python.constants.BUTTON_PAGE_RIGHT, definitions.WHITE)
-            self.push.buttons.set_button_color(push2_python.constants.BUTTON_SHIFT, definitions.WHITE)
+            self.push.buttons.set_button_color(
+                push2_python.constants.BUTTON_OCTAVE_UP, definitions.WHITE
+            )
+            self.push.buttons.set_button_color(
+                push2_python.constants.BUTTON_OCTAVE_DOWN, definitions.WHITE
+            )
+            self.push.buttons.set_button_color(
+                push2_python.constants.BUTTON_PAGE_LEFT, definitions.WHITE
+            )
+            self.push.buttons.set_button_color(
+                push2_python.constants.BUTTON_PAGE_RIGHT, definitions.WHITE
+            )
+            self.push.buttons.set_button_color(
+                push2_python.constants.BUTTON_SHIFT, definitions.WHITE
+            )
 
     def update_pads(self):
         if self.clip is None:
@@ -455,7 +572,9 @@ class ClipEditMode(definitions.PyshaMode):
     def on_button_pressed(self, button_name):
         # Window navigation for all modes - handle first
         if self.clip:
-            shift = self.app.is_button_being_pressed(push2_python.constants.BUTTON_SHIFT)
+            shift = self.app.is_button_being_pressed(
+                push2_python.constants.BUTTON_SHIFT
+            )
             increment = 8 if shift else 1
             if button_name == push2_python.constants.BUTTON_OCTAVE_UP:
                 self.clip.window_note_offset += increment
@@ -475,7 +594,9 @@ class ClipEditMode(definitions.PyshaMode):
             if button_name == push2_python.constants.BUTTON_PAGE_RIGHT:
                 self.clip.window_step_offset += increment
                 max_offset = max(0, self.clip.steps - 8)
-                self.clip.window_step_offset = min(self.clip.window_step_offset, max_offset)
+                self.clip.window_step_offset = min(
+                    self.clip.window_step_offset, max_offset
+                )
                 self.update_pads()
                 return True
 
@@ -523,7 +644,8 @@ class ClipEditMode(definitions.PyshaMode):
         shift=False,
         select=False,
         long_press=False,
-        double_press=False ):
+        double_press=False,
+    ):
 
         if self.clip is None:
             return True
@@ -542,7 +664,9 @@ class ClipEditMode(definitions.PyshaMode):
             self.clip.remove_note_at_step(step_idx, midi_note)
         else:
             # Add the note
-            self.clip.add_note_at_step(step_idx, midi_note, self.default_note_duration, velocity)
+            self.clip.add_note_at_step(
+                step_idx, midi_note, self.default_note_duration, velocity
+            )
 
         self.update_pads()
 
@@ -555,7 +679,9 @@ class ClipEditMode(definitions.PyshaMode):
                 if self.available_clips:
                     if self.selected_clip_idx is not None:
                         try:
-                            current_clip_index = self.available_clips.index(self.selected_clip_idx)
+                            current_clip_index = self.available_clips.index(
+                                self.selected_clip_idx
+                            )
                         except:
                             current_clip_index = None
                         if current_clip_index is None:
@@ -593,8 +719,6 @@ class ClipEditMode(definitions.PyshaMode):
                 self.update_pads()
                 return True  # Don't trigger this encoder moving in any other mode
 
-
-
         elif self.mode == self.MODE_EVENT:
             # Event mode removed for now - can be added back later if needed
             pass
@@ -602,23 +726,33 @@ class ClipEditMode(definitions.PyshaMode):
         elif self.mode == self.MODE_GENERATOR:
             if encoder_name == push2_python.constants.ENCODER_TRACK1_ENCODER:
                 # Change selected generator algorithm
-                current_algorithm_index = self.generator_algorithms.index(self.generator_algorithm)
-                self.selected_generator_algorithm = (current_algorithm_index + 1) % len(self.generator_algorithms)
+                current_algorithm_index = self.generator_algorithms.index(
+                    self.generator_algorithm
+                )
+                self.selected_generator_algorithm = (current_algorithm_index + 1) % len(
+                    self.generator_algorithms
+                )
                 return True  # Don't trigger this encoder moving in any other mode
 
             else:
                 # Set algorithm parameter
                 try:
-                    encoder_index = [push2_python.constants.ENCODER_TRACK2_ENCODER,
-                    push2_python.constants.ENCODER_TRACK3_ENCODER,
-                    push2_python.constants.ENCODER_TRACK4_ENCODER,
-                    push2_python.constants.ENCODER_TRACK5_ENCODER,
-                    push2_python.constants.ENCODER_TRACK6_ENCODER,
-                    push2_python.constants.ENCODER_TRACK7_ENCODER,
-                    push2_python.constants.ENCODER_TRACK8_ENCODER].index(encoder_name)
+                    encoder_index = [
+                        push2_python.constants.ENCODER_TRACK2_ENCODER,
+                        push2_python.constants.ENCODER_TRACK3_ENCODER,
+                        push2_python.constants.ENCODER_TRACK4_ENCODER,
+                        push2_python.constants.ENCODER_TRACK5_ENCODER,
+                        push2_python.constants.ENCODER_TRACK6_ENCODER,
+                        push2_python.constants.ENCODER_TRACK7_ENCODER,
+                        push2_python.constants.ENCODER_TRACK8_ENCODER,
+                    ].index(encoder_name)
                     try:
-                        param = self.generator_algorithm.get_algorithm_parameters()[encoder_index]
-                        self.generator_algorithm.update_parameter_value(param['name'], increment)
+                        param = self.generator_algorithm.get_algorithm_parameters()[
+                            encoder_index
+                        ]
+                        self.generator_algorithm.update_parameter_value(
+                            param["name"], increment
+                        )
                     except IndexError:
                         pass
                 except ValueError:
