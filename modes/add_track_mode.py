@@ -27,7 +27,7 @@ class AddTrackMode(definitions.PyshaMode):
     def initialize(self, settings=None):
         self.available_output_devices = sorted(self.app.session.output_device_names)
         # "All" + sorted input devices
-        self.available_input_devices = ["All"] + sorted(
+        self.available_input_devices = ["None", "All"] + sorted(
             self.app.session.input_device_names
         )
 
@@ -55,34 +55,39 @@ class AddTrackMode(definitions.PyshaMode):
             return
 
         # Load output device
-        if track.output_device_name in self.available_output_devices:
+        if track.output_device_name is not None and track.output_device_name in self.available_output_devices:
             self.output_device_idx = self.available_output_devices.index(track.output_device_name)
-
+        else:
+            self.output_device_idx = 0
         # Load output channel (track.channel is 0-15 internal, display is 1-16)
         self.output_channel = track.channel + 1
 
         # Load input device
-        if track.input_device_name is not None and track.input_device_name in self.available_input_devices:
-            self.input_device_idx = self.available_input_devices.index(track.input_device_name)
-        elif track.input_device_name is not None:
-            # If the device isn't in the list, add it
-            self.available_input_devices.append(track.input_device_name)
-            self.available_input_devices.sort()
-            self.input_device_idx = self.available_input_devices.index(track.input_device_name)
-
+        if self.available_input_devices:
+            if track.input_device_name is None:
+                self.input_device_idx = 0
+            elif track.input_device_name in self.available_input_devices:
+                self.input_device_idx = self.available_input_devices.index(track.input_device_name)
+            else:
+                # If the device isn't in the list, add it
+                self.available_input_devices.append(track.input_device_name)
+                self.available_input_devices.sort()
+                self.input_device_idx = self.available_input_devices.index(track.input_device_name)
+        else:
+            self.input_device_idx = 0
         # Load input channel
         self.input_channel = track.input_channel
 
     def activate(self):
         # Refresh device lists
         self.available_output_devices = sorted(self.app.session.output_device_names)
-        self.available_input_devices = ["All"] + sorted(
+        self.available_input_devices = ["None", "All"] + sorted(
             self.app.session.input_device_names
         )
         if not self.available_output_devices:
             self.available_output_devices = ["None"]
         if not self.available_input_devices:
-            self.available_input_devices = ["All"]
+            self.available_input_devices = ["None", "All"]
 
         self.output_device_idx = min(
             self.output_device_idx, max(0, len(self.available_output_devices) - 1)
@@ -225,18 +230,21 @@ class AddTrackMode(definitions.PyshaMode):
         )
 
     def _apply_encoder_threshold(self, encoder_name, increment):
-        self.encoder_accumulators[encoder_name] += increment
+        self.encoder_accumulators[encoder_name] = (
+            self.encoder_accumulators.get(encoder_name, 0) + increment
+        )
         if abs(self.encoder_accumulators[encoder_name]) >= 5:
             delta = 1 if self.encoder_accumulators[encoder_name] > 0 else -1
             self.encoder_accumulators[encoder_name] = 0
             return delta
-        return 0
+        return 0  # Threshold not reached, no movement
 
     def on_encoder_rotated(self, encoder_name, increment):
         delta = self._apply_encoder_threshold(encoder_name, increment)
         if delta == 0:
             return True
 
+        # Encoder 2: Output device
         if encoder_name == push2_python.constants.ENCODER_TRACK2_ENCODER:
             self.output_device_idx = (self.output_device_idx + delta) % len(
                 self.available_output_devices
@@ -252,10 +260,16 @@ class AddTrackMode(definitions.PyshaMode):
                     self.output_device_idx - self.visible_rows + 1
                 )
 
+        # Encoder 3: Output channel
         elif encoder_name == push2_python.constants.ENCODER_TRACK3_ENCODER:
+            if self.output_channel is None:
+                self.output_channel = 1
             self.output_channel = ((self.output_channel - 1 + delta) % 16) + 1
 
+        # Encoder 4: Input device
         elif encoder_name == push2_python.constants.ENCODER_TRACK4_ENCODER:
+            if self.input_device_idx is None:
+                self.input_device_idx = 0
             self.input_device_idx = (self.input_device_idx + delta) % len(
                 self.available_input_devices
             )
@@ -269,6 +283,7 @@ class AddTrackMode(definitions.PyshaMode):
                     self.input_device_idx - self.visible_rows + 1
                 )
 
+        # Encoder 5: Input channel
         elif encoder_name == push2_python.constants.ENCODER_TRACK5_ENCODER:
             # Cycle: -1 (All), 1, 2, ..., 16
             if self.input_channel == -1:
@@ -323,11 +338,15 @@ class AddTrackMode(definitions.PyshaMode):
 
         if button_name == push2_python.constants.BUTTON_UPPER_ROW_6:  # Confirm
             output_name = self.available_output_devices[self.output_device_idx]
-            input_name = (
-                self.available_input_devices[self.input_device_idx]
-                if self.input_device_idx > 0
-                else None
-            )
+            # Handle input device selection: None -> no input, All -> no specific device (all inputs), device name -> use it
+            if self.input_device_idx == 0:  # "None" selected
+                input_name = None
+            else:
+                device_or_all = self.available_input_devices[self.input_device_idx]
+                if device_or_all == "All":
+                    input_name = None  # "All" means any input on the track
+                else:
+                    input_name = device_or_all
             out_ch_internal = self.output_channel - 1
             in_ch = self.input_channel
 
