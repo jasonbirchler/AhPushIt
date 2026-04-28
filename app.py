@@ -174,7 +174,8 @@ class PyshaApp(object):
             new_active_modes.append(mode_to_set)
             mode_to_set.activate()
 
-    def set_add_track_mode(self):
+    def set_add_track_mode(self, settings=None):
+        self.add_track_mode.initialize(settings=settings)
         self.set_mode_for_xor_group(self.add_track_mode)
 
     def unset_add_track_mode(self):

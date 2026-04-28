@@ -21,6 +21,9 @@ class AddTrackMode(definitions.PyshaMode):
     input_device_list_offset = 0
     visible_rows = 5
 
+    # Edit mode state - if editing an existing track
+    editing_track = None
+
     def initialize(self, settings=None):
         self.available_output_devices = sorted(self.app.session.output_device_names)
         # "All" + sorted input devices
@@ -34,9 +37,41 @@ class AddTrackMode(definitions.PyshaMode):
         self.input_channel = -1
         self.output_device_list_offset = 0
         self.input_device_list_offset = 0
+        self.editing_track = None
 
         for encoder_name in self.push.encoders.available_names:
             self.encoder_accumulators[encoder_name] = 0
+
+        # If settings contains an editing track, use it
+        if settings and 'editing_track' in settings:
+            self.editing_track = settings['editing_track']
+            self._load_track_settings(self.editing_track)
+
+    def _load_track_settings(self, track):
+        """
+        Pre-fill the add track form with the existing track's settings.
+        """
+        if track is None:
+            return
+
+        # Load output device
+        if track.output_device_name in self.available_output_devices:
+            self.output_device_idx = self.available_output_devices.index(track.output_device_name)
+
+        # Load output channel (track.channel is 0-15 internal, display is 1-16)
+        self.output_channel = track.channel + 1
+
+        # Load input device
+        if track.input_device_name is not None and track.input_device_name in self.available_input_devices:
+            self.input_device_idx = self.available_input_devices.index(track.input_device_name)
+        elif track.input_device_name is not None:
+            # If the device isn't in the list, add it
+            self.available_input_devices.append(track.input_device_name)
+            self.available_input_devices.sort()
+            self.input_device_idx = self.available_input_devices.index(track.input_device_name)
+
+        # Load input channel
+        self.input_channel = track.input_channel
 
     def activate(self):
         # Refresh device lists
@@ -80,12 +115,20 @@ class AddTrackMode(definitions.PyshaMode):
         half_h = part_h // 2
 
         # Column 1: Title / preview
-        show_title(
-            ctx,
-            part_w * 0 + 2,
-            h,
-            "ADD TRACK"
-        )
+        if self.editing_track is not None:
+            show_title(
+                ctx,
+                part_w * 0 + 2,
+                h,
+                "EDIT TRACK"
+            )
+        else:
+            show_title(
+                ctx,
+                part_w * 0 + 2,
+                h,
+                "ADD TRACK"
+            )
 
         # Column 2: Output device
         show_title(
@@ -279,11 +322,6 @@ class AddTrackMode(definitions.PyshaMode):
             return True
 
         if button_name == push2_python.constants.BUTTON_UPPER_ROW_6:  # Confirm
-            occupied = sum(1 for t in self.app.session.tracks if t is not None)
-            if occupied >= 8:
-                self.app.add_display_notification("Max tracks (8) reached")
-                return True
-
             output_name = self.available_output_devices[self.output_device_idx]
             input_name = (
                 self.available_input_devices[self.input_device_idx]
@@ -293,19 +331,38 @@ class AddTrackMode(definitions.PyshaMode):
             out_ch_internal = self.output_channel - 1
             in_ch = self.input_channel
 
-            track = self.app.session.create_track(
-                output_device_name=output_name,
-                channel=out_ch_internal,
-                input_device_name=input_name,
-                input_channel=in_ch,
-            )
-            if track:
+            # If editing an existing track, update it instead of creating a new one
+            if self.editing_track is not None:
+                self.editing_track.set_output_device_by_name(output_name)
+                self.editing_track.channel = out_ch_internal
+                self.editing_track.input_device_name = input_name
+                self.editing_track.input_channel = in_ch
                 self.app.add_display_notification(
-                    f"Track created: {track.device_short_name}"
+                    f"Track updated: {self.editing_track.device_short_name}"
                 )
                 self.app.buttons_need_update = True
                 self.app.unset_add_track_mode()
-            return True
+                return True
+            else:
+                # Create a new track
+                occupied = sum(1 for t in self.app.session.tracks if t is not None)
+                if occupied >= 8:
+                    self.app.add_display_notification("Max tracks (8) reached")
+                    return True
+
+                track = self.app.session.create_track(
+                    output_device_name=output_name,
+                    channel=out_ch_internal,
+                    input_device_name=input_name,
+                    input_channel=in_ch,
+                )
+                if track:
+                    self.app.add_display_notification(
+                        f"Track created: {track.device_short_name}"
+                    )
+                    self.app.buttons_need_update = True
+                    self.app.unset_add_track_mode()
+                return True
 
         if button_name == push2_python.constants.BUTTON_UPPER_ROW_7:  # Cancel
             self.app.unset_add_track_mode()

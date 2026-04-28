@@ -24,6 +24,7 @@ class TrackSelectionMode(definitions.PyshaMode):
 
     ]
     ADD_TRACK_BUTTON = push2_python.constants.BUTTON_ADD_TRACK
+    DEVICE_BUTTON = push2_python.constants.BUTTON_DEVICE
 
     def get_selected_track(self):
         return self.app.session.get_track_by_idx(self.selected_track)
@@ -38,8 +39,8 @@ class TrackSelectionMode(definitions.PyshaMode):
     def load_hardware_devices_info(self):
         """
         This method loads hardware device (aka instrument) definitions from definition files.
-        These contain some information about the device which is useful to show a proper UI (for
-        example, a list of midi CC parameter mappings).
+        These contain some information about the device which is useful to show a proper UI (
+        for example, a list of midi CC parameter mappings).
         """
         print('Loading hardware device definitions...')
         try:
@@ -201,6 +202,18 @@ class TrackSelectionMode(definitions.PyshaMode):
         else:
             self.push.buttons.set_button_color(self.ADD_TRACK_BUTTON, definitions.OFF_BTN_COLOR)
 
+        # Update DEVICE button - show selected track color if any
+        selected_track = self.get_selected_track()
+        if selected_track is not None:
+            track_idx = self.app.session.tracks.index(selected_track)
+            if track_idx >= 0:
+                color = self.get_track_color(track_idx)
+                self.push.buttons.set_button_color(self.DEVICE_BUTTON, color)
+            else:
+                self.push.buttons.set_button_color(self.DEVICE_BUTTON, definitions.OFF_BTN_COLOR)
+        else:
+            self.push.buttons.set_button_color(self.DEVICE_BUTTON, definitions.OFF_BTN_COLOR)
+
     def activate(self):
         self.update_buttons()
         self.update_pads()
@@ -224,7 +237,6 @@ class TrackSelectionMode(definitions.PyshaMode):
             self.load_hardware_devices_info()
 
 
-            
     def update_display(self, ctx, w, h):
         if self.app.session is None or self.app.session.tracks is None:
             return
@@ -285,10 +297,17 @@ class TrackSelectionMode(definitions.PyshaMode):
                     font_color=font_color, background_color=background_color)
 
     def on_button_pressed(self, button_name, long_press=False):
-       if button_name == self.ADD_TRACK_BUTTON:
+        if button_name == self.ADD_TRACK_BUTTON:
             self.app.set_add_track_mode()
             return True
-       if button_name in self.track_button_names:
+        if button_name == self.DEVICE_BUTTON:
+            # Switch to add_track_mode with currently selected track's settings
+            # to allow editing the track's device configuration
+            selected_track = self.get_selected_track()
+            if selected_track is not None:
+                self.app.set_add_track_mode(settings={'editing_track': selected_track})
+            return True
+        if button_name in self.track_button_names:
             track_idx = self.track_button_names.index(button_name)
             track = self.app.session.get_track_by_idx(track_idx)
             if track is not None:
@@ -297,3 +316,4 @@ class TrackSelectionMode(definitions.PyshaMode):
                     track.set_input_monitoring(not track.input_monitoring)
                 else:
                     self.select_track_as_active(self.track_button_names.index(button_name))
+                return True
