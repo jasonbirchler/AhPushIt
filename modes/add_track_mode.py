@@ -150,7 +150,8 @@ class AddTrackMode(definitions.PyshaMode):
             ctx,
             part_w * 1,
             h,
-            out_name
+            out_name,
+            overflow="marquee"
         )
 
         # Section 3: Output channel
@@ -182,7 +183,8 @@ class AddTrackMode(definitions.PyshaMode):
             ctx,
             part_w * 3,
             h,
-            in_name
+            in_name,
+            overflow="marquee"
         )
 
         # Section 5: Input channel

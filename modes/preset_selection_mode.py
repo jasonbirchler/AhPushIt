@@ -5,9 +5,6 @@ import time
 import os
 import json
 
-from display_utils import show_notification
-
-
 class PresetSelectionMode(definitions.PyshaMode):
 
     xor_group = 'pads'

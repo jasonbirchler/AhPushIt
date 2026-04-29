@@ -107,32 +107,69 @@ def _get_marquee_text(ctx, text, font_size, max_width, cell_key):
     
     state = MARQUEE_STATE[cell_key]
     dt = current_time - state['last_update']
-    state['last_update'] = current_time
     
     # Pause before starting scroll
     if state['paused']:
         if dt >= MARQUEE_PAUSE_TIME:
             state['paused'] = False
             state['offset'] = 0.0
+            state['last_update'] = current_time  # reset timer for scrolling
         return _truncate_with_elipsis(ctx, text_str, font_size, max_width)
     
-    # Scroll the text
+    # Not paused: update scroll offset
     state['offset'] += MARQUEE_SCROLL_SPEED * dt
+    state['last_update'] = current_time
     
     # Add padding between repetitions
     padding = max_width * 0.5
     total_width = text_width + padding
     
-    # Wrap around
+    # Check if scroll passed the end of the string (including padding)
     if state['offset'] >= total_width:
+        # Finished one full scroll; go back to ellipsis pause
+        state['paused'] = True
+        state['last_update'] = current_time
         state['offset'] = 0.0
+        return _truncate_with_elipsis(ctx, text_str, font_size, max_width)
     
-    # Build display text: text + padding + text
-    # We'll just show the text starting at the offset
-    # For simplicity, we'll show text truncated with elipsis when not scrolling
-    # and full text when scrolling (letting it scroll out of view)
+    # Build scrolling display: doubled text with padding for seamless wrap
+    space_width = font_size * 0.6
+    num_spaces = max(1, int(padding / space_width))
+    doubled_text = text_str + (" " * num_spaces) + text_str
     
-    return text_str
+    # Determine visible portion based on offset
+    visible_text = ""
+    current_width = 0.0
+    target_start = state['offset']
+    
+    # Find start index where cumulative width reaches target_start
+    start_index = 0
+    accumulated_width = 0.0
+    for i, char in enumerate(doubled_text):
+        if accumulated_width >= target_start:
+            start_index = i
+            break
+        char_width = _get_text_width(ctx, char, font_size)
+        accumulated_width += char_width
+    else:
+        start_index = len(doubled_text)
+    
+    # Extract characters until max_width filled
+    current_width = 0.0
+    for i in range(start_index, len(doubled_text)):
+        char = doubled_text[i]
+        char_width = _get_text_width(ctx, char, font_size)
+        if current_width + char_width > max_width:
+            break
+        visible_text += char
+        current_width += char_width
+    
+    # Ensure the extracted window fits within max_width.
+    # If rounding or kerning caused slight overflow, trim characters from the end.
+    while visible_text and _get_text_width(ctx, visible_text, font_size) > max_width:
+        visible_text = visible_text[:-1]
+    
+    return visible_text
 
 
 def _get_cell_key(x_part, y, text, prefix=''):
@@ -148,10 +185,11 @@ def show_title(ctx, x, h, text, color=[1, 1, 1], overflow=TextOverflow.DEFAULT):
     font_size = h//12
     ctx.set_font_size(font_size)
     
-    # Calculate available width (estimate based on column position)
+    # Calculate available width within the column
     display_w = push2_python.constants.DISPLAY_LINE_PIXELS
-    x_col = int(x // (display_w / 8)) if x > 0 else 0
-    available_width = display_w - x - 10  # Rough estimate
+    part_w = display_w / 8
+    x_col = int(x // part_w) if x > 0 else 0
+    available_width = part_w - 6  # symmetric margins (title draws at x+3)
     
     if overflow == TextOverflow.ELIPSIS:
         text = _truncate_with_elipsis(ctx, text, font_size, available_width)
@@ -175,10 +213,11 @@ def show_value(ctx, x, h, text, color=[1, 1, 1], vertical_offset=0, overflow=Tex
     font_size = h//8
     ctx.set_font_size(font_size)
     
-    # Calculate available width
+    # Calculate available width within the column
     display_w = push2_python.constants.DISPLAY_LINE_PIXELS
-    x_col = int(x // (display_w / 8)) if x > 0 else 0
-    available_width = display_w - x - 10
+    part_w = display_w / 8
+    x_col = int(x // part_w) if x > 0 else 0
+    available_width = part_w - 6  # 3px left + 3px right margin (text starts at x+3)
     
     if overflow == TextOverflow.ELIPSIS:
         text = _truncate_with_elipsis(ctx, text, font_size, available_width)
@@ -301,7 +340,7 @@ def show_notification(ctx, text, opacity=1.0):
 
     # Text
     initial_text_opacity = 1.0
-    ctx.set_source_rgba(1.0, 1.0, 1.0, initial_text_opality * opacity)
+    ctx.set_source_rgba(1.0, 1.0, 1.0, initial_text_opacity * opacity)
     font_size = display_h // 4
     ctx.set_font_size(font_size)
     margin_left = 8

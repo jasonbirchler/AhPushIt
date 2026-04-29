@@ -8,7 +8,7 @@ import push2_python
 
 import definitions
 from definitions import PyshaMode
-from display_utils import show_text
+from utils import show_text
 
 
 class MIDICCControl(object):

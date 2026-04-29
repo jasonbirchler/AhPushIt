@@ -293,8 +293,16 @@ class TrackSelectionMode(definitions.PyshaMode):
                 ctx.restore()
 
             if track is None: continue
-            show_text(ctx, i, h - height, device_short_name, height=height,
-                    font_color=font_color, background_color=background_color)
+            show_text(
+                ctx,
+                i,
+                h - height,
+                device_short_name,
+                height=height,
+                font_color=font_color,
+                background_color=background_color,
+                overflow="abbreviate"
+            )
 
     def on_button_pressed(self, button_name, long_press=False):
         if button_name == self.ADD_TRACK_BUTTON:
