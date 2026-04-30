@@ -24,6 +24,9 @@ class Pages(IntEnum):
 
 class SettingsMode(definitions.PyshaMode):
 
+    xor_group = 'buttons'
+    buttons_used = ['setup']
+
     # Performance page
     # - Root note
     # - Aftertouch mode
@@ -74,6 +77,8 @@ class SettingsMode(definitions.PyshaMode):
         return False
 
     def initialize(self, settings=None):
+        if settings is None:
+            settings = {}
         current_time = time.time()
         for encoder_name in self.push.encoders.available_names:
             self.encoders_state[encoder_name] = {

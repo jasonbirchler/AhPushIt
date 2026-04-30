@@ -20,8 +20,11 @@ class TrackSelectionMode(definitions.PyshaMode):
         push2_python.constants.BUTTON_LOWER_ROW_6,
         push2_python.constants.BUTTON_LOWER_ROW_7,
         push2_python.constants.BUTTON_LOWER_ROW_8
-
     ]
+
+    xor_group = 'pads'
+    buttons_used = track_button_names
+
     ADD_TRACK_BUTTON = push2_python.constants.BUTTON_ADD_TRACK
     DEVICE_BUTTON = push2_python.constants.BUTTON_DEVICE
 
@@ -30,9 +33,9 @@ class TrackSelectionMode(definitions.PyshaMode):
 
     def initialize(self, settings=None):
         if settings is not None:
-            pass
-        
-        self.selected_track = 0
+            self.selected_track = settings.get('selected_track', 0)
+        else:
+            self.selected_track = 0
         self.load_hardware_devices_info()
 
     def load_hardware_devices_info(self):
@@ -138,7 +141,8 @@ class TrackSelectionMode(definitions.PyshaMode):
             'n_banks': device_info.get('n_banks', 0),
             'bank_names': device_info.get('bank_names', []),
             'midi_cc_parameters': device_info.get('midi_cc_parameters', []),
-            'default_layout': device_info.get('default_layout', definitions.LAYOUT_MELODIC)
+            'default_layout': device_info.get('default_layout', definitions.LAYOUT_MELODIC),
+            'color': self.get_current_track_color()  # Add color information
         }
         
     def load_current_default_layout(self):

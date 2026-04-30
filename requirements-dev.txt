@@ -1,0 +1,20 @@
+# Development and testing dependencies
+-r requirements.txt
+
+# Testing framework
+pytest>=7.0.0
+pytest-mock>=3.10.0
+pytest-cov>=4.1.0
+
+# Optional: for better test output
+pytest-xdist>=2.5.0  # Parallel test execution
+pytest-sugar>=0.9.7  # Better test progress display
+
+# Code quality (optional)
+black>=22.0.0
+isort>=5.10.0
+flake8>=4.0.0
+mypy>=0.950
+
+# Mocking helpers
+freezegun>=1.2.0  # For time mocking
