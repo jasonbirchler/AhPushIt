@@ -37,6 +37,8 @@ class MelodicMode(definitions.PyshaMode):
     modulation_wheel_mode = False
 
     def initialize(self, settings=None):
+        # Reset instance-specific mutable state
+        self.notes_being_played = []
         if settings is not None:
             self.use_poly_at = settings.get("use_poly_at", True)
             self.set_root_midi_note(settings.get("root_midi_note", 64))
@@ -136,7 +138,8 @@ class MelodicMode(definitions.PyshaMode):
     def note_number_to_name(self, note_number):
         semis = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]
         note_number = int(round(note_number))
-        return semis[note_number % 12] + str(note_number // 12 - 2)
+        # Standard MIDI note 60 is C4, so formula: octave = note_number // 12 - 1
+        return semis[note_number % 12] + str(note_number // 12 - 1)
 
     def set_root_midi_note(self, note_number):
         self.root_midi_note = note_number
