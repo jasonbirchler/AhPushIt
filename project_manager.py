@@ -1,11 +1,12 @@
 import json
 import os
 from datetime import datetime
+
 import numpy as np
+from numpyencoder import NumpyEncoder
+
 from track import Track
 from clip import Clip
-import isobar as iso
-from numpyencoder import NumpyEncoder
 
 
 class ProjectManager:
@@ -76,6 +77,7 @@ class ProjectManager:
         print(f"Project saved: {filepath}")
 
     def load_project(self, filename):
+        tmp_session, tmp_seq = None, None
         """Load project from JSON file"""
         filepath = os.path.join(self.projects_dir, f"{filename}.json")
         if not os.path.exists(filepath):
@@ -146,7 +148,7 @@ class ProjectManager:
 
         except Exception as e:
             print(f"Error loading project: {e}")
-            print(f"Restoring previous session...")
+            print("Restoring previous session...")
             self.app.session = tmp_session
             self.app.seq = tmp_seq
             return False

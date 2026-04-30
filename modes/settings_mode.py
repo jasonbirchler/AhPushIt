@@ -1,6 +1,5 @@
 import os
 import time
-import traceback
 from enum import IntEnum
 from datetime import datetime
 
@@ -9,7 +8,7 @@ import push2_python.constants
 import definitions
 from utils import draw_text_at, show_title, show_value
 
-is_running_sw_update = ''
+IS_RUNNING_SW_UPDATE = ''
 
 MAX_WIDTH_BEFORE_SCROLL = 18
 PAUSE_BEFORE_HORIZONTAL_SCROLL = 1.0
@@ -275,8 +274,8 @@ class SettingsMode(definitions.PyshaMode):
                     show_title(ctx, part_x, h, 'RESET MIDI')
                 elif i == 6:  # Software update
                     show_title(ctx, part_x, h, 'SW UPDATE')
-                    if is_running_sw_update:
-                        show_value(ctx, part_x, h, is_running_sw_update, color)
+                    if IS_RUNNING_SW_UPDATE:
+                        show_value(ctx, part_x, h, IS_RUNNING_SW_UPDATE, color)
                 elif i == 7:  # Restart button + FPS indicator / Version info
                     show_title(ctx, part_x, h, 'RESTART')
                     draw_text_at(ctx, part_x, h - 32, 'FPS', 12, [0.5,0.5,0.5])
@@ -363,7 +362,6 @@ class SettingsMode(definitions.PyshaMode):
                         self.selected_project_index = len(self.project_files) - 1
 
                     # Calculate visible items (using a reasonable default)
-                    item_height = 16
                     visible_items = 5  # Default visible items
 
                     # Adjust scroll offset to keep selection visible
@@ -460,8 +458,8 @@ class SettingsMode(definitions.PyshaMode):
                 return True
             if button_name == push2_python.constants.BUTTON_UPPER_ROW_7:
                 # Run software update code
-                global is_running_sw_update
-                is_running_sw_update = "Starting"
+                global IS_RUNNING_SW_UPDATE
+                IS_RUNNING_SW_UPDATE = "Starting"
                 if not shift:
                     run_sw_update(do_pip_install=False)
                 else:
@@ -509,18 +507,18 @@ def restart_apps():
 
 
 def run_sw_update(do_pip_install=True):
-    global is_running_sw_update
+    global IS_RUNNING_SW_UPDATE
     print('Running SW update...')
     print('- pulling from repository')
-    is_running_sw_update = 'Pulling'
+    IS_RUNNING_SW_UPDATE = 'Pulling'
     os.system('git pull')
     if do_pip_install:
         print('- installing dependencies')
-        is_running_sw_update = 'PIP install'
+        IS_RUNNING_SW_UPDATE = 'PIP install'
         os.system('pip3 install -r requirements.txt --no-cache')
     print('Building Shepherd backend')
-    is_running_sw_update = 'Building'
+    IS_RUNNING_SW_UPDATE = 'Building'
     os.system('cd /home/patch/shepherd/Shepherd/Builds/LinuxMakefile; git pull; make CONFIG=Release -j4;')
-    is_running_sw_update = 'Restarting'
+    IS_RUNNING_SW_UPDATE = 'Restarting'
     os.system('sudo systemctl restart shepherd')
     restart_apps()

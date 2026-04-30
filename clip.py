@@ -1,10 +1,7 @@
 from typing import TYPE_CHECKING, NamedTuple
-import math
+import isobar as iso
 import numpy as np
 
-import isobar as iso
-
-import definitions
 from base_class import BaseClass
 from definitions import ClipStates
 
@@ -176,7 +173,7 @@ class Clip(BaseClass):
         Returns:
             tuple: (lowest, highest) MIDI note values, or (None, None) if clip is empty.
         """
-        all_notes = self.notes[self.notes != None]
+        all_notes = self.notes[self.notes is not None]
         if len(all_notes) == 0:
             return None, None
         return int(np.min(all_notes)), int(np.max(all_notes))
@@ -187,7 +184,7 @@ class Clip(BaseClass):
         Returns:
             list: Sorted list of unique MIDI note values, or empty list if clip is empty.
         """
-        all_notes = self.notes[self.notes != None]
+        all_notes = self.notes[self.notes is not None]
         if len(all_notes) == 0:
             return []
         return sorted(set(int(n) for n in all_notes))
@@ -225,7 +222,7 @@ class Clip(BaseClass):
         )
 
     def is_empty(self):
-        return not np.any(self.notes != None)
+        return not np.any(self.notes is not None)
 
     def play_stop(self):
         if self.track is None:
@@ -264,7 +261,7 @@ class Clip(BaseClass):
                 if track.name == self.name:
                     try:
                         self.app.global_timeline.unschedule(track)
-                    except:
+                    except iso.TrackNotFoundException:
                         pass  # Track may not be scheduled
                     break
 

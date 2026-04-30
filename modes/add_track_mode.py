@@ -116,8 +116,6 @@ class AddTrackMode(definitions.PyshaMode):
 
     def update_display(self, ctx, w, h):
         part_w = w // 8
-        part_h = h
-        half_h = part_h // 2
 
         # Column 1: Title / preview
         if self.editing_track is not None:

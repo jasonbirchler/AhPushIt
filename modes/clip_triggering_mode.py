@@ -165,7 +165,6 @@ class ClipTriggeringMode(definitions.PyshaMode):
 
                     # Draw clip notes
                     if clip_length > 0.0:
-                        display_w = push2_python.constants.DISPLAY_LINE_PIXELS
                         draw_clip(
                             ctx,
                             clip,
@@ -411,7 +410,7 @@ class ClipTriggeringMode(definitions.PyshaMode):
         )
 
         if action_button_being_pressed:
-            print(f"DEBUG: Action button pressed, ignoring long press")
+            print("DEBUG: Action button pressed, ignoring long press")
             return False  # Don't handle long press if action buttons are pressed
 
         try:
@@ -433,11 +432,11 @@ class ClipTriggeringMode(definitions.PyshaMode):
             try:
                 # Enter clip edit mode for both existing and newly created clips
                 self.app.clip_edit_mode.set_clip_mode(clip)
-                print(f"DEBUG: set_clip_mode completed")
+                print("DEBUG: set_clip_mode completed")
 
-                print(f"DEBUG: About to call set_clip_edit_mode()")
+                print("DEBUG: About to call set_clip_edit_mode()")
                 self.app.set_clip_edit_mode()
-                print(f"DEBUG: set_clip_edit_mode completed")
+                print("DEBUG: set_clip_edit_mode completed")
 
                 # Debug: Check if mode was actually switched
                 if hasattr(self.app, 'is_mode_active'):
