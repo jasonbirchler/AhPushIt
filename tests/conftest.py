@@ -98,8 +98,8 @@ def mock_push2_environment():
 
 
 @pytest.fixture
-def mock_app(mock_push2_environment):
-    """Create a mock PyshaApp instance for testing modes."""
+def mock_app(mock_push2_environment, mock_isobar_midi):
+    """Create a mock PyshaApp instance for testing."""
 
     # Create minimal app instance with mocked Push2
     app = MagicMock()
