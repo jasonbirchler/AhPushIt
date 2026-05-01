@@ -1,9 +1,5 @@
 """Tests for melodic_mode.py module."""
 
-import pytest
-from unittest.mock import MagicMock, patch, call
-
-import definitions
 from modes.melodic_mode import MelodicMode
 
 

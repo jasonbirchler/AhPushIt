@@ -5,7 +5,6 @@ import push2_python
 
 import definitions
 from utils import show_text
-from track import Track
 
 
 class TrackSelectionMode(definitions.PyshaMode):
@@ -276,18 +275,18 @@ class TrackSelectionMode(definitions.PyshaMode):
                 if clip is not None and clip.playing:
                     playing_clip = clip
                     break
-            
+
             if playing_clip is not None:
                 # Draw the playback bar background
                 x1 = part_w * i
                 y1 = h - height - playback_bar_height - playback_bar_margin
-                
+
                 # Draw full-width bar in track color (darker)
                 ctx.save()
                 ctx.set_source_rgb(*definitions.get_color_rgb_float(track_color + '_darker1'))
                 ctx.rectangle(x1, y1, part_w, playback_bar_height)
                 ctx.fill()
-                
+
                 # Draw progress portion in track color
                 if playing_clip.clip_length_in_beats > 0:
                     progress = (playing_clip.playhead_position_in_beats % playing_clip.clip_length_in_beats) / playing_clip.clip_length_in_beats
@@ -296,7 +295,8 @@ class TrackSelectionMode(definitions.PyshaMode):
                     ctx.fill()
                 ctx.restore()
 
-            if track is None: continue
+            if track is None:
+                continue
             show_text(
                 ctx,
                 i,

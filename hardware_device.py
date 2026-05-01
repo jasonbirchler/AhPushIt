@@ -1,4 +1,3 @@
-import mido
 from base_class import BaseClass
 
 class HardwareDevice(BaseClass):

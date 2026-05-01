@@ -1,7 +1,6 @@
 """Tests for track_selection_mode.py module."""
 
-import pytest
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 from modes.track_selection_mode import TrackSelectionMode
 import definitions

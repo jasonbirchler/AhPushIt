@@ -1,9 +1,5 @@
 """Tests for utils.py module."""
 
-import pytest
-import cairo
-from unittest.mock import MagicMock, patch
-
 from utils import (
     clamp,
     clamp01,

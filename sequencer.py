@@ -1,5 +1,4 @@
 import isobar as iso
-import definitions
 
 
 class Sequencer:

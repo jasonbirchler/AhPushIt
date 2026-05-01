@@ -1,14 +1,16 @@
-import definitions
+import json
+import os
+import time
+
 import mido
 import push2_python
-import time
-import os
-import json
+
+import definitions
 
 class PresetSelectionMode(definitions.PyshaMode):
 
     xor_group = 'pads'
-    
+
     favourtie_presets = {}
     favourtie_presets_filename = 'favourite_presets.json'
     pad_pressing_states = {}
@@ -23,12 +25,13 @@ class PresetSelectionMode(definitions.PyshaMode):
         self.current_page = 0
         self.update_buttons()
         self.update_pads()
+        self.notify_status_in_display()
 
     def new_track_selected(self):
         self.current_page = 0
         self.app.pads_need_update = True
         self.app.buttons_need_update = True
-    
+
     def add_favourite_preset(self, preset_number, bank_number):
         instrument_short_name = self.app.track_selection_mode.get_current_track_instrument_short_name() 
         if instrument_short_name not in self.favourtie_presets:
@@ -107,18 +110,6 @@ class PresetSelectionMode(definitions.PyshaMode):
         bank_num = self.get_current_page() // 2
         return (preset_num, bank_num)
 
-    def send_select_new_preset(self, preset_num):
-        msg = mido.Message('program_change', program=preset_num)  # Should this be 1-indexed?
-        # if this is still needed, something else needs to handle it
-        # self.app.send_midi is no more
-
-    def send_select_new_bank(self, bank_num):
-        # If synth only has 1 bank, don't send bank change messages
-        if self.get_num_banks() > 1:
-            msg = mido.Message('control_change', control=0, value=bank_num)  # Should this be 1-indexed?
-            # if this is still needed, something else needs to handle it
-            # self.app.send_midi is no more
-
     def notify_status_in_display(self):
         bank_number = self.get_current_page() // 2 + 1
         bank_names = self.get_bank_names() 
@@ -131,9 +122,6 @@ class PresetSelectionMode(definitions.PyshaMode):
             '1-64' if self.get_current_page() % 2 == 0 else '65-128'
         ))
 
-    def activate(self):
-        self.update_pads()
-        self.notify_status_in_display()
 
     def deactivate(self):
         self.app.push.pads.set_all_pads_to_color(color=definitions.BLACK)
@@ -152,7 +140,6 @@ class PresetSelectionMode(definitions.PyshaMode):
             self.push.buttons.set_button_color(push2_python.constants.BUTTON_RIGHT, definitions.BLACK)
 
     def update_pads(self):
-        instrument_short_name = self.app.track_selection_mode.get_current_track_instrument_short_name() 
         track_color = self.app.track_selection_mode.get_current_track_color() 
         color_matrix = []
         for i in range(0, 8):
@@ -193,8 +180,6 @@ class PresetSelectionMode(definitions.PyshaMode):
                 self.remove_favourite_preset(preset_num, bank_num)
         else:
             # Send midi message to select the bank and preset preset
-            self.send_select_new_bank(bank_num)
-            self.send_select_new_preset(preset_num)
             bank_names = self.get_bank_names()
             if bank_names is not None:
                 bank_name = bank_names[bank_num]
@@ -204,12 +189,12 @@ class PresetSelectionMode(definitions.PyshaMode):
                 bank_name,  # Show 1-indexed value
                 preset_num + 1  # Show 1-indexed value
             ))
-            
+
         self.app.pads_need_update = True
         return True  # Prevent other modes to get this event
 
     def on_button_pressed(self, button_name):
-       if button_name in [push2_python.constants.BUTTON_LEFT, push2_python.constants.BUTTON_RIGHT]:
+        if button_name in [push2_python.constants.BUTTON_LEFT, push2_python.constants.BUTTON_RIGHT]:
             show_prev, show_next = self.has_prev_next_pages()
             if button_name == push2_python.constants.BUTTON_LEFT and show_prev:
                 self.prev_page()

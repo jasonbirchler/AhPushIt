@@ -357,7 +357,7 @@ class ClipEditMode(definitions.PyshaMode):
                     self.generator_algorithm.get_algorithm_parameters()
                 ):
                     show_title(ctx, part_w * (i + 1), h, parameter["display_name"])
-                    if parameter["type"] == float:
+                    if parameter["type"] is float:
                         label = "{:.3f}".format(parameter["value"])
                     else:
                         label = "{}".format(parameter["value"])
@@ -673,7 +673,6 @@ class ClipEditMode(definitions.PyshaMode):
         return True
 
     def on_encoder_rotated(self, encoder_name, increment):
-        shift = self.app.is_button_being_pressed(push2_python.constants.BUTTON_SHIFT)
         if self.mode == self.MODE_CLIP:
             if encoder_name == push2_python.constants.ENCODER_TRACK1_ENCODER:
                 if self.available_clips:
@@ -682,7 +681,7 @@ class ClipEditMode(definitions.PyshaMode):
                             current_clip_index = self.available_clips.index(
                                 self.selected_clip_idx
                             )
-                        except:
+                        except ValueError:
                             current_clip_index = None
                         if current_clip_index is None:
                             next_clip_index = 0

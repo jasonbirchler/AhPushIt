@@ -1,10 +1,8 @@
 """Tests for track.py module."""
 
-import pytest
 from unittest.mock import MagicMock, patch
 
 from track import Track
-import isobar as iso
 
 
 class TestTrack:
@@ -20,7 +18,7 @@ class TestTrack:
     def test_track_default_attributes(self, session):
         """Test Track has expected default attributes."""
         track = Track(parent=session)
-        
+
         assert track.channel == 0
         assert track.input_monitoring is False
         assert track.output_device_name is None
@@ -34,9 +32,9 @@ class TestTrack:
         track = Track(parent=session)
         from clip import Clip
         clip = Clip()
-        
+
         track.add_clip(clip, position=0)
-        
+
         assert track.clips[0] is clip
         assert clip.track is track
 
@@ -46,10 +44,10 @@ class TestTrack:
         from clip import Clip
         clip1 = Clip()
         clip2 = Clip()
-        
+
         track.add_clip(clip1)
         track.add_clip(clip2)
-        
+
         # Clips are appended to the list, so they'll be at the end
         assert track.clips[-2] is clip1
         assert track.clips[-1] is clip2
@@ -79,27 +77,27 @@ class TestTrack:
     def test_track_output_device_property(self, session):
         """Test output_device property getter/setter."""
         track = Track(parent=session)
-        
+
         # After __init__, output_device is created (mocked)
         assert track.output_device is not None
-        
+
         # Create mock device and set it
         mock_device = MagicMock()
         track.set_output_device(mock_device)
-        
+
         assert track.output_device is mock_device
         assert track._output_device is mock_device
 
     def test_track_set_output_device_by_name(self, session):
         """Test setting output device by name creates MidiOutputDevice."""
         track = Track(parent=session)
-        
+
         with patch('isobar.MidiOutputDevice') as mock_midi_out:
             mock_device = MagicMock()
             mock_midi_out.return_value = mock_device
-            
+
             track.set_output_device_by_name("Test Device")
-            
+           
             assert track.output_device_name == "Test Device"
             mock_midi_out.assert_called_once_with(device_name="Test Device", send_clock=True)
             assert track._device_short_name is None  # Reset on name change
@@ -128,7 +126,7 @@ class TestTrack:
         """Test that device short name is cached."""
         track = Track(parent=session)
         track.set_output_device_by_name("My Device")
-        
+
         # First access generates
         name1 = track.device_short_name
         # Second access returns cached
