@@ -69,9 +69,9 @@ jobs:
         run: |
           pip install ruff
 
-      - name: Run ruff linter
-        run: |
-          ruff check .
+       - name: Run ruff linter
+         run: |
+           ruff check --fix .
 
   typecheck:
     name: Type check (optional)
