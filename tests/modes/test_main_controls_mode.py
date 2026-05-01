@@ -1,10 +1,6 @@
 """Tests for main_controls_mode.py module."""
 
-import pytest
-from unittest.mock import MagicMock
-
 from modes.main_controls_mode import MainControlsMode
-import definitions
 
 
 class TestMainControlsMode:

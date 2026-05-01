@@ -1,6 +1,5 @@
 """Tests for modes/__init__.py module."""
 
-import pytest
 from unittest.mock import MagicMock
 
 import definitions

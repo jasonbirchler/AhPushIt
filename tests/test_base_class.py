@@ -1,7 +1,5 @@
 """Tests for base_class.py module."""
 
-import pytest
-
 from base_class import BaseClass
 
 

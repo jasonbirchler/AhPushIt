@@ -1,7 +1,6 @@
 """Tests for clip.py module (if it exists)."""
 
 import pytest
-from unittest.mock import MagicMock
 
 # Check if clip.py exists
 try:

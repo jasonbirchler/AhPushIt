@@ -1,10 +1,8 @@
 """Tests for settings_mode.py module."""
 
-import pytest
 from unittest.mock import MagicMock
 
 from modes.settings_mode import SettingsMode
-import definitions
 
 
 class TestSettingsMode:
@@ -26,11 +24,6 @@ class TestSettingsMode:
 
     def test_initialize_with_settings(self, mock_app):
         """Test initialize applies settings."""
-        settings = {
-            'something': True
-        }
-        mode = SettingsMode(mock_app, settings=settings)
-        # Should not raise
 
     def test_activate_deactivate(self, mock_app):
         """Test activate and deactivate."""

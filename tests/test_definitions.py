@@ -1,8 +1,5 @@
 """Tests for definitions module."""
 
-import pytest
-from unittest.mock import patch
-
 import definitions
 
 

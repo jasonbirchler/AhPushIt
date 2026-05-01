@@ -1,9 +1,12 @@
 """Pytest configuration and shared fixtures."""
 
-import pytest
+import os
 import sys
 from unittest.mock import MagicMock, patch
-import os
+
+import pytest
+import isobar
+import cairo
 
 # Add project root to Python path for imports
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -21,8 +24,6 @@ def mock_push2_environment():
     mock_buttons = MagicMock()
     mock_pads = MagicMock()
     mock_display = MagicMock()
-    mock_color = MagicMock()
-    mock_touchstrip = MagicMock()
     
     # Configure mock Push2 instance
     mock_push2.buttons = mock_buttons
@@ -99,7 +100,6 @@ def mock_push2_environment():
 @pytest.fixture
 def mock_app(mock_push2_environment):
     """Create a mock PyshaApp instance for testing modes."""
-    from app import PyshaApp
 
     # Create minimal app instance with mocked Push2
     app = MagicMock()
@@ -114,7 +114,6 @@ def mock_app(mock_push2_environment):
     app.notification_time = 0
     
     # Mock global timeline
-    import isobar
     app.global_timeline = isobar.Timeline()
     app.global_timeline.max_tracks = 8
     
@@ -124,7 +123,6 @@ def mock_app(mock_push2_environment):
 @pytest.fixture
 def mock_cairo_context():
     """Create a mock cairo context for display testing."""
-    import cairo
     surface = cairo.ImageSurface(cairo.FORMAT_RGB16_565, 960, 160)
     ctx = cairo.Context(surface)
     return ctx
@@ -135,7 +133,6 @@ def reset_module_state():
     """Reset global state between tests to avoid interference."""
     # Import modules that have global state
     from utils import MARQUEE_STATE
-    import definitions
     
     # Clear marquee state
     MARQUEE_STATE.clear()
@@ -159,7 +156,6 @@ def mock_isobar_midi():
 @pytest.fixture
 def temp_settings_file(tmp_path):
     """Create a temporary settings.json file for testing."""
-    import json
     settings_file = tmp_path / "settings.json"
     return settings_file
 

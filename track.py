@@ -1,10 +1,9 @@
-from typing import TYPE_CHECKING, Any, List, Optional
+from typing import List, Optional
 
 import isobar as iso
 
 from base_class import BaseClass
 
-# if TYPE_CHECKING:
 from clip import Clip
 import definitions
 
