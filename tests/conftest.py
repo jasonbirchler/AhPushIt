@@ -108,15 +108,15 @@ def mock_app(mock_push2_environment, mock_isobar_midi):
     app.active_modes = []
     app.buttons_need_update = False
     app.pads_need_update = False
-    
+
     # Mock notification system
     app.notification_text = None
     app.notification_time = 0
-    
+
     # Mock global timeline
     app.global_timeline = isobar.Timeline()
     app.global_timeline.max_tracks = 8
-    
+
     return app
 
 
@@ -133,12 +133,12 @@ def reset_module_state():
     """Reset global state between tests to avoid interference."""
     # Import modules that have global state
     from utils import MARQUEE_STATE
-    
+
     # Clear marquee state
     MARQUEE_STATE.clear()
-    
+
     yield
-    
+
     # Clean up after test
     MARQUEE_STATE.clear()
 
@@ -146,11 +146,22 @@ def reset_module_state():
 @pytest.fixture(autouse=True)
 def mock_isobar_midi():
     """Mock isobar MIDI device creation and device enumeration to avoid requiring real hardware."""
-    with patch('isobar.MidiOutputDevice') as mock_out, \
-         patch('isobar.MidiInputDevice') as mock_in, \
+    # Create mock classes that accept any parameters
+    mock_midi_output = MagicMock()
+    mock_midi_output.get_device_names.return_value = []
+    mock_midi_output.return_value = MagicMock()  # Instance returned when class is called
+
+    mock_midi_input = MagicMock()
+    mock_midi_input.get_device_names.return_value = []
+    mock_midi_input.return_value = MagicMock()
+
+    with patch('isobar.timelines.timeline.MidiOutputDevice', mock_midi_output), \
+         patch('isobar.timelines.timeline.MidiInputDevice', mock_midi_input), \
+         patch('isobar.MidiOutputDevice', mock_midi_output), \
+         patch('isobar.MidiInputDevice', mock_midi_input), \
          patch('isobar.get_midi_output_names', return_value=[]), \
          patch('isobar.get_midi_input_names', return_value=[]):
-        yield {'output': mock_out, 'input': mock_in}
+        yield {'output': mock_midi_output, 'input': mock_midi_input}
 
 
 @pytest.fixture
