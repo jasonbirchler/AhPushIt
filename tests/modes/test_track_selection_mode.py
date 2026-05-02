@@ -17,8 +17,8 @@ class TestTrackSelectionMode:
         assert mode.push == mock_app.push
 
     def test_xor_group(self):
-        """Test xor_group is 'pads'."""
-        assert TrackSelectionMode.xor_group == 'pads'
+        """Test xor_group is None (track selection always active)."""
+        assert TrackSelectionMode.xor_group is None
 
     def test_buttons_used(self):
         """Test buttons_used includes track buttons."""
