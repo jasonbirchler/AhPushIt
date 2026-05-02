@@ -376,6 +376,8 @@ class ClipEditMode(definitions.PyshaMode):
 
         self.available_clips = []
         for track in self.app.session.tracks:
+            if track is None:
+                continue
             for clip in track.clips:
                 self.available_clips.append(clip)
 

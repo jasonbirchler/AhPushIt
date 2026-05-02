@@ -22,7 +22,7 @@ class TrackSelectionMode(definitions.PyshaMode):
         push2_python.constants.BUTTON_LOWER_ROW_8
     ]
 
-    xor_group = 'pads'
+    # xor_group = None  # Track selection should always be active, not subject to XOR with pads modes
     buttons_used = track_button_names
 
     ADD_TRACK_BUTTON = push2_python.constants.BUTTON_ADD_TRACK
