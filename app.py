@@ -108,12 +108,11 @@ class PyshaApp(object):
     # Mode-related functions
     def init_modes(self, settings):
         self.main_controls_mode = MainControlsMode(self, settings=settings)
-        self.active_modes.append(self.main_controls_mode)
+        self.add_track_mode = AddTrackMode(self, settings=settings)
 
         self.melodic_mode = MelodicMode(self, settings=settings)
         self.rhyhtmic_mode = RhythmicMode(self, settings=settings)
         self.slice_notes_mode = SliceNotesMode(self, settings=settings)
-        self.set_melodic_mode()
 
         self.clip_triggering_mode = ClipTriggeringMode(self, settings=settings)
         self.clip_edit_mode = ClipEditMode(self, settings=settings)
@@ -125,12 +124,14 @@ class PyshaApp(object):
         # Add modes to active_modes, but exclude clip_triggering_mode and clip_edit_mode
         # since they're in the same XOR group as melodic_mode
         # and melodic_mode should be the default active mode for pads
-        self.active_modes += [self.track_selection_mode, self.midi_cc_mode]
+        if settings.get("auto_open_last_project", True):
+            self.active_modes += [self.main_controls_mode, self.track_selection_mode, self.midi_cc_mode]
+        else:
+            self.active_modes.append(self.add_track_mode)
 
         # Note: clip_triggering_mode and clip_edit_mode are intentionally NOT added to active_modes here
         # because they're in the same XOR group as melodic_mode and melodic_mode is the default
 
-        self.add_track_mode = AddTrackMode(self, settings=settings)
 
         self.track_selection_mode.select_track_as_active(
             self.track_selection_mode.selected_track
