@@ -218,6 +218,16 @@ class PyshaApp(object):
                 # Enable default
                 # TODO: here we hardcoded the default mode for a specific xor_group, I should clean this a little bit in the future...
                 if mode_to_unset.xor_group == "pads":
+                    # Check if we're exiting add_track_mode after creating a new track (no previous mode set)
+                    # In this case, set up the full mode stack as if auto_open_last_project=True
+                    if mode_to_unset == self.add_track_mode and self.add_track_mode.editing_track is None:
+                        self.active_modes += [self.main_controls_mode, self.track_selection_mode, self.midi_cc_mode]
+                        self.main_controls_mode.activate()
+                        self.track_selection_mode.activate()
+                        self.midi_cc_mode.activate()
+                        self.track_selection_mode.select_track_as_active(
+                            self.track_selection_mode.selected_track
+                        )
                     self.set_mode_for_xor_group(self.melodic_mode)
 
     def toggle_melodic_rhythmic_slice_modes(self):
