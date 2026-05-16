@@ -108,12 +108,11 @@ class PyshaApp(object):
     # Mode-related functions
     def init_modes(self, settings):
         self.main_controls_mode = MainControlsMode(self, settings=settings)
-        self.active_modes.append(self.main_controls_mode)
+        self.add_track_mode = AddTrackMode(self, settings=settings)
 
         self.melodic_mode = MelodicMode(self, settings=settings)
         self.rhyhtmic_mode = RhythmicMode(self, settings=settings)
         self.slice_notes_mode = SliceNotesMode(self, settings=settings)
-        self.set_melodic_mode()
 
         self.clip_triggering_mode = ClipTriggeringMode(self, settings=settings)
         self.clip_edit_mode = ClipEditMode(self, settings=settings)
@@ -125,12 +124,14 @@ class PyshaApp(object):
         # Add modes to active_modes, but exclude clip_triggering_mode and clip_edit_mode
         # since they're in the same XOR group as melodic_mode
         # and melodic_mode should be the default active mode for pads
-        self.active_modes += [self.track_selection_mode, self.midi_cc_mode]
+        if settings.get("auto_open_last_project", True):
+            self.active_modes += [self.main_controls_mode, self.track_selection_mode, self.midi_cc_mode]
+        else:
+            self.active_modes.append(self.add_track_mode)
 
         # Note: clip_triggering_mode and clip_edit_mode are intentionally NOT added to active_modes here
         # because they're in the same XOR group as melodic_mode and melodic_mode is the default
 
-        self.add_track_mode = AddTrackMode(self, settings=settings)
 
         self.track_selection_mode.select_track_as_active(
             self.track_selection_mode.selected_track
@@ -217,6 +218,16 @@ class PyshaApp(object):
                 # Enable default
                 # TODO: here we hardcoded the default mode for a specific xor_group, I should clean this a little bit in the future...
                 if mode_to_unset.xor_group == "pads":
+                    # Check if we're exiting add_track_mode after creating a new track (no previous mode set)
+                    # In this case, set up the full mode stack as if auto_open_last_project=True
+                    if mode_to_unset == self.add_track_mode and self.add_track_mode.editing_track is None:
+                        self.active_modes += [self.main_controls_mode, self.track_selection_mode, self.midi_cc_mode]
+                        self.main_controls_mode.activate()
+                        self.track_selection_mode.activate()
+                        self.midi_cc_mode.activate()
+                        self.track_selection_mode.select_track_as_active(
+                            self.track_selection_mode.selected_track
+                        )
                     self.set_mode_for_xor_group(self.melodic_mode)
 
     def toggle_melodic_rhythmic_slice_modes(self):
