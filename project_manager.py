@@ -77,11 +77,13 @@ class ProjectManager:
         print(f"Project saved: {filepath}")
 
     def load_project(self, filename):
-        tmp_session, tmp_seq = None, None
         """Load project from JSON file"""
+        self.current_project_file = filename
+        tmp_session, tmp_seq = None, None
         filepath = os.path.join(self.projects_dir, f"{filename}.json")
         if not os.path.exists(filepath):
             print(f"Project file not found: {filepath}")
+            # current_project_file is already set to the attempted filename above
             return False
 
         try:
