@@ -81,7 +81,7 @@ class PyshaApp(object):
 
     def __init__(self):
         # Settings live in userspace alongside projects to avoid git conflicts
-        self.settings_dir = os.path.expanduser("~/pushit-projects")
+        self.settings_dir = os.path.expanduser("~/pushit")
         self.settings_file = os.path.join(self.settings_dir, "settings.json")
 
         if os.path.exists(self.settings_file):

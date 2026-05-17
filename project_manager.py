@@ -12,7 +12,7 @@ from clip import Clip
 class ProjectManager:
     def __init__(self, app):
         self.app = app
-        self.projects_dir = os.path.expanduser("~/pushit-projects")
+        self.projects_dir = os.path.expanduser("~/pushit/projects")
         self.current_project_file = None  # Track currently loaded project
         self._ensure_projects_dir()
 
