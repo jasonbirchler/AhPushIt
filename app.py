@@ -80,8 +80,12 @@ class PyshaApp(object):
     last_cp_value_recevied_time = 0
 
     def __init__(self):
-        if os.path.exists("settings.json"):
-            self.settings = json.load(open("settings.json"))
+        # Settings live in userspace alongside projects to avoid git conflicts
+        self.settings_dir = os.path.expanduser("~/pushit-projects")
+        self.settings_file = os.path.join(self.settings_dir, "settings.json")
+
+        if os.path.exists(self.settings_file):
+            self.settings = json.load(open(self.settings_file))
         else:
             self.settings = {}
 
@@ -282,8 +286,10 @@ class PyshaApp(object):
             mode_settings = mode.get_settings_to_save()
             if mode_settings:
                 settings.update(mode_settings)
+        # Ensure settings directory exists
+        os.makedirs(self.settings_dir, exist_ok=True)
         # Write to file
-        json.dump(settings, open("settings.json", "w"))
+        json.dump(settings, open(self.settings_file, "w"))
         # Update in-memory settings to match the saved state
         self.settings = settings
 
