@@ -414,6 +414,9 @@ class SettingsMode(definitions.PyshaMode):
                 self.app.pm.save_project(filename)
                 self.app.add_display_notification(f"Saved session as: {filename}")
 
+                # Save settings so last_project is updated to the newly saved project
+                self.app.save_current_settings_to_file()
+
                 # Deactivate settings mode by setting current page to last page and calling "rotate settings page" method from app
                 self.current_page = self.n_pages - 1
                 self.app.toggle_and_rotate_settings_mode()
@@ -434,6 +437,10 @@ class SettingsMode(definitions.PyshaMode):
                             self.app.add_display_notification(
                                 f"Loaded project: {self.project_to_confirm}"
                             )
+
+                            # Save settings so last_project is updated to the newly loaded project
+                            self.app.save_current_settings_to_file()
+
                         else:
                             self.app.add_display_notification(
                                 f"Failed to load: {self.project_to_confirm}"

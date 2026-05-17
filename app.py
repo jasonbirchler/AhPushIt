@@ -81,7 +81,7 @@ class PyshaApp(object):
 
     def __init__(self):
         # Settings live in userspace alongside projects to avoid git conflicts
-        self.settings_dir = os.path.expanduser("~/pushit-projects")
+        self.settings_dir = os.path.expanduser("~/pushit")
         self.settings_file = os.path.join(self.settings_dir, "settings.json")
 
         if os.path.exists(self.settings_file):
@@ -279,8 +279,7 @@ class PyshaApp(object):
         settings["use_push2_display"] = self.use_push2_display
         settings["target_frame_rate"] = self.target_frame_rate
         # Include the currently loaded project (if any) so auto_open_last_project can load it
-        if self.pm.current_project_file is not None:
-            settings["last_project"] = self.pm.current_project_file
+        settings["last_project"] = self.pm.current_project_file
         # Gather settings from all modes
         for mode in self.get_all_modes():
             mode_settings = mode.get_settings_to_save()

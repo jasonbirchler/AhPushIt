@@ -21,7 +21,7 @@ class TestProjectManager:
         # Override projects dir to use tmp_path
         with patch.object(ProjectManager, '_ensure_projects_dir'):
             pm = ProjectManager(mock_app)
-            pm.projects_dir = str(tmp_path / "pushit-projects")
+            pm.projects_dir = str(tmp_path / "pushit")
         
         assert pm.app is mock_app
         assert pm.current_project_file is None
