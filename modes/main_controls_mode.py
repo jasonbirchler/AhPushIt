@@ -61,7 +61,7 @@ class MainControlsMode(definitions.PyshaMode):
             self.push.buttons.set_button_color(PRESET_SELECTION_MODE_BUTTON, definitions.OFF_BTN_COLOR)
 
         # Play button
-        if self.app.global_timeline.running:
+        if self.app.global_timeline.is_running:
             self.push.buttons.set_button_color(PLAY_BUTTON, definitions.GREEN, animation=definitions.DEFAULT_ANIMATION)
         else:
             self.push.buttons.set_button_color(PLAY_BUTTON, definitions.WHITE)
@@ -102,7 +102,7 @@ class MainControlsMode(definitions.PyshaMode):
             return True
         elif button_name == PLAY_BUTTON:
             shift = False
-            if self.app.session.global_timeline.running:
+            if self.app.session.global_timeline.is_running:
                 # stop timeline in place. i.e. do not reset current_time
                 self.app.session.stop_timeline()
                 # reset timeline to 0 if shift is pressed
