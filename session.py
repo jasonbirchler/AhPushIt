@@ -313,13 +313,13 @@ class Session(BaseClass):
     def start_timeline(self):
         """Start the global timeline"""
         self.global_timeline.start()
-        print(f"Starting timeline {self.global_timeline.running}")
+        print(f"Starting timeline {self.global_timeline.is_running}")
 
     def stop_timeline(self):
         """Stop the global timeline"""
         self.global_timeline.stop()
-        self.global_timeline.running = False
-        print(f"Stopping timeline {self.global_timeline.running}")
+        self.global_timeline.is_running = False
+        print(f"Stopping timeline {self.global_timeline.is_running}")
 
     def reset_timeline(self):
         """Reset the global timeline to beat 0"""

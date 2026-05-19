@@ -119,7 +119,7 @@ class TestMainControlsMode:
 
     def test_on_button_pressed_play_start(self, mock_app):
         mode = MainControlsMode(mock_app)
-        mock_app.session.global_timeline.running = False
+        mock_app.session.global_timeline.is_running = False
         mock_app.session.start_timeline = MagicMock()
         mock_app.buttons_need_update = False
         result = mode.on_button_pressed(PLAY_BUTTON)
@@ -129,7 +129,7 @@ class TestMainControlsMode:
 
     def test_on_button_pressed_play_stop(self, mock_app):
         mode = MainControlsMode(mock_app)
-        mock_app.session.global_timeline.running = True
+        mock_app.session.global_timeline.is_running = True
         mock_app.session.stop_timeline = MagicMock()
         mock_app.buttons_need_update = False
         result = mode.on_button_pressed(PLAY_BUTTON)
@@ -162,7 +162,7 @@ class TestMainControlsMode:
         mode = MainControlsMode(mock_app)
         mock_app.use_push2_display = True
         mock_app.is_mode_active = MagicMock(return_value=False)
-        mock_app.global_timeline.running = False
+        mock_app.global_timeline.is_running = False
         mock_app.push.buttons = MagicMock()
         mode.update_buttons()
         assert mock_app.push.buttons.set_button_color.called

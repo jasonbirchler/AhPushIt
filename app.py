@@ -12,7 +12,7 @@ try:
     import engineio.payload
     if hasattr(engineio.payload.Payload, 'max_decode_packets'):
         original_limit = engineio.payload.Payload.max_decode_packets
-        engineio.payload.Payload.max_decode_packets = 100
+        engineio.payload.Payload.max_decode_packets = 200
         print(f'[PATCH] Increased max_decode_packets from {original_limit} to 100')
 except ImportError:
     pass  # engineio might not be installed
