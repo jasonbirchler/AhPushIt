@@ -8,6 +8,7 @@ class AddTrackMode(definitions.PyshaMode):
     xor_group = "pads"
 
     # Selection state
+    track_type = "melodic"
     available_output_devices = []
     available_input_devices = []
     output_device_idx = 0
@@ -78,6 +79,9 @@ class AddTrackMode(definitions.PyshaMode):
         # Load input channel
         self.input_channel = track.input_channel
 
+        # Load Track Type
+        self.track_type = track.type
+
     def activate(self):
         # Refresh device lists
         self.available_output_devices = sorted(self.app.session.output_device_names)
@@ -101,17 +105,17 @@ class AddTrackMode(definitions.PyshaMode):
 
     def deactivate(self):
         for button_name in [
-            push2_python.constants.BUTTON_UPPER_ROW_6,
             push2_python.constants.BUTTON_UPPER_ROW_7,
+            push2_python.constants.BUTTON_UPPER_ROW_8,
         ]:
             self.push.buttons.set_button_color(button_name, definitions.BLACK)
 
     def update_buttons(self):
         self.push.buttons.set_button_color(
-            push2_python.constants.BUTTON_UPPER_ROW_6, definitions.GREEN
+            push2_python.constants.BUTTON_UPPER_ROW_7, definitions.GREEN
         )
         self.push.buttons.set_button_color(
-            push2_python.constants.BUTTON_UPPER_ROW_7, definitions.RED
+            push2_python.constants.BUTTON_UPPER_ROW_8, definitions.RED
         )
 
     def update_display(self, ctx, w, h):
@@ -132,11 +136,24 @@ class AddTrackMode(definitions.PyshaMode):
                 h,
                 "ADD TRACK"
             )
-
-        # Column 2: Output device
+        # Column 2: Track Type
         show_title(
             ctx,
             part_w * 1,
+            h,
+            "TRACK TYPE"
+        )
+        show_value(
+            ctx,
+            part_w * 1,
+            h,
+            self.track_type
+        )
+
+        # Column 3: Output device
+        show_title(
+            ctx,
+            part_w * 2,
             h,
             "OUT DEVICE"
         )
@@ -146,30 +163,30 @@ class AddTrackMode(definitions.PyshaMode):
             out_name = "None"
         show_value(
             ctx,
-            part_w * 1,
+            part_w * 2,
             h,
             out_name,
             overflow="marquee"
         )
 
-        # Section 3: Output channel
+        # Section 4: Output channel
         show_title(
             ctx,
-            part_w * 2,
+            part_w * 3,
             h,
             "CHANNEL"
         )
         show_value(
             ctx,
-            part_w * 2,
+            part_w * 3,
             h,
             f"Ch {self.output_channel}",
         )
 
-        # Section 4: Input device
+        # Section 5: Input device
         show_title(
             ctx,
-            part_w * 3,
+            part_w * 4,
             h,
             "RCV FROM"
         )
@@ -179,16 +196,16 @@ class AddTrackMode(definitions.PyshaMode):
             in_name = "All"
         show_value(
             ctx,
-            part_w * 3,
+            part_w * 4,
             h,
             in_name,
             overflow="marquee"
         )
 
-        # Section 5: Input channel
+        # Section 6: Input channel
         show_title(
             ctx,
-            part_w * 4,
+            part_w * 5,
             h,
             "RCV CHANNEL"
         )
@@ -198,15 +215,15 @@ class AddTrackMode(definitions.PyshaMode):
             ch_label = f"Ch {self.input_channel}"
         show_value(
             ctx,
-            part_w * 4,
+            part_w * 5,
             h,
             ch_label
         )
 
-        # Section 6: Confirm
+        # Section 7: Confirm
         show_text(
             ctx,
-            5,
+            6,
             5,
             "CONFIRM",
             height=16,
@@ -216,10 +233,10 @@ class AddTrackMode(definitions.PyshaMode):
             center_horizontally=False,
         )
 
-        # Section 7: Cancel
+        # Section 8: Cancel
         show_text(
             ctx,
-            6,
+            7,
             5,
             "CANCEL",
             height=16,
@@ -243,9 +260,11 @@ class AddTrackMode(definitions.PyshaMode):
         delta = self._apply_encoder_threshold(encoder_name, increment)
         if delta == 0:
             return True
-
-        # Encoder 2: Output device
+        # Encoder 2: Track type
         if encoder_name == push2_python.constants.ENCODER_TRACK2_ENCODER:
+            self.track_type = "melodic" if self.track_type == "drum" else "drum"
+        # Encoder 3: Output device
+        if encoder_name == push2_python.constants.ENCODER_TRACK3_ENCODER:
             self.output_device_idx = (self.output_device_idx + delta) % len(
                 self.available_output_devices
             )
@@ -260,14 +279,14 @@ class AddTrackMode(definitions.PyshaMode):
                     self.output_device_idx - self.visible_rows + 1
                 )
 
-        # Encoder 3: Output channel
-        elif encoder_name == push2_python.constants.ENCODER_TRACK3_ENCODER:
+        # Encoder 4: Output channel
+        elif encoder_name == push2_python.constants.ENCODER_TRACK4_ENCODER:
             if self.output_channel is None:
                 self.output_channel = 1
             self.output_channel = ((self.output_channel - 1 + delta) % 16) + 1
 
-        # Encoder 4: Input device
-        elif encoder_name == push2_python.constants.ENCODER_TRACK4_ENCODER:
+        # Encoder 5: Input device
+        elif encoder_name == push2_python.constants.ENCODER_TRACK5_ENCODER:
             if self.input_device_idx is None:
                 self.input_device_idx = 0
             self.input_device_idx = (self.input_device_idx + delta) % len(
@@ -283,8 +302,8 @@ class AddTrackMode(definitions.PyshaMode):
                     self.input_device_idx - self.visible_rows + 1
                 )
 
-        # Encoder 5: Input channel
-        elif encoder_name == push2_python.constants.ENCODER_TRACK5_ENCODER:
+        # Encoder 6: Input channel
+        elif encoder_name == push2_python.constants.ENCODER_TRACK6_ENCODER:
             # Cycle: -1 (All), 1, 2, ..., 16
             if self.input_channel == -1:
                 self.input_channel = 1 if delta > 0 else 16
@@ -299,7 +318,7 @@ class AddTrackMode(definitions.PyshaMode):
         return True
 
     def on_button_pressed(self, button_name):
-        if button_name == push2_python.constants.BUTTON_UPPER_ROW_2:
+        if button_name == push2_python.constants.BUTTON_UPPER_ROW_3:
             self.output_device_idx = (self.output_device_idx - 1) % len(
                 self.available_output_devices
             )
@@ -308,7 +327,7 @@ class AddTrackMode(definitions.PyshaMode):
             self.app.pads_need_update = True
             return True
 
-        if button_name == push2_python.constants.BUTTON_UPPER_ROW_3:
+        if button_name == push2_python.constants.BUTTON_UPPER_ROW_4:
             self.output_device_idx = (self.output_device_idx + 1) % len(
                 self.available_output_devices
             )
@@ -322,21 +341,21 @@ class AddTrackMode(definitions.PyshaMode):
             self.app.pads_need_update = True
             return True
 
-        if button_name == push2_python.constants.BUTTON_UPPER_ROW_4:
+        if button_name == push2_python.constants.BUTTON_UPPER_ROW_5:
             self.output_channel = (
                 16 if self.output_channel == 1 else self.output_channel - 1
             )
             self.app.pads_need_update = True
             return True
 
-        if button_name == push2_python.constants.BUTTON_UPPER_ROW_5:
+        if button_name == push2_python.constants.BUTTON_UPPER_ROW_6:
             self.output_channel = (
                 1 if self.output_channel == 16 else self.output_channel + 1
             )
             self.app.pads_need_update = True
             return True
 
-        if button_name == push2_python.constants.BUTTON_UPPER_ROW_6:  # Confirm
+        if button_name == push2_python.constants.BUTTON_UPPER_ROW_7:  # Confirm
             output_name = self.available_output_devices[self.output_device_idx]
             # Handle input device selection: None -> no input, All -> no specific device (all inputs), device name -> use it
             if self.input_device_idx == 0:  # "None" selected
@@ -356,10 +375,15 @@ class AddTrackMode(definitions.PyshaMode):
                 self.editing_track.channel = out_ch_internal
                 self.editing_track.input_device_name = input_name
                 self.editing_track.input_channel = in_ch
+                self.editing_track.type = self.track_type
+                # Reload the pad layout so it matches the new track type
+                # (e.g. switch from melodic to drum / rhythmic pad mode)
+                self.app.track_selection_mode.load_current_default_layout()
                 self.app.add_display_notification(
                     f"Track updated: {self.editing_track.device_short_name}"
                 )
                 self.app.buttons_need_update = True
+                self.app.pads_need_update = True
                 self.app.unset_add_track_mode()
                 return True
             else:
@@ -383,7 +407,7 @@ class AddTrackMode(definitions.PyshaMode):
                     self.app.unset_add_track_mode()
                 return True
 
-        if button_name == push2_python.constants.BUTTON_UPPER_ROW_7:  # Cancel
+        if button_name == push2_python.constants.BUTTON_UPPER_ROW_8:  # Cancel
             self.app.unset_add_track_mode()
             return True
 

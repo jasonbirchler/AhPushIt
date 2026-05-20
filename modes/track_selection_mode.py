@@ -146,12 +146,13 @@ class TrackSelectionMode(definitions.PyshaMode):
         }
         
     def load_current_default_layout(self):
-        if self.get_current_track_device_info().get('default_layout', definitions.LAYOUT_MELODIC) == definitions.LAYOUT_MELODIC:
-            self.app.set_melodic_mode()
-        elif self.get_current_track_device_info().get('default_layout', definitions.LAYOUT_MELODIC) == definitions.LAYOUT_RHYTHMIC:
-            self.app.set_rhythmic_mode()
-        elif self.get_current_track_device_info().get('default_layout', definitions.LAYOUT_MELODIC) == definitions.LAYOUT_SLICES:
-            self.app.set_slice_notes_mode()
+        track = self.get_selected_track()
+        if track is None:
+            self.app.set_mode_for_xor_group(self.app.melodic_mode)
+        elif hasattr(track, 'type') and track.type == "drum":
+            self.app.set_mode_for_xor_group(self.app.rhyhtmic_mode)
+        else:
+            self.app.set_mode_for_xor_group(self.app.melodic_mode)
 
     def clean_notes_currently_being_played(self):
         if self.app.is_mode_active(self.app.melodic_mode):

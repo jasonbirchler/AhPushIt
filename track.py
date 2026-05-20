@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import List, Literal, Optional
 
 import isobar as iso
 
@@ -16,6 +16,7 @@ class Track(BaseClass):
     input_channel: int = -1
     remove_when_done: bool = False
     timeline: iso.Timeline
+    type: Literal["drum", "melodic"] = "melodic"
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -25,6 +26,7 @@ class Track(BaseClass):
         self.output_device_name = None
         self.input_device_name = None
         self.input_channel = -1
+        self.type = "melodic"
         
         self.clips: List[Clip] = [None, None, None, None, None, None, None, None]
 
