@@ -12,7 +12,7 @@ try:
     import engineio.payload
     if hasattr(engineio.payload.Payload, 'max_decode_packets'):
         original_limit = engineio.payload.Payload.max_decode_packets
-        engineio.payload.Payload.max_decode_packets = 100
+        engineio.payload.Payload.max_decode_packets = 200
         print(f'[PATCH] Increased max_decode_packets from {original_limit} to 100')
 except ImportError:
     pass  # engineio might not be installed
@@ -80,8 +80,12 @@ class PyshaApp(object):
     last_cp_value_recevied_time = 0
 
     def __init__(self):
-        if os.path.exists("settings.json"):
-            self.settings = json.load(open("settings.json"))
+        # Settings live in userspace alongside projects to avoid git conflicts
+        self.settings_dir = os.path.expanduser("~/pushit")
+        self.settings_file = os.path.join(self.settings_dir, "settings.json")
+
+        if os.path.exists(self.settings_file):
+            self.settings = json.load(open(self.settings_file))
         else:
             self.settings = {}
 
@@ -108,12 +112,11 @@ class PyshaApp(object):
     # Mode-related functions
     def init_modes(self, settings):
         self.main_controls_mode = MainControlsMode(self, settings=settings)
-        self.active_modes.append(self.main_controls_mode)
+        self.add_track_mode = AddTrackMode(self, settings=settings)
 
         self.melodic_mode = MelodicMode(self, settings=settings)
         self.rhyhtmic_mode = RhythmicMode(self, settings=settings)
         self.slice_notes_mode = SliceNotesMode(self, settings=settings)
-        self.set_melodic_mode()
 
         self.clip_triggering_mode = ClipTriggeringMode(self, settings=settings)
         self.clip_edit_mode = ClipEditMode(self, settings=settings)
@@ -125,12 +128,14 @@ class PyshaApp(object):
         # Add modes to active_modes, but exclude clip_triggering_mode and clip_edit_mode
         # since they're in the same XOR group as melodic_mode
         # and melodic_mode should be the default active mode for pads
-        self.active_modes += [self.track_selection_mode, self.midi_cc_mode]
+        if settings.get("auto_open_last_project", True):
+            self.active_modes += [self.main_controls_mode, self.track_selection_mode, self.midi_cc_mode]
+        else:
+            self.active_modes.append(self.add_track_mode)
 
         # Note: clip_triggering_mode and clip_edit_mode are intentionally NOT added to active_modes here
         # because they're in the same XOR group as melodic_mode and melodic_mode is the default
 
-        self.add_track_mode = AddTrackMode(self, settings=settings)
 
         self.track_selection_mode.select_track_as_active(
             self.track_selection_mode.selected_track
@@ -217,6 +222,16 @@ class PyshaApp(object):
                 # Enable default
                 # TODO: here we hardcoded the default mode for a specific xor_group, I should clean this a little bit in the future...
                 if mode_to_unset.xor_group == "pads":
+                    # Check if we're exiting add_track_mode after creating a new track (no previous mode set)
+                    # In this case, set up the full mode stack as if auto_open_last_project=True
+                    if mode_to_unset == self.add_track_mode and self.add_track_mode.editing_track is None:
+                        self.active_modes += [self.main_controls_mode, self.track_selection_mode, self.midi_cc_mode]
+                        self.main_controls_mode.activate()
+                        self.track_selection_mode.activate()
+                        self.midi_cc_mode.activate()
+                        self.track_selection_mode.select_track_as_active(
+                            self.track_selection_mode.selected_track
+                        )
                     self.set_mode_for_xor_group(self.melodic_mode)
 
     def toggle_melodic_rhythmic_slice_modes(self):
@@ -264,15 +279,16 @@ class PyshaApp(object):
         settings["use_push2_display"] = self.use_push2_display
         settings["target_frame_rate"] = self.target_frame_rate
         # Include the currently loaded project (if any) so auto_open_last_project can load it
-        if self.pm.current_project_file is not None:
-            settings["last_project"] = self.pm.current_project_file
+        settings["last_project"] = self.pm.current_project_file
         # Gather settings from all modes
         for mode in self.get_all_modes():
             mode_settings = mode.get_settings_to_save()
             if mode_settings:
                 settings.update(mode_settings)
+        # Ensure settings directory exists
+        os.makedirs(self.settings_dir, exist_ok=True)
         # Write to file
-        json.dump(settings, open("settings.json", "w"))
+        json.dump(settings, open(self.settings_file, "w"))
         # Update in-memory settings to match the saved state
         self.settings = settings
 
