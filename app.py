@@ -117,6 +117,7 @@ class PyshaApp(object):
         self.melodic_mode = MelodicMode(self, settings=settings)
         self.rhyhtmic_mode = RhythmicMode(self, settings=settings)
         self.slice_notes_mode = SliceNotesMode(self, settings=settings)
+        self.set_mode_for_xor_group(self.get_default_pad_mode_for_xor_group())
 
         self.clip_triggering_mode = ClipTriggeringMode(self, settings=settings)
         self.clip_edit_mode = ClipEditMode(self, settings=settings)
@@ -220,7 +221,6 @@ class PyshaApp(object):
                 self.set_mode_for_xor_group(previous_mode)
             else:
                 # Enable default
-                # TODO: here we hardcoded the default mode for a specific xor_group, I should clean this a little bit in the future...
                 if mode_to_unset.xor_group == "pads":
                     # Check if we're exiting add_track_mode after creating a new track (no previous mode set)
                     # In this case, set up the full mode stack as if auto_open_last_project=True
@@ -232,7 +232,7 @@ class PyshaApp(object):
                         self.track_selection_mode.select_track_as_active(
                             self.track_selection_mode.selected_track
                         )
-                    self.set_mode_for_xor_group(self.melodic_mode)
+                    self.set_mode_for_xor_group(self.get_default_pad_mode_for_xor_group())
 
     def toggle_melodic_rhythmic_slice_modes(self):
         if self.is_mode_active(self.melodic_mode):
@@ -240,13 +240,33 @@ class PyshaApp(object):
         elif self.is_mode_active(self.rhyhtmic_mode):
             self.set_slice_notes_mode()
         elif self.is_mode_active(self.slice_notes_mode):
-            self.set_melodic_mode()
+            self.set_mode_for_xor_group(self.get_default_pad_mode_for_xor_group())
         else:
-            # If none of melodic or rhythmic or slice modes were active, enable melodic by default
-            self.set_melodic_mode()
+            # If none of melodic or rhythmic or slice modes were active, enable default pad mode
+            self.set_mode_for_xor_group(self.get_default_pad_mode_for_xor_group())
 
     def set_melodic_mode(self):
         self.set_mode_for_xor_group(self.melodic_mode)
+
+    def get_default_pad_mode_for_xor_group(self):
+        """Get the default pad mode for the pads XOR group based on the selected track's type.
+        Returns melodic_mode for type=melodic, rhythmic_mode for type=drum.
+        Defaults to melodic_mode if there is no track or track_selection_mode is not yet initialised."""
+        if not self.session:
+            return self.melodic_mode
+
+        # track_selection_mode may not exist yet during early __init__/init_modes
+        if not hasattr(self, 'track_selection_mode'):
+            return self.melodic_mode
+
+        selected_track = self.track_selection_mode.get_selected_track()
+        if not selected_track:
+            return self.melodic_mode
+
+        if hasattr(selected_track, 'type') and selected_track.type == "drum":
+            return self.rhyhtmic_mode
+        else:
+            return self.melodic_mode
 
     def set_rhythmic_mode(self):
         self.set_mode_for_xor_group(self.rhyhtmic_mode)
