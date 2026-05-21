@@ -374,7 +374,9 @@ class MIDICCMode(PyshaMode):
                 push2_python.constants.ENCODER_TRACK8_ENCODER,
             ].index(encoder_name)
             if self.active_midi_control_ccs:
-                self.active_midi_control_ccs[encoder_num].update_value(increment)
-        except ValueError: 
-            pass  # Encoder not in list 
+                delta = self._apply_encoder_threshold(encoder_name, increment, threshold=1)
+                if delta != 0:
+                    self.active_midi_control_ccs[encoder_num].update_value(delta)
+        except ValueError:
+            pass  # Encoder not in list
         return True  # Always return True because encoder should not be used in any other mode if this is first active

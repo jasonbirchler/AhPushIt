@@ -15,7 +15,6 @@ class AddTrackMode(definitions.PyshaMode):
     input_device_idx = 0
     output_channel = 1  # Display value 1-16
     input_channel = -1  # -1 = All, 1-16 = specific
-    encoder_accumulators = {}
 
     # Display scrolling state
     output_device_list_offset = 0
@@ -39,9 +38,6 @@ class AddTrackMode(definitions.PyshaMode):
         self.output_device_list_offset = 0
         self.input_device_list_offset = 0
         self.editing_track = None
-
-        for encoder_name in self.push.encoders.available_names:
-            self.encoder_accumulators[encoder_name] = 0
 
         # If settings contains an editing track, use it
         if settings and 'editing_track' in settings:
@@ -246,18 +242,9 @@ class AddTrackMode(definitions.PyshaMode):
             center_horizontally=False,
         )
 
-    def _apply_encoder_threshold(self, encoder_name, increment):
-        self.encoder_accumulators[encoder_name] = (
-            self.encoder_accumulators.get(encoder_name, 0) + increment
-        )
-        if abs(self.encoder_accumulators[encoder_name]) >= 5:
-            delta = 1 if self.encoder_accumulators[encoder_name] > 0 else -1
-            self.encoder_accumulators[encoder_name] = 0
-            return delta
-        return 0  # Threshold not reached, no movement
-
     def on_encoder_rotated(self, encoder_name, increment):
-        delta = self._apply_encoder_threshold(encoder_name, increment)
+        threshold = 1 if self.app.push.simulator_controller is not None else 5
+        delta = self._apply_encoder_threshold(encoder_name, increment, threshold)
         if delta == 0:
             return True
         # Encoder 2: Track type
