@@ -161,7 +161,22 @@ class PyshaMode(object):
 
     def __init__(self, app, settings=None):
         self.app = app
+        self.encoder_accumulators = {}
         self.initialize(settings=settings)
+
+    def _apply_encoder_threshold(self, encoder_name, increment, threshold=5):
+        """
+        Apply threshold logic to encoder increments.
+        Returns delta (1, -1, or 0) when threshold is crossed, otherwise 0.
+        """
+        self.encoder_accumulators[encoder_name] = (
+            self.encoder_accumulators.get(encoder_name, 0) + increment
+        )
+        if abs(self.encoder_accumulators[encoder_name]) >= threshold:
+            delta = 1 if self.encoder_accumulators[encoder_name] > 0 else -1
+            self.encoder_accumulators[encoder_name] = 0
+            return delta
+        return 0
 
     @property
     def push(self):
