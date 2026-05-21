@@ -4,6 +4,7 @@ from unittest.mock import MagicMock
 
 import isobar as iso
 from sequencer import Sequencer
+from utils import get_beats_until_next_bar, compute_clip_total_duration
 
 
 class TestSequencer:
@@ -52,14 +53,13 @@ class TestSequencer:
         assert sequencer.quantize == 4
 
     def test_schedule_clip(self, mock_app):
-        """Test scheduling a clip."""
+        """Test scheduling a clip — device resolved from clip.track."""
         import numpy as np
 
         sequencer = Sequencer(mock_app)
         mock_timeline = MagicMock()
         sequencer.timeline = mock_timeline
 
-        # Create a mock clip
         clip = MagicMock()
         clip.notes = np.array([[60, 64]], dtype=object)
         clip.durations = np.array([[0.5, 0.25]], dtype=float)
@@ -72,13 +72,45 @@ class TestSequencer:
         clip.track.output_device_name = "TestDevice"
 
         mock_device = MagicMock()
-        mock_app.session.get_output_device.return_value = mock_device
+        clip.track.get_output_device.return_value = mock_device
 
-        # Should not raise
         sequencer.schedule_clip(clip, quantize_start=True)
 
-        # Check timeline.schedule was called
         mock_timeline.schedule.assert_called_once()
+        call_kwargs = mock_timeline.schedule.call_args[1]
+        assert call_kwargs["output_device"] is mock_device
+        assert call_kwargs["name"] == "TestClip"
+        # Device fetched from clip.track, not session
+        clip.track.get_output_device.assert_called_once()
+
+    def test_schedule_clip_skips_when_no_track(self, mock_app):
+        """Test scheduling a clip without a track returns immediately."""
+        import numpy as np
+        sequencer = Sequencer(mock_app)
+        mock_timeline = MagicMock()
+        sequencer.timeline = mock_timeline
+
+        clip = MagicMock()
+        clip.notes = np.array([[60]], dtype=object)
+        clip.track = None
+
+        sequencer.schedule_clip(clip)
+        mock_timeline.schedule.assert_not_called()
+
+    def test_schedule_clip_skips_when_no_device(self, mock_app):
+        """Test scheduling a clip when track has no device returns immediately."""
+        import numpy as np
+        sequencer = Sequencer(mock_app)
+        mock_timeline = MagicMock()
+        sequencer.timeline = mock_timeline
+
+        clip = MagicMock()
+        clip.notes = np.array([[60]], dtype=object)
+        clip.track = MagicMock()
+        clip.track.get_output_device.return_value = None
+
+        sequencer.schedule_clip(clip)
+        mock_timeline.schedule.assert_not_called()
 
     def test_schedule_clip_no_notes(self, mock_app):
         """Test scheduling clip with no notes returns early."""
@@ -113,16 +145,71 @@ class TestSequencer:
         sequencer.check_queued_clips()
         mock_clip.stop.assert_called_once()
 
-    def test_start_on_next_bar(self, mock_app):
-        """Test calculating beats to next bar."""
+    def test_check_queued_clips_updates_pads(self, mock_app):
+        """Test check_queued_clips also triggers a pad refresh on switch."""
         sequencer = Sequencer(mock_app)
         mock_timeline = MagicMock()
-        mock_timeline.current_time = 1.5
+        mock_timeline.current_time = 100.0
         sequencer.timeline = mock_timeline
 
-        beats = sequencer.start_on_next_bar()
+        mock_clip = MagicMock()
+        mock_clip.playing = True
+        mock_clip.queued_clip = True
+        mock_clip.name = "TestClip"
+
+        mock_track = MagicMock()
+        mock_track.clips = [mock_clip]
+        mock_app.session.tracks = [mock_track]
+        sequencer.clip_loop_positions = {"TestClip": 95.0}
+
+        mock_app.clip_triggering_mode = MagicMock()
+        sequencer.check_queued_clips()
+
+        mock_app.clip_triggering_mode.update_pads.assert_called_once()
+
+    def test_start_on_next_bar_shared_utility(self, mock_app):
+        """Test the shared get_beats_until_next_bar utility (was Sequencer.start_on_next_bar)."""
+        mock_timeline = MagicMock()
+        mock_timeline.current_time = 1.5
+
+        beats = get_beats_until_next_bar(mock_timeline)
         # Current time 1.5 -> on beat 1, so 3 beats to next bar (beat 4)
         assert beats == 3
+
+    def test_start_on_next_bar_on_bar_line(self, mock_app):
+        """On an exact bar boundary the helper returns a full bar of wait time."""
+        mock_timeline = MagicMock()
+        mock_timeline.current_time = 4.0  # exactly on beat 4
+
+        beats = get_beats_until_next_bar(mock_timeline)
+        assert beats == 4  # wait until the next bar, not zero
+
+    # Delegation tests — Sequencer.timeline lifecycle is delegated to Session
+    def test_play_delegates_to_session(self, mock_app):
+        sequencer = Sequencer(mock_app)
+        mock_app.session.start_timeline = MagicMock()
+        sequencer.play()
+        mock_app.session.start_timeline.assert_called_once()
+
+    def test_stop_delegates_to_session(self, mock_app):
+        sequencer = Sequencer(mock_app)
+        mock_app.session.stop_timeline = MagicMock()
+        sequencer.stop()
+        mock_app.session.stop_timeline.assert_called_once()
+
+    def test_return_to_zero_delegates_to_session(self, mock_app):
+        sequencer = Sequencer(mock_app)
+        mock_app.session.reset_timeline = MagicMock()
+        sequencer.return_to_zero()
+        mock_app.session.reset_timeline.assert_called_once()
+
+    def test_stop_and_return_to_zero_delegates_to_session(self, mock_app):
+        sequencer = Sequencer(mock_app)
+        mock_app.session.stop_timeline = MagicMock()
+        mock_app.session.reset_timeline = MagicMock()
+        sequencer.stop_and_return_to_zero()
+        assert mock_app.session.stop_timeline.called
+        assert mock_app.session.reset_timeline.called
 
     def test_mute_unmute_track(self, mock_app):
         """Test mute/unmute track."""
@@ -137,28 +224,3 @@ class TestSequencer:
 
         sequencer.unmute_track(0)
         mock_track.unmute.assert_called_once()
-
-    def test_play_stop(self, mock_app):
-        """Test play and stop."""
-        sequencer = Sequencer(mock_app)
-        mock_timeline = MagicMock()
-        sequencer.timeline = mock_timeline
-
-        sequencer.play()
-        mock_timeline.start.assert_called_once()
-
-        sequencer.stop()
-        mock_timeline.stop.assert_called_once()
-
-    def test_return_to_zero(self, mock_app):
-        """Test return to zero."""
-        sequencer = Sequencer(mock_app)
-        mock_timeline = MagicMock()
-        sequencer.timeline = mock_timeline
-
-        sequencer.return_to_zero()
-        mock_timeline.reset.assert_called_once()
-
-        sequencer.stop_and_return_to_zero()
-        assert mock_timeline.stop.called
-        assert mock_timeline.reset.called

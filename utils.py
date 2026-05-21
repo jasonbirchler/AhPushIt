@@ -7,6 +7,54 @@ import push2_python
 import definitions
 
 
+BEATS_PER_BAR = 4
+
+
+def get_beats_until_next_bar(timeline_or_time):
+    """
+    Calculate how many beats remain until the next bar boundary.
+
+    Args:
+        timeline_or_time: An isobar Timeline object (uses .current_time)
+                          or a numeric beat value.
+
+    Returns:
+        Float — number of beats until the next bar (never zero; when exactly
+                on a bar boundary the result is BEATS_PER_BAR).
+    """
+    try:
+        current_time = timeline_or_time.current_time
+    except AttributeError:
+        current_time = float(timeline_or_time)
+
+    return BEATS_PER_BAR - (int(current_time) % BEATS_PER_BAR)
+
+
+def compute_clip_total_duration(clip, durations_list):
+    """
+    Compute the total duration in beats that a clip occupies when scheduled.
+
+    The formula gives priority to clip.clip_length_in_beats when it is set,
+    and gracefully handles zero-length duration lists.
+
+    Args:
+        clip:              A Clip instance (provides .clip_length_in_beats).
+        durations_list:    List of per-step duration values extracted from
+                           the clip's numpy arrays.
+
+    Returns:
+        Float — total duration in beats.
+    """
+    n = len(durations_list)
+    if n == 0:
+        return clip.clip_length_in_beats if clip.clip_length_in_beats > 0 else 0.0
+
+    tc_duration = sum(durations_list) * clip.clip_length_in_beats / n
+    if clip.clip_length_in_beats > 0:
+        tc_duration = clip.clip_length_in_beats
+    return tc_duration
+
+
 class TextOverflow:
     """Text overflow handling strategies."""
     DEFAULT = 'default'      # Current behavior - text gets cut off or overlaps

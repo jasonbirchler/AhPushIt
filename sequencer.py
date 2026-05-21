@@ -1,9 +1,14 @@
 import isobar as iso
 
+from utils import get_beats_until_next_bar, compute_clip_total_duration
+
 
 class Sequencer:
     """
     Class that interfaces with isobar (Timeline and Tracks) to create a sequencer.
+
+    Timeline lifecycle methods (play/stop/reset) are delegated to Session —
+    Session is the single source of truth for those operations (session.py:313–327).
     """
 
     def __init__(self, app):
@@ -20,12 +25,29 @@ class Sequencer:
 
     def schedule_clip(self, clip, quantize_start=True):
         """
-        Schedule a clip to the timeline
+        Schedule a clip to the timeline.
+
+        The output device is resolved directly from ``clip.track`` to avoid
+        an unnecessary session dict lookup.  If the clip has no track or the
+        track has no output device, the call returns silently — nothing is
+        scheduled on the timeline.
+
+        Args:
+            clip:          The Clip to schedule.
+            quantize_start: If True the clip starts on the next bar boundary.
         """
         if clip.notes is None:
             return
 
-        device = self.app.session.get_output_device(clip.track.output_device_name)
+        # Resolve device directly from the track — avoids session.get_output_device()
+        # round-trip (session.py:28) and guarantees no timeline pollution with a
+        # missing device.
+        if not clip.track:
+            return
+        device = clip.track.get_output_device()
+        if device is None:
+            print(f"[Sequencer] No output device for track '{clip.track.device_short_name}', skipping clip '{clip.name}'")
+            return
 
         # Convert polyphonic numpy arrays to lists for isobar
         notes_list = []
@@ -66,7 +88,7 @@ class Sequencer:
         # Calculate the actual start time for this clip
         current_time = self.timeline.current_time
         if quantize_start:
-            quantize_offset = self.start_on_next_bar()
+            quantize_offset = get_beats_until_next_bar(self.timeline)
         else:
             quantize_offset = 0
         actual_start_time = current_time + quantize_offset
@@ -76,11 +98,7 @@ class Sequencer:
         clip._playback_start_time = actual_start_time
 
         # Keep track of when this clip should loop (for queuing logic)
-        total_duration = (
-            sum(durations_list) * clip.clip_length_in_beats / (len(durations_list) or 1)
-        )
-        if clip.clip_length_in_beats > 0 and len(durations_list) > 0:
-            total_duration = clip.clip_length_in_beats
+        total_duration = compute_clip_total_duration(clip, durations_list)
         next_loop_time = actual_start_time + total_duration
         self.clip_loop_positions[clip.name] = next_loop_time
 
@@ -112,13 +130,11 @@ class Sequencer:
                         if current_time >= loop_time:
                             # Time to switch
                             clip.stop()
-                            clip.app.clip_triggering_mode.update_pads()
+                            if self.app and hasattr(self.app, "clip_triggering_mode"):
+                                self.app.clip_triggering_mode.update_pads()
                             # Update loop time for next iteration
                             if clip.name in self.clip_loop_positions:
                                 del self.clip_loop_positions[clip.name]
-
-    def start_on_next_bar(self):
-        return 4 - (int(self.timeline.current_time) % 4)
 
     def mute_track(self, track_idx: int):
         """
@@ -134,22 +150,25 @@ class Sequencer:
         track = self.timeline.tracks[track_idx]
         track.unmute()
 
+    # ------------------------------------------------------------------
+    # Timeline lifecycle — delegated to Session (single source of truth)
+    # ------------------------------------------------------------------
     def play(self):
-        """Start the timeline in the background"""
-        self.timeline.start()
+        """Start the global timeline."""
+        self.app.session.start_timeline()
 
     def stop(self):
-        """Stop the timeline"""
-        self.timeline.stop()
+        """Stop the global timeline."""
+        self.app.session.stop_timeline()
 
     def return_to_zero(self):
-        """Return the timeline to zero"""
-        self.timeline.reset()
+        """Return the global timeline to beat 0."""
+        self.app.session.reset_timeline()
 
     def stop_and_return_to_zero(self):
-        """Stop the timeline and return to zero"""
-        self.timeline.stop()
-        self.timeline.reset()
+        """Stop the global timeline and return to beat 0."""
+        self.app.session.stop_timeline()
+        self.app.session.reset_timeline()
 
     # Getters and Setters
     @property
