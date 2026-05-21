@@ -4,6 +4,7 @@ import isobar as iso
 
 import definitions
 from base_class import BaseClass
+from utils import get_beats_until_next_bar, compute_clip_total_duration
 from clip import Clip
 from track import Track
 
@@ -156,7 +157,7 @@ class Session(BaseClass):
 
         # Calculate the time until the next bar
         current_time = self.global_timeline.current_time
-        beats_until_next_bar = 4 - (int(current_time) % 4)
+        beats_until_next_bar = get_beats_until_next_bar(self.global_timeline)
 
         # Schedule stops and starts at the next bar
         if beats_until_next_bar == 0:
@@ -313,17 +314,13 @@ class Session(BaseClass):
     def start_timeline(self):
         """Start the global timeline"""
         self.global_timeline.start()
-        print(f"Starting timeline {self.global_timeline.is_running}")
 
     def stop_timeline(self):
         """Stop the global timeline"""
         self.global_timeline.stop()
-        self.global_timeline.is_running = False
-        print(f"Stopping timeline {self.global_timeline.is_running}")
 
     def reset_timeline(self):
-        """Reset the global timeline to beat 0"""
-        print("Resetting timeline")
+        """Reset the global timeline"""
         self.global_timeline.reset()
 
     ############################################################################
