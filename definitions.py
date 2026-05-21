@@ -167,13 +167,13 @@ class PyshaMode(object):
     def _apply_encoder_threshold(self, encoder_name, increment, threshold=5):
         """
         Apply threshold logic to encoder increments.
-        Returns delta (1, -1, or 0) when threshold is crossed, otherwise 0.
+        Returns the accumulated signed delta when threshold is crossed, otherwise 0.
         """
         self.encoder_accumulators[encoder_name] = (
             self.encoder_accumulators.get(encoder_name, 0) + increment
         )
         if abs(self.encoder_accumulators[encoder_name]) >= threshold:
-            delta = 1 if self.encoder_accumulators[encoder_name] > 0 else -1
+            delta = self.encoder_accumulators[encoder_name]
             self.encoder_accumulators[encoder_name] = 0
             return delta
         return 0

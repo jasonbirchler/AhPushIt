@@ -31,7 +31,12 @@ def mock_push2_environment():
     mock_push2.display = mock_display
     mock_push2.color_palette = {}
     mock_push2.midi_is_configured.return_value = True
-    mock_push2.simulator_controller = None
+    mock_push2.simulator_controller = {
+        'active_scene': 0,
+        'active_track': 0,
+        'active_clip': -1,
+        'state': MagicMock(),
+    }
     
     def set_color_palette_entry(count, color_name, rgb=None, allow_overwrite=True):
         mock_push2.color_palette[count] = (color_name, rgb)
