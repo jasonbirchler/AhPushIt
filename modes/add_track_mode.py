@@ -243,7 +243,8 @@ class AddTrackMode(definitions.PyshaMode):
         )
 
     def on_encoder_rotated(self, encoder_name, increment):
-        delta = self._apply_encoder_threshold(encoder_name, increment)
+        threshold = 1 if self.app.push.simulator_controller is not None else 5
+        delta = self._apply_encoder_threshold(encoder_name, increment, threshold)
         if delta == 0:
             return True
         # Encoder 2: Track type

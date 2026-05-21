@@ -675,6 +675,8 @@ class ClipEditMode(definitions.PyshaMode):
         return True
 
     def on_encoder_rotated(self, encoder_name, increment):
+        threshold = 1 if self.app.push.simulator_controller is not None else 5
+        delta = self._apply_encoder_threshold(encoder_name, increment, threshold)
         if self.mode == self.MODE_CLIP:
             if encoder_name == push2_python.constants.ENCODER_TRACK1_ENCODER:
                 if self.available_clips:
@@ -688,7 +690,6 @@ class ClipEditMode(definitions.PyshaMode):
                         if current_clip_index is None:
                             next_clip_index = 0
                         else:
-                            delta = self._apply_encoder_threshold(encoder_name, increment)
                             if delta == 0:
                                 return True
                             next_clip_index = current_clip_index + delta
@@ -702,7 +703,6 @@ class ClipEditMode(definitions.PyshaMode):
                 return True  # Don't trigger this encoder moving in any other mode
 
             elif encoder_name == push2_python.constants.ENCODER_TRACK2_ENCODER:
-                delta = self._apply_encoder_threshold(encoder_name, increment)
                 if delta == 0:
                     return True
                 # Edit clip length
@@ -716,7 +716,6 @@ class ClipEditMode(definitions.PyshaMode):
                 return True  # Don't trigger this encoder moving in any other mode
 
             elif encoder_name == push2_python.constants.ENCODER_TRACK4_ENCODER:
-                delta = self._apply_encoder_threshold(encoder_name, increment)
                 if delta == 0:
                     return True
                 # Edit step divisions

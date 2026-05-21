@@ -321,15 +321,17 @@ class SettingsMode(definitions.PyshaMode):
 
     def on_encoder_rotated(self, encoder_name, increment):
         self.encoders_state[encoder_name]['last_message_received'] = time.time()
+        threshold = 1 if self.app.push.simulator_controller is not None else 5
+        delta = self._apply_encoder_threshold(encoder_name, increment, threshold)
+
         if self.current_page == Pages.PERFORMANCE:
             if encoder_name == push2_python.constants.ENCODER_TRACK1_ENCODER:
-                delta = self._apply_encoder_threshold(encoder_name, increment)
+                threshold = 1 if self.app.push.simulator_controller is not None else 5
                 if delta != 0:
                     self.app.melodic_mode.set_root_midi_note(self.app.melodic_mode.root_midi_note + delta)
                 self.app.pads_need_update = True  # Using async update method because we don't really need immediate response here
 
             elif encoder_name == push2_python.constants.ENCODER_TRACK2_ENCODER:
-                delta = self._apply_encoder_threshold(encoder_name, increment)
                 if delta >= 1:  # Threshold crossed in positive direction
                     if not self.app.melodic_mode.use_poly_at:
                         self.app.melodic_mode.use_poly_at = True
@@ -341,28 +343,23 @@ class SettingsMode(definitions.PyshaMode):
                 self.app.melodic_mode.set_lumi_pressure_mode()
 
             elif encoder_name == push2_python.constants.ENCODER_TRACK3_ENCODER:
-                delta = self._apply_encoder_threshold(encoder_name, increment)
                 if delta != 0:
                     self.app.melodic_mode.set_channel_at_range_start(self.app.melodic_mode.channel_at_range_start + delta)
 
             elif encoder_name == push2_python.constants.ENCODER_TRACK4_ENCODER:
-                delta = self._apply_encoder_threshold(encoder_name, increment)
                 if delta != 0:
                     self.app.melodic_mode.set_channel_at_range_end(self.app.melodic_mode.channel_at_range_end + delta)
 
             elif encoder_name == push2_python.constants.ENCODER_TRACK5_ENCODER:
-                delta = self._apply_encoder_threshold(encoder_name, increment)
                 if delta != 0:
                     self.app.melodic_mode.set_poly_at_max_range(self.app.melodic_mode.poly_at_max_range + delta)
 
             elif encoder_name == push2_python.constants.ENCODER_TRACK6_ENCODER:
-                delta = self._apply_encoder_threshold(encoder_name, increment)
                 if delta != 0:
                     self.app.melodic_mode.set_poly_at_curve_bending(self.app.melodic_mode.poly_at_curve_bending + delta)
 
         elif self.current_page == Pages.SESSION:
             if encoder_name == push2_python.constants.ENCODER_TRACK1_ENCODER:
-                delta = self._apply_encoder_threshold(encoder_name, increment)
                 if delta != 0:
                     self.current_preset_save_number += delta
                     if self.current_preset_save_number < 0:
@@ -370,7 +367,6 @@ class SettingsMode(definitions.PyshaMode):
 
             elif encoder_name == push2_python.constants.ENCODER_TRACK2_ENCODER:
                 if self.project_files:  # Only respond if we have projects
-                    delta = self._apply_encoder_threshold(encoder_name, increment)
                     if delta != 0:
                         # Change selection
                         self.selected_project_index += delta
