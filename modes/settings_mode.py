@@ -323,64 +323,79 @@ class SettingsMode(definitions.PyshaMode):
         self.encoders_state[encoder_name]['last_message_received'] = time.time()
         if self.current_page == Pages.PERFORMANCE:
             if encoder_name == push2_python.constants.ENCODER_TRACK1_ENCODER:
-                self.app.melodic_mode.set_root_midi_note(self.app.melodic_mode.root_midi_note + increment)
+                delta = self._apply_encoder_threshold(encoder_name, increment)
+                if delta != 0:
+                    self.app.melodic_mode.set_root_midi_note(self.app.melodic_mode.root_midi_note + delta)
                 self.app.pads_need_update = True  # Using async update method because we don't really need immediate response here
 
             elif encoder_name == push2_python.constants.ENCODER_TRACK2_ENCODER:
-                if increment >= 3:  # Only respond to "big" increments
+                delta = self._apply_encoder_threshold(encoder_name, increment)
+                if delta >= 1:  # Threshold crossed in positive direction
                     if not self.app.melodic_mode.use_poly_at:
                         self.app.melodic_mode.use_poly_at = True
                         self.app.push.pads.set_polyphonic_aftertouch()
-                elif increment <= -3:
+                elif delta <= -1:  # Threshold crossed in negative direction
                     if self.app.melodic_mode.use_poly_at:
                         self.app.melodic_mode.use_poly_at = False
                         self.app.push.pads.set_channel_aftertouch()
                 self.app.melodic_mode.set_lumi_pressure_mode()
 
             elif encoder_name == push2_python.constants.ENCODER_TRACK3_ENCODER:
-                self.app.melodic_mode.set_channel_at_range_start(self.app.melodic_mode.channel_at_range_start + increment)
+                delta = self._apply_encoder_threshold(encoder_name, increment)
+                if delta != 0:
+                    self.app.melodic_mode.set_channel_at_range_start(self.app.melodic_mode.channel_at_range_start + delta)
 
             elif encoder_name == push2_python.constants.ENCODER_TRACK4_ENCODER:
-                self.app.melodic_mode.set_channel_at_range_end(self.app.melodic_mode.channel_at_range_end + increment)
+                delta = self._apply_encoder_threshold(encoder_name, increment)
+                if delta != 0:
+                    self.app.melodic_mode.set_channel_at_range_end(self.app.melodic_mode.channel_at_range_end + delta)
 
             elif encoder_name == push2_python.constants.ENCODER_TRACK5_ENCODER:
-                self.app.melodic_mode.set_poly_at_max_range(self.app.melodic_mode.poly_at_max_range + increment)
+                delta = self._apply_encoder_threshold(encoder_name, increment)
+                if delta != 0:
+                    self.app.melodic_mode.set_poly_at_max_range(self.app.melodic_mode.poly_at_max_range + delta)
 
             elif encoder_name == push2_python.constants.ENCODER_TRACK6_ENCODER:
-                self.app.melodic_mode.set_poly_at_curve_bending(self.app.melodic_mode.poly_at_curve_bending + increment)
+                delta = self._apply_encoder_threshold(encoder_name, increment)
+                if delta != 0:
+                    self.app.melodic_mode.set_poly_at_curve_bending(self.app.melodic_mode.poly_at_curve_bending + delta)
 
         elif self.current_page == Pages.SESSION:
             if encoder_name == push2_python.constants.ENCODER_TRACK1_ENCODER:
-                self.current_preset_save_number += increment
-                if self.current_preset_save_number < 0:
-                    self.current_preset_save_number = 0
+                delta = self._apply_encoder_threshold(encoder_name, increment)
+                if delta != 0:
+                    self.current_preset_save_number += delta
+                    if self.current_preset_save_number < 0:
+                        self.current_preset_save_number = 0
 
             elif encoder_name == push2_python.constants.ENCODER_TRACK2_ENCODER:
                 if self.project_files:  # Only respond if we have projects
-                    # Change selection
-                    self.selected_project_index += increment
+                    delta = self._apply_encoder_threshold(encoder_name, increment)
+                    if delta != 0:
+                        # Change selection
+                        self.selected_project_index += delta
 
-                    # Clamp to valid range (no wrap-around)
-                    if self.selected_project_index < 0:
-                        self.selected_project_index = 0
-                    elif self.selected_project_index >= len(self.project_files):
-                        self.selected_project_index = len(self.project_files) - 1
+                        # Clamp to valid range (no wrap-around)
+                        if self.selected_project_index < 0:
+                            self.selected_project_index = 0
+                        elif self.selected_project_index >= len(self.project_files):
+                            self.selected_project_index = len(self.project_files) - 1
 
-                    # Calculate visible items (using a reasonable default)
-                    visible_items = 5  # Default visible items
+                        # Calculate visible items (using a reasonable default)
+                        visible_items = 5  # Default visible items
 
-                    # Adjust scroll offset to keep selection visible
-                    if self.selected_project_index < self.project_list_offset:
-                        self.project_list_offset = self.selected_project_index
-                    elif self.selected_project_index >= self.project_list_offset + visible_items:
-                        self.project_list_offset = self.selected_project_index - visible_items + 1
+                        # Adjust scroll offset to keep selection visible
+                        if self.selected_project_index < self.project_list_offset:
+                            self.project_list_offset = self.selected_project_index
+                        elif self.selected_project_index >= self.project_list_offset + visible_items:
+                            self.project_list_offset = self.selected_project_index - visible_items + 1
 
-                    # Update last scroll time for horizontal text scrolling
-                    self.last_scroll_time = time.time()
+                        # Update last scroll time for horizontal text scrolling
+                        self.last_scroll_time = time.time()
 
-                    # Clear any pending confirmation
-                    self.waiting_for_confirmation = False
-                    self.project_to_confirm = None
+                        # Clear any pending confirmation
+                        self.waiting_for_confirmation = False
+                        self.project_to_confirm = None
 
         # Always return True because encoder should not be used in any other mode
         # if this is active first

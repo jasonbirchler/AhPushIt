@@ -455,6 +455,10 @@ class ClipTriggeringMode(definitions.PyshaMode):
             return False
 
     def on_encoder_rotated(self, encoder_name, increment):
+        delta = self._apply_encoder_threshold(encoder_name, increment)
+        if delta == 0:
+            return True
+
         try:
             track_num = [
                 push2_python.constants.ENCODER_TRACK1_ENCODER,
@@ -468,7 +472,7 @@ class ClipTriggeringMode(definitions.PyshaMode):
             ].index(encoder_name)
         except ValueError:
             # None of the track encoders was rotated
-            return False
+            return True
 
         track_playing_clips_info = self.get_playing_clips_info().get(track_num, None)
         if track_playing_clips_info is not None:
@@ -483,7 +487,7 @@ class ClipTriggeringMode(definitions.PyshaMode):
                 # Choose first of the playing or cued to play clips (there should be only one)
                 clip_num = playing_clips[0][0]
                 clip_length = playing_clips[0][1]
-                new_length = clip_length + increment
+                new_length = clip_length + delta
                 if new_length < 1.0:
                     new_length = 1.0
 

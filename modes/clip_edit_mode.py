@@ -688,7 +688,10 @@ class ClipEditMode(definitions.PyshaMode):
                         if current_clip_index is None:
                             next_clip_index = 0
                         else:
-                            next_clip_index = current_clip_index + increment
+                            delta = self._apply_encoder_threshold(encoder_name, increment)
+                            if delta == 0:
+                                return True
+                            next_clip_index = current_clip_index + delta
                             if next_clip_index < 0:
                                 next_clip_index = 0
                             elif next_clip_index >= len(self.available_clips) - 1:
@@ -699,8 +702,11 @@ class ClipEditMode(definitions.PyshaMode):
                 return True  # Don't trigger this encoder moving in any other mode
 
             elif encoder_name == push2_python.constants.ENCODER_TRACK2_ENCODER:
+                delta = self._apply_encoder_threshold(encoder_name, increment)
+                if delta == 0:
+                    return True
                 # Edit clip length
-                new_length = self.clip.clip_length_in_beats + increment
+                new_length = self.clip.clip_length_in_beats + delta
                 if new_length < 1.0:
                     new_length = 1.0
                 if new_length > 32.0:
@@ -710,8 +716,11 @@ class ClipEditMode(definitions.PyshaMode):
                 return True  # Don't trigger this encoder moving in any other mode
 
             elif encoder_name == push2_python.constants.ENCODER_TRACK4_ENCODER:
+                delta = self._apply_encoder_threshold(encoder_name, increment)
+                if delta == 0:
+                    return True
                 # Edit step divisions
-                new_step_divisions = self.clip.step_divisions + increment
+                new_step_divisions = self.clip.step_divisions + delta
                 if new_step_divisions < 1:
                     new_step_divisions = 1
                 if new_step_divisions > 32:
