@@ -127,7 +127,7 @@ class MetronomeMode(definitions.PyshaMode):
     def update_display(self, ctx, w, h):
         # Clear the entire display first
         clear_display(ctx, w, h)
-        
+
         part_w = w // 8
 
         # Column 1: Title
