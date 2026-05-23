@@ -378,15 +378,16 @@ class MelodicMode(definitions.PyshaMode):
             )
             return True
 
-        elif button_name == push2_python.constants.BUTTON_SHIFT:
-            self.modulation_wheel_mode = not self.modulation_wheel_mode
-            if self.modulation_wheel_mode:
-                self.push.touchstrip.set_modulation_wheel_mode()
-            else:
-                self.push.touchstrip.set_pitch_bend_mode()
-            self.app.buttons_need_update = True
-            self.app.add_display_notification(
-                f"Touchstrip mode: \
-                {'Modulation wheel' if self.modulation_wheel_mode else 'Pitch bend'}"
-            )
-            return True
+        # TODO: implement touchstrip mode switching with a button other than SHIFT
+        # elif button_name == push2_python.constants.BUTTON_SHIFT:
+        #     self.modulation_wheel_mode = not self.modulation_wheel_mode
+        #     if self.modulation_wheel_mode:
+        #         self.push.touchstrip.set_modulation_wheel_mode()
+        #     else:
+        #         self.push.touchstrip.set_pitch_bend_mode()
+        #     self.app.buttons_need_update = True
+        #     self.app.add_display_notification(
+        #         f"Touchstrip mode: \
+        #         {'Modulation wheel' if self.modulation_wheel_mode else 'Pitch bend'}"
+        #     )
+        #     return True
