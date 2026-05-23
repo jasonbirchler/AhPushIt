@@ -225,6 +225,10 @@ def _get_cell_key(x_part, y, text, prefix=''):
     text_hash = hash(str(text))
     return f"{prefix}_{x_part}_{y}_{text_hash}"
 
+def clear_display(context, w, h):
+    context.set_source_rgb(0, 0, 0)
+    context.rectangle(0, 0, w, h)
+    context.fill()
 
 def show_title(ctx, x, h, text, color=[1, 1, 1], overflow=TextOverflow.DEFAULT):
     text = str(text)

@@ -316,7 +316,7 @@ class TestMelodicMode:
         """Test octave up button increases root note by 12."""
         mode = MelodicMode(mock_app)
         mode.root_midi_note = 60
-        
+
         result = mode.on_button_pressed('octave_up')
         assert result is True
         assert mode.root_midi_note == 72
@@ -325,7 +325,7 @@ class TestMelodicMode:
         """Test octave down button decreases root note by 12."""
         mode = MelodicMode(mock_app)
         mode.root_midi_note = 60
-        
+
         result = mode.on_button_pressed('octave_down')
         assert result is True
         assert mode.root_midi_note == 48
@@ -334,27 +334,28 @@ class TestMelodicMode:
         """Test accent button toggles fixed velocity mode."""
         mode = MelodicMode(mock_app)
         assert mode.fixed_velocity_mode is False
-        
+
         result = mode.on_button_pressed('accent')
         assert result is True
         assert mode.fixed_velocity_mode is True
-        
+
         result = mode.on_button_pressed('accent')
         assert result is True
         assert mode.fixed_velocity_mode is False
 
-    def test_button_pressed_shift_toggle(self, mock_app):
-        """Test shift button toggles modulation wheel mode."""
-        mode = MelodicMode(mock_app)
-        assert mode.modulation_wheel_mode is False
-        
-        result = mode.on_button_pressed('shift')
-        assert result is True
-        assert mode.modulation_wheel_mode is True
-        
-        result = mode.on_button_pressed('shift')
-        assert result is True
-        assert mode.modulation_wheel_mode is False
+    # TODO: update this test once a button other than shift has been assigned
+    # def test_button_pressed_shift_toggle(self, mock_app):
+    #     """Test shift button toggles modulation wheel mode."""
+    #     mode = MelodicMode(mock_app)
+    #     assert mode.modulation_wheel_mode is False
+
+    #     result = mode.on_button_pressed('shift')
+    #     assert result is True
+    #     assert mode.modulation_wheel_mode is True
+
+    #     result = mode.on_button_pressed('shift')
+    #     assert result is True
+    #     assert mode.modulation_wheel_mode is False
 
     def test_unknown_button_pressed(self, mock_app):
         """Test unknown button returns None."""

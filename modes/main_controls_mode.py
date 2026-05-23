@@ -11,6 +11,7 @@ PRESET_SELECTION_MODE_BUTTON = push2_python.constants.BUTTON_ADD_DEVICE
 CLIP_TRIGGERING_MODE_BUTTON = push2_python.constants.BUTTON_SESSION
 RECORD_BUTTON = push2_python.constants.BUTTON_RECORD
 PLAY_BUTTON = push2_python.constants.BUTTON_PLAY
+METRONOME_BUTTON = push2_python.constants.BUTTON_METRONOME
 
 
 class MainControlsMode(definitions.PyshaMode):
@@ -28,6 +29,7 @@ class MainControlsMode(definitions.PyshaMode):
         self.push.buttons.set_button_color(TOGGLE_DISPLAY_BUTTON, definitions.BLACK)
         self.push.buttons.set_button_color(SETTINGS_BUTTON, definitions.BLACK)
         self.push.buttons.set_button_color(PRESET_SELECTION_MODE_BUTTON, definitions.BLACK)
+        self.push.buttons.set_button_color(METRONOME_BUTTON, definitions.BLACK)
 
     def update_buttons(self):
         # Note button, to toggle melodic/rhythmic mode
@@ -66,6 +68,12 @@ class MainControlsMode(definitions.PyshaMode):
         else:
             self.push.buttons.set_button_color(PLAY_BUTTON, definitions.WHITE)
 
+        # Metronome button — green when on, red when off
+        if self.app.is_metronome_enabled():
+            self.push.buttons.set_button_color(METRONOME_BUTTON, definitions.WHITE, animation=definitions.DEFAULT_ANIMATION)
+        else:
+            self.push.buttons.set_button_color(METRONOME_BUTTON, definitions.OFF_BTN_COLOR)
+
     def on_button_pressed(self, button_name):
         if button_name == MELODIC_RHYTHMIC_TOGGLE_BUTTON:
             self.app.toggle_melodic_rhythmic_slice_modes()
@@ -98,6 +106,20 @@ class MainControlsMode(definitions.PyshaMode):
                 # Activate preset selection mode and store time button pressed
                 self.app.set_preset_selection_mode()
                 self.preset_selection_button_pressing_time = time.time()
+            self.app.buttons_need_update = True
+            return True
+        elif button_name == METRONOME_BUTTON:
+            shift = self.app.is_button_being_pressed(
+                push2_python.constants.BUTTON_SHIFT
+            )
+            if shift:
+                # Shift + Metronome = enter metronome settings mode
+                self.app.set_metronome_config_mode()
+            else:
+                # Plain Metronome button = toggle on/off
+                self.app.toggle_metronome()
+                state = "enabled" if self.app.is_metronome_enabled() else "disabled"
+                self.app.add_display_notification(f"Metronome {state}")
             self.app.buttons_need_update = True
             return True
         elif button_name == PLAY_BUTTON:

@@ -1,3 +1,5 @@
+"""Primary application class for Pysha."""
+
 import sys
 import json
 import os
@@ -11,9 +13,9 @@ import traceback
 try:
     import engineio.payload
     if hasattr(engineio.payload.Payload, 'max_decode_packets'):
-        original_limit = engineio.payload.Payload.max_decode_packets
+        ORIGINAL_LIMIT = engineio.payload.Payload.max_decode_packets
         engineio.payload.Payload.max_decode_packets = 200
-        print(f'[PATCH] Increased max_decode_packets from {original_limit} to 100')
+        print(f'[PATCH] Increased max_decode_packets from {ORIGINAL_LIMIT} to 200')
 except ImportError:
     pass  # engineio might not be installed
 
@@ -31,6 +33,7 @@ from modes.clip_triggering_mode import ClipTriggeringMode
 from modes.main_controls_mode import MainControlsMode
 from modes.melodic_mode import MelodicMode
 from modes.midi_cc_mode import MIDICCMode
+from modes.metronome_mode import MetronomeMode
 from modes.preset_selection_mode import PresetSelectionMode
 from modes.rhythmic_mode import RhythmicMode
 from modes.settings_mode import SettingsMode
@@ -113,6 +116,7 @@ class PyshaApp(object):
     def init_modes(self, settings):
         self.main_controls_mode = MainControlsMode(self, settings=settings)
         self.add_track_mode = AddTrackMode(self, settings=settings)
+        self.metronome_mode = MetronomeMode(self, settings=settings)
 
         self.melodic_mode = MelodicMode(self, settings=settings)
         self.rhyhtmic_mode = RhythmicMode(self, settings=settings)
@@ -199,6 +203,22 @@ class PyshaApp(object):
 
     def unset_add_track_mode(self):
         self.unset_mode_for_xor_group(self.add_track_mode)
+
+    def set_metronome_config_mode(self):
+        self.metronome_mode.initialize()
+        self.set_mode_for_xor_group(self.metronome_mode)
+
+    def unset_metronome_config_mode(self):
+        self.unset_mode_for_xor_group(self.metronome_mode)
+
+    def is_metronome_enabled(self):
+        return self.global_timeline.metronome is not None
+
+    def toggle_metronome(self):
+        if self.is_metronome_enabled():
+            self.global_timeline.disable_metronome()
+        else:
+            self.global_timeline.enable_metronome()
 
     def unset_mode_for_xor_group(self, mode_to_unset):
         """This deactivates the mode_to_unset and reactivates the previous mode that was active for this xor_group.
