@@ -14,7 +14,7 @@ PLAY_BUTTON = push2_python.constants.BUTTON_PLAY
 METRONOME_BUTTON = push2_python.constants.BUTTON_METRONOME
 
 
-class MainControlsMode(definitions.PyshaMode):
+class MainControlsMode(definitions.PushItMode):
 
     preset_selection_button_pressing_time = None
 

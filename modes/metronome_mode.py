@@ -6,7 +6,7 @@ import definitions
 from utils import clear_display, show_text, show_title, show_value
 
 
-class MetronomeMode(definitions.PyshaMode):
+class MetronomeMode(definitions.PushItMode):
     xor_group = "pads"
 
     # Encoder-to-parameter mapping (mirrors AddTrackMode pattern)
@@ -128,7 +128,7 @@ class MetronomeMode(definitions.PyshaMode):
         # Clear the entire display first
         clear_display(ctx, w, h)
 
-        part_w = w // 8
+        part_w = w // definitions.GRID_WIDTH
 
         # Column 1: Title
         show_title(ctx, part_w * 0 + 2, h, "METRONOME")

@@ -239,7 +239,7 @@ def show_title(ctx, x, h, text, color=[1, 1, 1], overflow=TextOverflow.DEFAULT):
 
     # Calculate available width within the column
     display_w = push2_python.constants.DISPLAY_LINE_PIXELS
-    part_w = display_w / 8
+    part_w = display_w / definitions.GRID_WIDTH
     x_col = int(x // part_w) if x > 0 else 0
     available_width = part_w - 6  # symmetric margins (title draws at x+3)
 
@@ -267,7 +267,7 @@ def show_value(ctx, x, h, text, color=[1, 1, 1], vertical_offset=0, overflow=Tex
 
     # Calculate available width within the column
     display_w = push2_python.constants.DISPLAY_LINE_PIXELS
-    part_w = display_w / 8
+    part_w = display_w / definitions.GRID_WIDTH
     x_col = int(x // part_w) if x > 0 else 0
     available_width = part_w - 6  # 3px left + 3px right margin (text starts at x+3)
 
@@ -321,11 +321,11 @@ def show_rectangle(ctx,  x, y, width, height, background_color=None, alpha=1.0):
 
 
 def show_text(ctx, x_part, pixels_from_top, text, height=20, font_color=definitions.WHITE, background_color=None, margin_left=4, margin_top=4, font_size_percentage=0.8, center_vertically=True, center_horizontally=False, rectangle_padding=0, rectangle_width_percentage=1.0, overflow=TextOverflow.DEFAULT):
-    assert 0 <= x_part < 8
+    assert 0 <= x_part < definitions.GRID_WIDTH
     assert isinstance(x_part, int)
 
     display_w = push2_python.constants.DISPLAY_LINE_PIXELS
-    part_w = display_w // 8
+    part_w = display_w // definitions.GRID_WIDTH
     x1 = part_w * x_part
     y1 = pixels_from_top
 
@@ -532,7 +532,7 @@ def draw_knob(ctx, x_part, parameter_name, value, vmin, vmax, value_display, col
     radius = height / 2
 
     display_w = push2_python.constants.DISPLAY_LINE_PIXELS
-    x = (display_w // 8) * x_part
+    x = (display_w // definitions.GRID_WIDTH) * x_part
     y = margin_top + name_height + val_height + radius + 5
 
     start_rad = (90 + circle_break_degrees // 2) * (math.pi / 180)

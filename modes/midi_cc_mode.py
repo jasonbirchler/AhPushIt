@@ -7,7 +7,7 @@ import mido
 import push2_python
 
 import definitions
-from definitions import PyshaMode
+from definitions import PushItMode
 from utils import show_text
 
 
@@ -47,7 +47,7 @@ class MIDICCControl(object):
         radius = height/2
 
         display_w = push2_python.constants.DISPLAY_LINE_PIXELS
-        x = (display_w // 8) * x_part
+        x = (display_w // definitions.GRID_WIDTH) * x_part
         y = margin_top + name_height + radius + 5
         
         start_rad = (90 + circle_break_degrees // 2) * (math.pi / 180)
@@ -103,7 +103,7 @@ class MIDICCControl(object):
         self.send_midi_func(msg)
 
 
-class MIDICCMode(PyshaMode):
+class MIDICCMode(PushItMode):
 
     midi_cc_button_names = [
         push2_python.constants.BUTTON_UPPER_ROW_1,
@@ -241,7 +241,7 @@ class MIDICCMode(PyshaMode):
         all_section_controls = self.get_midi_cc_controls_for_current_track_and_section()
         _, page = self.get_currently_selected_midi_cc_section_and_page()
         try:
-            return all_section_controls[page * 8:(page+1) * 8]
+            return all_section_controls[page * definitions.GRID_WIDTH:(page+1) * definitions.GRID_WIDTH]
         except IndexError:
             return []
 
@@ -263,7 +263,7 @@ class MIDICCMode(PyshaMode):
         if page > 0:
             show_prev = True
         show_next = False
-        if (page + 1) * 8 < len(all_section_controls):
+        if (page + 1) * definitions.GRID_WIDTH < len(all_section_controls):
             show_next = True
         return show_prev, show_next
 
@@ -307,7 +307,7 @@ class MIDICCMode(PyshaMode):
             # of the screen because those pages will "cover them"
 
             # Draw MIDI CCs section names
-            section_names = self.get_current_track_midi_cc_sections()[0:8]
+            section_names = self.get_current_track_midi_cc_sections()[0:definitions.GRID_WIDTH]
             if section_names:
                 height = 20
                 for i, section_name in enumerate(section_names):
@@ -330,7 +330,7 @@ class MIDICCMode(PyshaMode):
 
             # Draw MIDI CC controls
             if self.active_midi_control_ccs:
-                for i in range(0, min(len(self.active_midi_control_ccs), 8)):
+                for i in range(0, min(len(self.active_midi_control_ccs), definitions.GRID_WIDTH)):
                     try:
                         self.active_midi_control_ccs[i].draw(ctx, i)
                     except IndexError:

@@ -1,6 +1,6 @@
 # Test Suite
 
-This directory contains the test suite for the Pysha project.
+This directory contains the test suite for the PushIt project.
 
 ## Running Tests
 
@@ -59,7 +59,7 @@ tests/
 ├── test_sequencer.py       # Tests for sequencer module
 ├── test_clip.py            # Tests for clip module
 └── modes/                  # Tests for mode classes
-    ├── test_pyshamode.py
+    ├── test_pushitmode.py
     ├── test_melodic_mode.py
     ├── test_rhythmic_mode.py
     ├── test_clip_triggering_mode.py
@@ -90,7 +90,7 @@ Tests are marked with the following categories:
 The `conftest.py` provides many useful fixtures:
 
 - `mock_push2_environment` - Mocks the Push2 hardware interface
-- `mock_app` - Provides a mock PyshaApp instance
+- `mock_app` - Provides a mock PushItApp instance
 - `mock_cairo_context` - Provides a mock cairo drawing context
 - `track_selection_mode`, `melodic_mode`, etc. - Common mode instances
 - `session`, `track`, `sequencer` - Core components

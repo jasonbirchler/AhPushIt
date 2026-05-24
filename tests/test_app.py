@@ -31,16 +31,16 @@ class TestUnsetModeForXorGroup:
         mock_midi_cc_mode.activate = MagicMock()
 
         # Create the app mock with real unset_mode_for_xor_group method
-        from app import PyshaApp
+        from app import PushItApp
 
-        app = MagicMock(spec=PyshaApp)
-        app._PyshaApp__class__ = PyshaApp
+        app = MagicMock(spec=PushItApp)
+        app._PushItApp__class__ = PushItApp
 
-        # Copy the real unset_mode_for_xor_group (and related) methods from PyshaApp
-        app.unset_mode_for_xor_group = PyshaApp.unset_mode_for_xor_group.__get__(app, PyshaApp)
-        app.is_mode_active      = PyshaApp.is_mode_active.__get__(app, PyshaApp)
-        app.set_mode_for_xor_group      = PyshaApp.set_mode_for_xor_group.__get__(app, PyshaApp)
-        app.get_default_pad_mode_for_xor_group = PyshaApp.get_default_pad_mode_for_xor_group.__get__(app, PyshaApp)
+        # Copy the real unset_mode_for_xor_group (and related) methods from PushItApp
+        app.unset_mode_for_xor_group = PushItApp.unset_mode_for_xor_group.__get__(app, PushItApp)
+        app.is_mode_active      = PushItApp.is_mode_active.__get__(app, PushItApp)
+        app.set_mode_for_xor_group      = PushItApp.set_mode_for_xor_group.__get__(app, PushItApp)
+        app.get_default_pad_mode_for_xor_group = PushItApp.get_default_pad_mode_for_xor_group.__get__(app, PushItApp)
 
         # Set up mode attributes
         app.add_track_mode = mock_add_track_mode

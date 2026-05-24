@@ -46,7 +46,7 @@ class Session(BaseClass):
         self.pending_scene_transition = None  # {time, clips_to_stop, clips_to_start}
 
         # Initialize with 8 empty slots (None) to allow manual track creation
-        self.tracks = [None] * 8
+        self.tracks = [None] * definitions.MAX_TRACKS
 
         # Perform device setup
         self.initialize_devices()
@@ -54,7 +54,7 @@ class Session(BaseClass):
     @property
     def app(self):
         """Get the app instance through parent chain"""
-        # The parent of Session is the PyshaApp object itself
+        # The parent of Session is the PushItApp object itself
         return self._parent
 
     ############################################################################
@@ -89,7 +89,7 @@ class Session(BaseClass):
         Returns:
             Track if created, None if no free slots
         """
-        if len([t for t in self.tracks if t is not None]) >= 8:
+        if len([t for t in self.tracks if t is not None]) >= definitions.MAX_TRACKS:
             return None
 
         i = self.get_next_free_track_index()

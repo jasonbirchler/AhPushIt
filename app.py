@@ -1,4 +1,4 @@
-"""Primary application class for Pysha."""
+"""Primary application class for PushIt."""
 
 import sys
 import json
@@ -47,7 +47,7 @@ buttons_pressed_state = {}
 pads_pressed_state = {}  # Track pad press times for long press detection
 
 
-class PyshaApp(object):
+class PushItApp(object):
     """
     The App handles initializing everything at startup.
     App manages Push interface.
@@ -152,7 +152,7 @@ class PyshaApp(object):
         return [
             getattr(self, element)
             for element in vars(self)
-            if isinstance(getattr(self, element), definitions.PyshaMode)
+            if isinstance(getattr(self, element), definitions.PushItMode)
         ]
 
     def is_mode_active(self, mode):
@@ -474,7 +474,7 @@ class PyshaApp(object):
             print("{0} fps".format(self.actual_frame_rate))
 
     def run_loop(self):
-        print("Pysha is runnnig...")
+        print("PushIt is running...")
         try:
             while True:
                 before_draw_time = time.time()
@@ -497,7 +497,7 @@ class PyshaApp(object):
                     time.sleep(sleep_time)
 
         except KeyboardInterrupt:
-            print("Exiting Pysha...")
+            print("Exiting PushIt...")
             self.push.buttons.set_all_buttons_color("black")
             self.push.pads.set_all_pads_to_black()
             self.push.f_stop.set()
@@ -687,7 +687,7 @@ def on_midi_connected(_):
 
 # Run app main loop
 if __name__ == "__main__":
-    app = PyshaApp()
+    app = PushItApp()
     if midi_connected_received_before_app:
         # App received the "on_midi_connected" call before it was initialized. Do it now!
         print("Missed MIDI initialization call, doing it now...")

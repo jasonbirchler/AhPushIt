@@ -3,7 +3,7 @@ import push2_python.constants
 import definitions
 
 
-class MelodicMode(definitions.PyshaMode):
+class MelodicMode(definitions.PushItMode):
 
     xor_group = "pads"
 
@@ -253,9 +253,9 @@ class MelodicMode(definitions.PyshaMode):
 
     def update_pads(self):
         color_matrix = []
-        for i in range(0, 8):
+        for i in range(0, definitions.GRID_WIDTH):
             row_colors = []
-            for j in range(0, 8):
+            for j in range(0, definitions.GRID_HEIGHT):
                 corresponding_midi_note = self.pad_ij_to_midi_note([i, j])
                 cell_color = definitions.WHITE
                 if self.is_black_key_midi_note(corresponding_midi_note):

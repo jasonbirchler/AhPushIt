@@ -102,21 +102,21 @@ class TestDefinitions:
         assert definitions.GRID_WIDTH == 8
         assert definitions.GRID_HEIGHT == 8
 
-    def test_pysha_mode_base_class(self):
-        """Test that PyshaMode base class exists and has required methods."""
-        assert hasattr(definitions, 'PyshaMode')
+    def test_pushit_mode_base_class(self):
+        """Test that PushItMode base class exists and has required methods."""
+        assert hasattr(definitions, 'PushItMode')
         
         # Check required attributes/methods
-        assert hasattr(definitions.PyshaMode, 'xor_group')
-        assert hasattr(definitions.PyshaMode, 'initialize')
-        assert hasattr(definitions.PyshaMode, 'activate')
-        assert hasattr(definitions.PyshaMode, 'deactivate')
-        assert hasattr(definitions.PyshaMode, 'update_pads')
-        assert hasattr(definitions.PyshaMode, 'update_buttons')
-        assert hasattr(definitions.PyshaMode, 'update_display')
-        assert hasattr(definitions.PyshaMode, 'on_encoder_rotated')
-        assert hasattr(definitions.PyshaMode, 'on_button_pressed')
-        assert hasattr(definitions.PyshaMode, 'on_pad_pressed')
+        assert hasattr(definitions.PushItMode, 'xor_group')
+        assert hasattr(definitions.PushItMode, 'initialize')
+        assert hasattr(definitions.PushItMode, 'activate')
+        assert hasattr(definitions.PushItMode, 'deactivate')
+        assert hasattr(definitions.PushItMode, 'update_pads')
+        assert hasattr(definitions.PushItMode, 'update_buttons')
+        assert hasattr(definitions.PushItMode, 'update_display')
+        assert hasattr(definitions.PushItMode, 'on_encoder_rotated')
+        assert hasattr(definitions.PushItMode, 'on_button_pressed')
+        assert hasattr(definitions.PushItMode, 'on_pad_pressed')
 
     def test_clip_states_enum(self):
         """Test that ClipStates enum is defined."""
