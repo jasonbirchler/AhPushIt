@@ -4,7 +4,7 @@ from typing import Optional
 import push2_python
 
 import definitions
-from utils import clamp, show_title, show_value
+from utils import clamp, clear_display, show_title, show_value
 from clip import Clip
 
 from .generator_algorithms import RandomGeneratorAlgorithm, RandomGeneratorAlgorithmPlus
@@ -255,9 +255,7 @@ class ClipEditMode(definitions.PyshaMode):
 
     def update_display(self, ctx, w, h):
         # Clear the entire display first
-        ctx.set_source_rgb(0, 0, 0)
-        ctx.rectangle(0, 0, w, h)
-        ctx.fill()
+        clear_display(ctx, w, h)
 
         if self.clip is not None and not self.app.is_mode_active(
             self.app.settings_mode
