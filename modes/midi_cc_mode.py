@@ -7,7 +7,7 @@ import mido
 import push2_python
 
 import definitions
-from definitions import PyshaMode
+from definitions import PushItMode
 from utils import show_text
 
 
@@ -103,7 +103,7 @@ class MIDICCControl(object):
         self.send_midi_func(msg)
 
 
-class MIDICCMode(PyshaMode):
+class MIDICCMode(PushItMode):
 
     midi_cc_button_names = [
         push2_python.constants.BUTTON_UPPER_ROW_1,

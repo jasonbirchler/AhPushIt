@@ -6,7 +6,7 @@ import definitions
 from utils import clear_display, show_text, show_title, show_value
 
 
-class MetronomeMode(definitions.PyshaMode):
+class MetronomeMode(definitions.PushItMode):
     xor_group = "pads"
 
     # Encoder-to-parameter mapping (mirrors AddTrackMode pattern)

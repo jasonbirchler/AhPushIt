@@ -4,7 +4,7 @@ import definitions
 from utils import show_text, show_title, show_value
 
 
-class AddTrackMode(definitions.PyshaMode):
+class AddTrackMode(definitions.PushItMode):
     xor_group = "pads"
 
     # Selection state

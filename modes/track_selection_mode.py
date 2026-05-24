@@ -7,7 +7,7 @@ import definitions
 from utils import show_text
 
 
-class TrackSelectionMode(definitions.PyshaMode):
+class TrackSelectionMode(definitions.PushItMode):
 
     devices_info = {}
 

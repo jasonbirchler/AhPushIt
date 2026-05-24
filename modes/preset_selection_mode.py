@@ -7,7 +7,7 @@ import push2_python
 
 import definitions
 
-class PresetSelectionMode(definitions.PyshaMode):
+class PresetSelectionMode(definitions.PushItMode):
 
     xor_group = 'pads'
 

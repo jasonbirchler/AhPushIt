@@ -151,7 +151,7 @@ class ClipStates(Enum):
     CLIP_STATUS_IS_EMPTY = "E"
     CLIP_STATUS_IS_NOT_EMPTY = "e"
 
-class PyshaMode(object):
+class PushItMode(object):
     """
     """
 
@@ -206,7 +206,7 @@ class PyshaMode(object):
     def check_for_delayed_actions(self):
         pass
 
-    # Method called when MIDI messages arrive from Pysha MIDI input
+    # Method called when MIDI messages arrive from PushIt MIDI input
     def on_midi_in(self, msg, source=None):
         pass
 

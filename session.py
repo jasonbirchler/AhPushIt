@@ -54,7 +54,7 @@ class Session(BaseClass):
     @property
     def app(self):
         """Get the app instance through parent chain"""
-        # The parent of Session is the PyshaApp object itself
+        # The parent of Session is the PushItApp object itself
         return self._parent
 
     ############################################################################
@@ -89,7 +89,7 @@ class Session(BaseClass):
         Returns:
             Track if created, None if no free slots
         """
-        if len([t for t in self.tracks if t is not None]) >= 8:
+        if len([t for t in self.tracks if t is not None]) >= definitions.MAX_TRACKS:
             return None
 
         i = self.get_next_free_track_index()

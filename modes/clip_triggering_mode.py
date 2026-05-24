@@ -7,7 +7,7 @@ from utils import show_text, draw_clip
 from clip import Clip, ClipStatus
 
 
-class ClipTriggeringMode(definitions.PyshaMode):
+class ClipTriggeringMode(definitions.PushItMode):
     xor_group = "pads"
 
     selected_scene = 0

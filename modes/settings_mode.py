@@ -22,7 +22,7 @@ class Pages(IntEnum):
     SESSION = 1
 
 
-class SettingsMode(definitions.PyshaMode):
+class SettingsMode(definitions.PushItMode):
 
     xor_group = 'buttons'
     buttons_used = ['setup']

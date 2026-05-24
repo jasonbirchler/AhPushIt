@@ -10,7 +10,7 @@ from clip import Clip
 from .generator_algorithms import RandomGeneratorAlgorithm, RandomGeneratorAlgorithmPlus
 
 
-class ClipEditMode(definitions.PyshaMode):
+class ClipEditMode(definitions.PushItMode):
     """
     MODE_CLIP
     Slot 1 = select clip (Slot 1 button triggers clip play/stop)

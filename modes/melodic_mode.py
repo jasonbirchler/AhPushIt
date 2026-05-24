@@ -3,7 +3,7 @@ import push2_python.constants
 import definitions
 
 
-class MelodicMode(definitions.PyshaMode):
+class MelodicMode(definitions.PushItMode):
 
     xor_group = "pads"
 
