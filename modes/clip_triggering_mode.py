@@ -168,7 +168,7 @@ class ClipTriggeringMode(definitions.PyshaMode):
                         draw_clip(
                             ctx,
                             clip,
-                            frame=(1.0 / 8 * track_num, 0.0, 1.0 / 8, 0.87),
+                            frame=(1.0 / definitions.GRID_WIDTH * track_num, 0.0, 1.0 / definitions.GRID_WIDTH, 0.87),
                             event_color=track_color + "_darker1",
                             highlight_color=definitions.WHITE,
                         )
@@ -207,10 +207,10 @@ class ClipTriggeringMode(definitions.PyshaMode):
     def update_pads(self):
         color_matrix = []
         animation_matrix = []
-        for c in range(0, 8): # c represents the clip
+        for c in range(0, definitions.GRID_HEIGHT): # c represents the clip
             row_colors = []
             row_animation = []
-            for t in range(0, 8): # t represents the track
+            for t in range(0, definitions.GRID_WIDTH): # t represents the track
                 # Get clip more safely - check if track and clip exist first
                 clip = None
                 try:

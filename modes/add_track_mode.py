@@ -115,7 +115,7 @@ class AddTrackMode(definitions.PyshaMode):
         )
 
     def update_display(self, ctx, w, h):
-        part_w = w // 8
+        part_w = w // definitions.GRID_WIDTH
 
         # Column 1: Title / preview
         if self.editing_track is not None:
@@ -376,8 +376,10 @@ class AddTrackMode(definitions.PyshaMode):
             else:
                 # Create a new track
                 occupied = sum(1 for t in self.app.session.tracks if t is not None)
-                if occupied >= 8:
-                    self.app.add_display_notification("Max tracks (8) reached")
+                if occupied >= definitions.GRID_WIDTH:
+                    self.app.add_display_notification(
+                        f"Max tracks ({definitions.GRID_WIDTH}) reached"
+                    )
                     return True
 
                 track = self.app.session.create_track(

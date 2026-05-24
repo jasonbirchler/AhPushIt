@@ -46,7 +46,7 @@ class Session(BaseClass):
         self.pending_scene_transition = None  # {time, clips_to_stop, clips_to_start}
 
         # Initialize with 8 empty slots (None) to allow manual track creation
-        self.tracks = [None] * 8
+        self.tracks = [None] * definitions.MAX_TRACKS
 
         # Perform device setup
         self.initialize_devices()

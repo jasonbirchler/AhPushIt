@@ -18,6 +18,7 @@ BUTTON_QUICK_PRESS_TIME = 0.400
 
 GLOBAL_TIMELINE_MAX_TRACKS = 8
 
+MAX_TRACKS = 8
 MAX_DEVICE_NAME_CHARS = 20
 
 GRID_WIDTH = 8
@@ -137,7 +138,6 @@ SETTINGS_FILE_PATH = os.path.join(BASE_DATA_DIR, 'controllerSettings.json')
 DEVICE_DEFINITION_FOLDER = os.path.join(BASE_DATA_DIR, 'device_definitions')
 os.makedirs(DEVICE_DEFINITION_FOLDER, exist_ok=True)
 INSTRUMENT_DEFINITION_FOLDER = 'instrument_definitions'
-TRACK_LISTING_PATH = 'track_listing.json'
 
 class ClipStates(Enum):
     CLIP_STATUS_PLAYING = "p"

@@ -3,7 +3,7 @@ import isobar as iso
 import numpy as np
 
 from base_class import BaseClass
-from definitions import ClipStates
+import definitions
 
 if TYPE_CHECKING:
     from track import Track
@@ -141,7 +141,7 @@ class Clip(BaseClass):
         """Get all notes in the current window for rendering on pads"""
         notes_to_render = []
 
-        for step_j in range(8):
+        for step_j in range(definitions.GRID_WIDTH):
             step_idx = step_j + self.window_step_offset
             if step_idx >= self.steps:
                 continue
@@ -152,7 +152,7 @@ class Clip(BaseClass):
                     continue
 
                 # Check if note is in visible window
-                if self.window_note_offset <= note < self.window_note_offset + 8:
+                if self.window_note_offset <= note < self.window_note_offset + definitions.GRID_WIDTH:
                     pad_i = 7 - (note - self.window_note_offset)
                     pad_j = step_j
                     notes_to_render.append(
@@ -193,27 +193,27 @@ class Clip(BaseClass):
 
     def get_status(self) -> ClipStatus:
         if self.will_start_recording_at >= 0.0:
-            record_status = ClipStates.CLIP_STATUS_CUED_TO_RECORD
+            record_status = definitions.ClipStates.CLIP_STATUS_CUED_TO_RECORD
         elif self.will_stop_recording_at >= 0.0:
-            record_status = ClipStates.CLIP_STATUS_CUED_TO_STOP_RECORDING
+            record_status = definitions.ClipStates.CLIP_STATUS_CUED_TO_STOP_RECORDING
         elif self.recording:
-            record_status = ClipStates.CLIP_STATUS_RECORDING
+            record_status = definitions.ClipStates.CLIP_STATUS_RECORDING
         else:
-            record_status = ClipStates.CLIP_STATUS_NO_RECORDING
+            record_status = definitions.ClipStates.CLIP_STATUS_NO_RECORDING
 
         if self.will_play_at >= 0.0:
-            play_status = ClipStates.CLIP_STATUS_CUED_TO_PLAY
+            play_status = definitions.ClipStates.CLIP_STATUS_CUED_TO_PLAY
         elif self.will_stop_at >= 0.0:
-            play_status = ClipStates.CLIP_STATUS_CUED_TO_STOP
+            play_status = definitions.ClipStates.CLIP_STATUS_CUED_TO_STOP
         elif self.playing:
-            play_status = ClipStates.CLIP_STATUS_PLAYING
+            play_status = definitions.ClipStates.CLIP_STATUS_PLAYING
         else:
-            play_status = ClipStates.CLIP_STATUS_STOPPED
+            play_status = definitions.ClipStates.CLIP_STATUS_STOPPED
 
         if self.is_empty():
-            empty_status = ClipStates.CLIP_STATUS_IS_EMPTY
+            empty_status = definitions.ClipStates.CLIP_STATUS_IS_EMPTY
         else:
-            empty_status = ClipStates.CLIP_STATUS_IS_NOT_EMPTY
+            empty_status = definitions.ClipStates.CLIP_STATUS_IS_NOT_EMPTY
 
         return ClipStatus(
             play_status=play_status,

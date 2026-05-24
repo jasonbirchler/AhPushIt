@@ -168,18 +168,18 @@ class ClipEditMode(definitions.PyshaMode):
         playhead_step = int(playhead_step) % self.clip.steps
 
         window_start = self.clip.window_step_offset
-        window_end = window_start + 8
+        window_end = window_start + definitions.GRID_WIDTH
 
         # Check if playhead has moved past the right edge of the visible window
         if playhead_step >= window_end:
-            # Scroll right by one page (8 steps)
-            new_offset = window_start + 8
-            max_offset = max(0, self.clip.steps - 8)
+            # Scroll right by one page (8 steps - width of the grid)
+            new_offset = window_start + definitions.GRID_WIDTH
+            max_offset = max(0, self.clip.steps - definitions.GRID_WIDTH)
             self.clip.window_step_offset = min(new_offset, max_offset)
 
         # Check if playhead has wrapped back to the beginning
         # This is detected when playhead is near start but window is scrolled far right
-        elif playhead_step < 8 and window_start > 0:
+        elif playhead_step < definitions.GRID_WIDTH and window_start > 0:
             # Reset view to beginning
             self.clip.window_step_offset = 0
 
@@ -209,7 +209,7 @@ class ClipEditMode(definitions.PyshaMode):
             pad_i = note_data["pad_i"]
             pad_j = note_data["pad_j"]
 
-            if 0 <= pad_i < 8 and 0 <= pad_j < 8:
+            if 0 <= pad_i < definitions.GRID_WIDTH and 0 <= pad_j < definitions.GRID_HEIGHT:
                 color_matrix[pad_i][pad_j] = track_color
 
         # Draw playhead if clip is playing
@@ -222,15 +222,15 @@ class ClipEditMode(definitions.PyshaMode):
 
             # Check if playhead is in the visible window
             window_start = self.clip.window_step_offset
-            window_end = window_start + 8
+            window_end = window_start + definitions.GRID_WIDTH
 
             if window_start <= playhead_step < window_end:
                 # Calculate the column (pad_j) for the playhead
                 playhead_pad_j = playhead_step - window_start
 
-                if 0 <= playhead_pad_j < 8:
+                if 0 <= playhead_pad_j < definitions.GRID_HEIGHT:
                     # Draw white vertical column for playhead
-                    for pad_i in range(8):
+                    for pad_i in range(definitions.GRID_WIDTH):
                         color_matrix[pad_i][playhead_pad_j] = definitions.WHITE
 
         return color_matrix, animation_matrix
@@ -575,7 +575,7 @@ class ClipEditMode(definitions.PyshaMode):
             shift = self.app.is_button_being_pressed(
                 push2_python.constants.BUTTON_SHIFT
             )
-            increment = 8 if shift else 1
+            increment = definitions.GRID_WIDTH if shift else 1
             if button_name == push2_python.constants.BUTTON_OCTAVE_UP:
                 self.clip.window_note_offset += increment
                 self.clip.window_note_offset = min(self.clip.window_note_offset, 120)
@@ -593,7 +593,7 @@ class ClipEditMode(definitions.PyshaMode):
                 return True
             if button_name == push2_python.constants.BUTTON_PAGE_RIGHT:
                 self.clip.window_step_offset += increment
-                max_offset = max(0, self.clip.steps - 8)
+                max_offset = max(0, self.clip.steps - definitions.GRID_WIDTH)
                 self.clip.window_step_offset = min(
                     self.clip.window_step_offset, max_offset
                 )
