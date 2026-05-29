@@ -463,6 +463,8 @@ class SettingsMode(definitions.PushItMode):
             elif encoder_name == push2_python.constants.ENCODER_TRACK2_ENCODER:
                 if self.project_files:  # Only respond if we have projects
                     if delta != 0:
+                        # Normalize delta to ±1 for single-item scrolling
+                        delta = 1 if delta > 0 else -1
                         # Change selection
                         self.selected_project_index += delta
 
