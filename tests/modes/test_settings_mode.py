@@ -58,8 +58,8 @@ class TestSettingsMode:
         assert result is False
         assert mode.current_page == Pages.SESSION
         result = mode.move_to_next_page()
-        assert result is True  # wrapped
-        assert mode.current_page == Pages.PERFORMANCE
+        assert result is True  # wrapped to PROJECT (0)
+        assert mode.current_page == Pages.PROJECT
 
     def test_get_settings_to_save(self, mock_app):
         mode = SettingsMode(mock_app)
@@ -181,7 +181,7 @@ class TestSettingsMode:
         args = mock_app.pm.save_project.call_args[0][0]
         # Timestamp format "YYYY-MM-DD_HH-MM-SS" length 19
         assert len(args) == 19
-        assert mode.current_page == 1  # rotated to last page
+        assert mode.current_page == Pages.SESSION  # stays on SESSION page after save
 
     def test_on_button_pressed_session_load_confirmation(self, mock_app):
         mode = SettingsMode(mock_app)
