@@ -171,9 +171,9 @@ class TestSettingsMode:
         mode.on_button_pressed(push2_python.constants.BUTTON_UPPER_ROW_2)
         assert mock_app.melodic_mode.use_poly_at is False
 
-    def test_on_button_pressed_session_save(self, mock_app):
+    def test_on_button_pressed_project_save(self, mock_app):
         mode = SettingsMode(mock_app)
-        mode.current_page = Pages.SESSION
+        mode.current_page = Pages.PROJECT
         mock_app.pm.save_project = MagicMock()
         mock_app.add_display_notification = MagicMock()
         mode.on_button_pressed(push2_python.constants.BUTTON_UPPER_ROW_1)
@@ -181,11 +181,11 @@ class TestSettingsMode:
         args = mock_app.pm.save_project.call_args[0][0]
         # Timestamp format "YYYY-MM-DD_HH-MM-SS" length 19
         assert len(args) == 19
-        assert mode.current_page == Pages.SESSION  # stays on SESSION page after save
+        assert mode.current_page == Pages.PROJECT  # stays on PROJECT page after save
 
-    def test_on_button_pressed_session_load_confirmation(self, mock_app):
+    def test_on_button_pressed_project_load_confirmation(self, mock_app):
         mode = SettingsMode(mock_app)
-        mode.current_page = Pages.SESSION
+        mode.current_page = Pages.PROJECT
         mode.project_files = ["proj1"]
         mode.selected_project_index = 0
         mode.waiting_for_confirmation = False

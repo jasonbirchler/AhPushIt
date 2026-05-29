@@ -536,6 +536,34 @@ class SettingsMode(definitions.PushItMode):
                 return True
 
         elif self.current_page == Pages.SESSION:
+            if button_name == push2_python.constants.BUTTON_UPPER_ROW_4:
+                # Save current settings
+                self.app.save_current_settings_to_file()
+                return True
+            if button_name == push2_python.constants.BUTTON_UPPER_ROW_5:
+                self.auto_open_last_project = not self.auto_open_last_project
+                # Also update the app's settings dict to reflect the change immediately
+                self.app.settings['auto_open_last_project'] = self.auto_open_last_project
+                self.app.save_current_settings_to_file()
+                return True
+            if button_name == push2_python.constants.BUTTON_UPPER_ROW_6:
+                self.app.on_midi_push_connection_established()
+                return True
+            if button_name == push2_python.constants.BUTTON_UPPER_ROW_7:
+                # Run software update code
+                global IS_RUNNING_SW_UPDATE
+                IS_RUNNING_SW_UPDATE = "Starting"
+                if not shift:
+                    run_sw_update(do_pip_install=False)
+                else:
+                    run_sw_update(do_pip_install=True)
+                return True
+            if button_name == push2_python.constants.BUTTON_UPPER_ROW_8:
+                # Restart apps
+                restart_apps()
+                return True
+
+        elif self.current_page == Pages.PROJECT:
             if button_name == push2_python.constants.BUTTON_UPPER_ROW_1:
                 filename = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
                 self.app.pm.save_project(filename)
@@ -578,32 +606,6 @@ class SettingsMode(definitions.PushItMode):
                         # Reset confirmation state
                         self.waiting_for_confirmation = False
                         self.project_to_confirm = None
-                return True
-            if button_name == push2_python.constants.BUTTON_UPPER_ROW_4:
-                # Save current settings
-                self.app.save_current_settings_to_file()
-                return True
-            if button_name == push2_python.constants.BUTTON_UPPER_ROW_5:
-                self.auto_open_last_project = not self.auto_open_last_project
-                # Also update the app's settings dict to reflect the change immediately
-                self.app.settings['auto_open_last_project'] = self.auto_open_last_project
-                self.app.save_current_settings_to_file()
-                return True
-            if button_name == push2_python.constants.BUTTON_UPPER_ROW_6:
-                self.app.on_midi_push_connection_established()
-                return True
-            if button_name == push2_python.constants.BUTTON_UPPER_ROW_7:
-                # Run software update code
-                global IS_RUNNING_SW_UPDATE
-                IS_RUNNING_SW_UPDATE = "Starting"
-                if not shift:
-                    run_sw_update(do_pip_install=False)
-                else:
-                    run_sw_update(do_pip_install=True)
-                return True
-            if button_name == push2_python.constants.BUTTON_UPPER_ROW_8:
-                # Restart apps
-                restart_apps()
                 return True
 
 def restart_apps():
