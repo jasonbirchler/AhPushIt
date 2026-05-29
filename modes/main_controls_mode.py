@@ -81,7 +81,10 @@ class MainControlsMode(definitions.PushItMode):
             self.app.buttons_need_update = True
             return True
         elif button_name == SETTINGS_BUTTON:
-            self.app.toggle_and_rotate_settings_mode()
+            if self.app.is_mode_active(self.app.settings_mode):
+                self.app.unset_settings_mode()
+            else:
+                self.app.set_settings_mode()
             self.app.buttons_need_update = True
             return True
         elif button_name == TOGGLE_DISPLAY_BUTTON:

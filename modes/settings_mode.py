@@ -405,7 +405,6 @@ class SettingsMode(definitions.PushItMode):
                     if self.app.melodic_mode.use_poly_at:
                         self.app.melodic_mode.use_poly_at = False
                         self.app.push.pads.set_channel_aftertouch()
-                self.app.melodic_mode.set_lumi_pressure_mode()
 
             elif encoder_name == push2_python.constants.ENCODER_TRACK3_ENCODER:
                 if delta != 0:
@@ -465,8 +464,17 @@ class SettingsMode(definitions.PushItMode):
     def on_button_pressed(self, button_name, shift = False):
         if button_name == push2_python.constants.BUTTON_SETUP:
             self.setup_button_pressing_time = time.time()
-            # If we're not in settings mode, activate it on press
-            self.app.toggle_and_rotate_settings_mode()
+            # Toggle settings mode on/off without cycling pages
+            if self.app.is_mode_active(self):
+                # If we're already in settings mode, deactivate it
+                self.app.active_modes = [
+                    mode for mode in self.app.active_modes if mode != self
+                ]
+                self.deactivate()
+            else:
+                # If we're not in settings mode, activate it
+                self.app.active_modes.append(self)
+                self.activate()
             self.app.buttons_need_update = True
             return True
         if button_name == push2_python.constants.BUTTON_LOWER_ROW_1:
@@ -490,7 +498,6 @@ class SettingsMode(definitions.PushItMode):
                     self.app.push.pads.set_polyphonic_aftertouch()
                 else:
                     self.app.push.pads.set_channel_aftertouch()
-                self.app.melodic_mode.set_lumi_pressure_mode()
                 return True
 
         elif self.current_page == Pages.SESSION:
@@ -502,9 +509,6 @@ class SettingsMode(definitions.PushItMode):
                 # Save settings so last_project is updated to the newly saved project
                 self.app.save_current_settings_to_file()
 
-                # Deactivate settings mode by setting current page to last page and calling "rotate settings page" method from app
-                self.current_page = self.n_pages - 1
-                self.app.toggle_and_rotate_settings_mode()
                 return True
 
             if button_name == push2_python.constants.BUTTON_UPPER_ROW_2:
@@ -533,7 +537,7 @@ class SettingsMode(definitions.PushItMode):
 
                         # Exit settings mode
                         self.current_page = self.n_pages - 1
-                        self.app.toggle_and_rotate_settings_mode()
+                        self.app.unset_settings_mode()
                         self.app.set_clip_triggering_mode()
 
                         # Reset confirmation state
@@ -566,36 +570,6 @@ class SettingsMode(definitions.PushItMode):
                 # Restart apps
                 restart_apps()
                 return True
-
-    def on_button_released(self, button_name):
-
-        if button_name == push2_python.constants.BUTTON_SETUP:
-            # Decide if short press or long press
-            pressing_time = self.setup_button_pressing_time
-            is_long_press = False
-            if pressing_time is None:
-                # Consider quick press (this should not happen pressing time should have been set before)
-                pass
-            else:
-                if time.time() - pressing_time > definitions.BUTTON_QUICK_PRESS_TIME:
-                    # Consider this is a long press
-                    is_long_press = True
-                self.setup_button_pressing_time = None
-
-            if is_long_press:
-                # If long press, exit settings mode back to the previously active mode
-                if self.app.is_mode_active(self):
-                    # Set current page to last page to trigger exiting settings
-                    self.current_page = len(Pages)
-                    self.app.toggle_and_rotate_settings_mode()
-                    self.app.buttons_need_update = True
-            # else:
-                # Short press: cycle through settings pages only if we're already in settings mode
-                # if self.app.is_mode_active(self):
-                #     self.app.toggle_and_rotate_settings_mode()
-                #     self.app.buttons_need_update = True
-
-            return True
 
 def restart_apps():
     print('- restarting apps')

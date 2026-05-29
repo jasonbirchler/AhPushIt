@@ -158,23 +158,12 @@ class PushItApp(object):
     def is_mode_active(self, mode):
         return mode in self.active_modes
 
-    def toggle_and_rotate_settings_mode(self):
-        if self.is_mode_active(self.settings_mode):
-            rotation_finished = self.settings_mode.move_to_next_page()
-            if rotation_finished:
-                self.active_modes = [
-                    mode for mode in self.active_modes if mode != self.settings_mode
-                ]
-                self.settings_mode.deactivate()
-        else:
-            self.active_modes.append(self.settings_mode)
-            self.settings_mode.activate()
-
     def set_mode_for_xor_group(self, mode_to_set):
-        """This activates the mode_to_set, but makes sure that if any other modes are currently activated
-        for the same xor_group, these other modes get deactivated. This also stores a reference to the
-        latest active mode for xor_group, so once a mode gets unset, the previously active one can be
-        automatically set"""
+        """This activates the mode_to_set,
+        but makes sure that if any other modes are currently activated for the same xor_group,
+        these other modes get deactivated.
+        This also stores a reference to the latest active mode for xor_group,
+        so once a mode gets unset, the previously active one can be automatically set"""
 
         if not self.is_mode_active(mode_to_set):
             # First deactivate all existing modes for that xor group
@@ -293,6 +282,12 @@ class PushItApp(object):
 
     def set_slice_notes_mode(self):
         self.set_mode_for_xor_group(self.slice_notes_mode)
+
+    def set_settings_mode(self):
+        self.set_mode_for_xor_group(self.settings_mode)
+
+    def unset_settings_mode(self):
+        self.unset_mode_for_xor_group(self.settings_mode)
 
     def set_clip_triggering_mode(self):
         self.set_mode_for_xor_group(self.clip_triggering_mode)
