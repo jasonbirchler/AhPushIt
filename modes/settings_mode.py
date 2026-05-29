@@ -18,8 +18,9 @@ This enum determines the order in which the settings pages display
 The order is arbitrary and can be arranged by personal preference
 """
 class Pages(IntEnum):
-    PERFORMANCE = 0
-    SESSION = 1
+    PROJECT = 0
+    PERFORMANCE = 1
+    SESSION = 2
 
 
 class SettingsMode(definitions.PushItMode):
@@ -36,7 +37,6 @@ class SettingsMode(definitions.PushItMode):
     # Session/Project settings
     # - Save session
     # - Load session
-    # - Rerun MIDI initial configuration
     # - Save current settings
     # - Controller version
     # - Repo commit
@@ -134,6 +134,9 @@ class SettingsMode(definitions.PushItMode):
         self.push.buttons.set_button_color(
             push2_python.constants.BUTTON_LOWER_ROW_2, definitions.WHITE
         )
+        self.push.buttons.set_button_color(
+            push2_python.constants.BUTTON_LOWER_ROW_3, definitions.WHITE
+        )
 
         if self.current_page == Pages.PERFORMANCE:
             self.push.buttons.set_button_color(
@@ -162,12 +165,6 @@ class SettingsMode(definitions.PushItMode):
             )
 
         elif self.current_page == Pages.SESSION:
-            self.push.buttons.set_button_color( # Save session
-                push2_python.constants.BUTTON_UPPER_ROW_1, definitions.WHITE
-            )
-            self.push.buttons.set_button_color( # Load session
-                push2_python.constants.BUTTON_UPPER_ROW_2, definitions.WHITE
-            )
             self.push.buttons.set_button_color( # empty
                 push2_python.constants.BUTTON_UPPER_ROW_8, definitions.OFF_BTN_COLOR
             )
@@ -192,6 +189,13 @@ class SettingsMode(definitions.PushItMode):
                 definitions.RED,
                 animation=definitions.DEFAULT_ANIMATION
             )
+        elif self.current_page == Pages.PROJECT:
+            self.push.buttons.set_button_color( # Save session
+                push2_python.constants.BUTTON_UPPER_ROW_1, definitions.WHITE
+            )
+            self.push.buttons.set_button_color( # Load session
+                push2_python.constants.BUTTON_UPPER_ROW_2, definitions.WHITE
+            )
 
     def update_display(self, ctx, w, h):
         # Divide display in 8 parts to show different settings
@@ -214,11 +218,20 @@ class SettingsMode(definitions.PushItMode):
                     ctx,
                     i,
                     h - 24,
+                    "Project",
+                    font_color=definitions.BLACK if self.current_page == Pages.PROJECT else definitions.WHITE,
+                    background_color=definitions.WHITE if self.current_page == Pages.PROJECT else definitions.BLACK
+                )
+            elif i == 1:
+                show_text(
+                    ctx,
+                    i,
+                    h - 24,
                     "Performance",
                     font_color=definitions.BLACK if self.current_page == Pages.PERFORMANCE else definitions.WHITE,
                     background_color=definitions.WHITE if self.current_page == Pages.PERFORMANCE else definitions.BLACK
                 )
-            elif i == 1:
+            elif i == 2:
                 show_text(
                     ctx,
                     i,
@@ -266,6 +279,39 @@ class SettingsMode(definitions.PushItMode):
                     show_value(ctx, part_x, h, self.app.melodic_mode.poly_at_curve_bending, color)
 
             elif self.current_page == Pages.SESSION:
+                if i == 3:  # Save settings
+                    show_title(ctx, part_x, h, 'SAVE SETTINGS')
+                elif i == 4:  # Last session on boot
+                    show_title(ctx, part_x, h, 'BOOT WITH')
+                    show_value(
+                        ctx,
+                        part_x,
+                        h,
+                        'Last Session' if self.auto_open_last_project else 'Empty Session'
+                    )
+                elif i == 5:  # Re-send MIDI connection established to Push
+                    show_title(
+                        ctx,
+                        part_x,
+                        h,
+                        'RESET MIDI'
+                    )
+                elif i == 6:  # Software update
+                    show_title(ctx, part_x, h, 'SW UPDATE')
+                    if IS_RUNNING_SW_UPDATE:
+                        show_value(ctx, part_x, h, IS_RUNNING_SW_UPDATE, color)
+                elif i == 7:  # Restart button + FPS indicator / Version info
+                    show_title(ctx, part_x, h, 'RESTART')
+                    draw_text_at(ctx, part_x, h - 32, 'FPS', 12, [0.5,0.5,0.5])
+                    draw_text_at(ctx, part_x + 30, h - 32, self.app.actual_frame_rate, 18, color)
+                    draw_text_at(
+                        ctx,
+                        part_x,
+                        h - 15,
+                        f"Version {definitions.VERSION}", font_size=12, color=color
+                    )
+
+            elif self.current_page == Pages.PROJECT:
                 if i == 0:  # Save session
                     show_title(ctx, part_x, h, 'SAVE PROJECT')
                     show_value(ctx, part_x, h, self.app.pm.current_project_file, color)
@@ -335,23 +381,6 @@ class SettingsMode(definitions.PushItMode):
                         ctx.set_font_size(12)
                         ctx.move_to(part_x + 4, part_h // 2)
                         ctx.show_text("No projects found")
-                elif i == 3:  # Save settings
-                    show_title(ctx, part_x, h, 'SAVE SETTINGS')
-                elif i == 4:  # Last session on boot
-                    show_title(ctx, part_x, h, 'BOOT WITH')
-                    show_value(ctx, part_x, h, 'Last Session' if self.auto_open_last_project else 'Empty Session')
-                elif i == 5:  # Re-send MIDI connection established (to push, not MIDI in/out device)
-                    show_title(ctx, part_x, h, 'RESET MIDI')
-                elif i == 6:  # Software update
-                    show_title(ctx, part_x, h, 'SW UPDATE')
-                    if IS_RUNNING_SW_UPDATE:
-                        show_value(ctx, part_x, h, IS_RUNNING_SW_UPDATE, color)
-                elif i == 7:  # Restart button + FPS indicator / Version info
-                    show_title(ctx, part_x, h, 'RESTART')
-                    draw_text_at(ctx, part_x, h - 32, 'FPS', 12, [0.5,0.5,0.5])
-                    draw_text_at(ctx, part_x + 30, h - 32, self.app.actual_frame_rate, 18, color)
-                    draw_text_at(ctx, part_x, h - 15, f"Version {definitions.VERSION}", font_size=12, color=color)
-
         # After drawing all labels and values, draw other stuff if required
         if self.current_page == Pages.PERFORMANCE:
 
@@ -478,10 +507,14 @@ class SettingsMode(definitions.PushItMode):
             self.app.buttons_need_update = True
             return True
         if button_name == push2_python.constants.BUTTON_LOWER_ROW_1:
-            self.current_page = Pages.PERFORMANCE
+            self.current_page = Pages.PROJECT
             self.app.buttons_need_update = True
             return True
         if button_name == push2_python.constants.BUTTON_LOWER_ROW_2:
+            self.current_page = Pages.PERFORMANCE
+            self.app.buttons_need_update = True
+            return True
+        if button_name == push2_python.constants.BUTTON_LOWER_ROW_3:
             self.current_page = Pages.SESSION
             self.app.buttons_need_update = True
             return True
