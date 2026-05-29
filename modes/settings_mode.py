@@ -326,7 +326,9 @@ class SettingsMode(definitions.PushItMode):
                     if self.project_files:
                         # Calculate visible items based on part height
                         item_height = 16  # pixels per item
-                        visible_items = 3 * (part_h // item_height) - 2  # Leave space for title and some margin
+                        list_start_y = 30  # first item y offset
+                        label_y = h - 24   # lower row button label y
+                        visible_items = (label_y - 2 - list_start_y) // item_height  # end list 2px above label
 
                         # Handle horizontal text scrolling for long filenames
                         current_time = time.time()
@@ -451,7 +453,7 @@ class SettingsMode(definitions.PushItMode):
                 if delta != 0:
                     self.app.melodic_mode.set_poly_at_curve_bending(self.app.melodic_mode.poly_at_curve_bending + delta)
 
-        elif self.current_page == Pages.SESSION:
+        elif self.current_page == Pages.PROJECT:
             if encoder_name == push2_python.constants.ENCODER_TRACK1_ENCODER:
                 if delta != 0:
                     self.current_preset_save_number += delta
@@ -470,8 +472,8 @@ class SettingsMode(definitions.PushItMode):
                         elif self.selected_project_index >= len(self.project_files):
                             self.selected_project_index = len(self.project_files) - 1
 
-                        # Calculate visible items (using a reasonable default)
-                        visible_items = 5  # Default visible items
+                        # Must match visible_items in update_display PROJECT page
+                        visible_items = 6
 
                         # Adjust scroll offset to keep selection visible
                         if self.selected_project_index < self.project_list_offset:
