@@ -56,11 +56,12 @@ class TestMainControlsMode:
 
     def test_on_button_pressed_settings(self, mock_app):
         mode = MainControlsMode(mock_app)
-        mock_app.toggle_and_rotate_settings_mode = MagicMock()
+        mock_app.is_mode_active = MagicMock(return_value=False)
+        mock_app.set_settings_mode = MagicMock()
         mock_app.buttons_need_update = False
         result = mode.on_button_pressed(SETTINGS_BUTTON)
         assert result is True
-        mock_app.toggle_and_rotate_settings_mode.assert_called_once()
+        mock_app.set_settings_mode.assert_called_once()
         assert mock_app.buttons_need_update is True
 
     def test_on_button_pressed_toggle_display(self, mock_app):
