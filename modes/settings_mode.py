@@ -474,8 +474,11 @@ class SettingsMode(definitions.PushItMode):
                         elif self.selected_project_index >= len(self.project_files):
                             self.selected_project_index = len(self.project_files) - 1
 
-                        # Must match visible_items in update_display PROJECT page
-                        visible_items = 6
+                        # Calculate visible items based on part height (must match update_display)
+                        item_height = 16  # pixels per item
+                        list_start_y = 30  # first item y offset
+                        label_y = push2_python.constants.DISPLAY_N_LINES - 24   # lower row button label y
+                        visible_items = (label_y - 2 - list_start_y) // item_height  # end list 2px above label
 
                         # Adjust scroll offset to keep selection visible
                         if self.selected_project_index < self.project_list_offset:
