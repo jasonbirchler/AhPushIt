@@ -126,20 +126,20 @@ class TestSettingsMode:
         mode.on_encoder_rotated(push2_python.constants.ENCODER_TRACK6_ENCODER, -2)
         mock_app.melodic_mode.set_poly_at_curve_bending.assert_called_once_with(48)
 
-    def test_on_encoder_rotated_session_preset_save_number(self, mock_app):
+    def test_on_encoder_rotated_project_preset_save_number(self, mock_app):
         mock_app.push.encoders.available_names = [push2_python.constants.ENCODER_TRACK1_ENCODER]
         mode = SettingsMode(mock_app)
-        mode.current_page = Pages.SESSION
+        mode.current_page = Pages.PROJECT
         mode.current_preset_save_number = 0
         mode.on_encoder_rotated(push2_python.constants.ENCODER_TRACK1_ENCODER, 3)
         assert mode.current_preset_save_number == 3
         mode.on_encoder_rotated(push2_python.constants.ENCODER_TRACK1_ENCODER, -10)
         assert mode.current_preset_save_number == 0  # clamped
 
-    def test_on_encoder_rotated_session_project_navigation(self, mock_app):
+    def test_on_encoder_rotated_project_navigation(self, mock_app):
         mock_app.push.encoders.available_names = [push2_python.constants.ENCODER_TRACK2_ENCODER]
         mode = SettingsMode(mock_app)
-        mode.current_page = Pages.SESSION
+        mode.current_page = Pages.PROJECT
         mode.project_files = ["projA", "projB", "projC"]
         mode.selected_project_index = 0
         mode.project_list_offset = 0
