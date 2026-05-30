@@ -171,10 +171,7 @@ class SettingsMode(definitions.PushItMode):
                 push2_python.constants.BUTTON_UPPER_ROW_1, definitions.WHITE
             )
             self.push.buttons.set_button_color( # Save settings
-                push2_python.constants.BUTTON_UPPER_ROW_2, definitions.GREEN
-            )
-            self.push.buttons.set_button_color( # Empty
-                push2_python.constants.BUTTON_UPPER_ROW_3, definitions.BLACK
+                push2_python.constants.BUTTON_UPPER_ROW_3, definitions.GREEN
             )
             self.push.buttons.set_button_color( # Empty
                 push2_python.constants.BUTTON_UPPER_ROW_4, definitions.BLACK
@@ -313,7 +310,14 @@ class SettingsMode(definitions.PushItMode):
                         h,
                         'Last Session' if self.auto_open_last_project else 'Empty Session'
                     )
-                elif i == 1:  # Save settings
+                elif i == 1:  # MIDI Input Device
+                    show_title(
+                        ctx,
+                        part_x,
+                        h,
+                        "MIDI IN"
+                    )
+                elif i == 2:  # Save settings
                     show_title(ctx, part_x, h, 'SAVE SETTINGS')
                 elif i == 5:  # Re-send MIDI connection established to Push
                     show_title(
