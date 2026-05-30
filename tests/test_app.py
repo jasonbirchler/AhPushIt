@@ -101,3 +101,53 @@ class TestUnsetModeForXorGroup:
         assert app.main_controls_mode not in app.active_modes
         assert app.track_selection_mode not in app.active_modes
         assert app.midi_cc_mode not in app.active_modes
+
+    def test_on_encoder_rotated_tempo(self, mock_app, mock_push2_environment):
+        """Test tempo encoder changes BPM globally in app.py."""
+        import push2_python.constants as constants
+        import app as app_module
+
+        # Set up global app reference for the callback
+        mock_sequencer = MagicMock()
+        mock_sequencer.bpm = 120.0
+        mock_app.seq = mock_sequencer
+        mock_app.add_display_notification = MagicMock()
+        mock_app.push = mock_push2_environment['push2']
+        mock_app.is_button_being_pressed = MagicMock(return_value=False)
+
+        # Set the global app variable
+        app_module.app = mock_app
+
+        # Test default increment (1 BPM per tick)
+        app_module.on_encoder_rotated(None, constants.ENCODER_TEMPO_ENCODER, 1)
+        assert mock_sequencer.bpm == 121.0
+
+        # Test decreasing tempo
+        app_module.on_encoder_rotated(None, constants.ENCODER_TEMPO_ENCODER, -2)
+        assert mock_sequencer.bpm == 119.0
+
+        # Test fine increment with SHIFT held (0.1 BPM per tick)
+        mock_app.is_button_being_pressed = MagicMock(return_value=True)
+        app_module.on_encoder_rotated(None, constants.ENCODER_TEMPO_ENCODER, 1)
+        assert mock_sequencer.bpm == 119.1
+
+        app_module.on_encoder_rotated(None, constants.ENCODER_TEMPO_ENCODER, 5)
+        assert mock_sequencer.bpm == 119.6
+
+        # Test floor (40 minimum)
+        mock_sequencer.bpm = 40.0
+        mock_app.is_button_being_pressed = MagicMock(return_value=False)
+        app_module.on_encoder_rotated(None, constants.ENCODER_TEMPO_ENCODER, -10)
+        assert mock_sequencer.bpm == 40.0
+
+        # Test ceiling (240 maximum)
+        mock_sequencer.bpm = 240.0
+        app_module.on_encoder_rotated(None, constants.ENCODER_TEMPO_ENCODER, 10)
+        assert mock_sequencer.bpm == 240.0
+
+        # Test notification format for BPM
+        mock_sequencer.bpm = 129.5
+        mock_app.add_display_notification.reset_mock()
+        app_module.on_encoder_rotated(None, constants.ENCODER_TEMPO_ENCODER, 1)
+        assert mock_sequencer.bpm == 130.5
+        mock_app.add_display_notification.assert_called_with("130.5 BPM")

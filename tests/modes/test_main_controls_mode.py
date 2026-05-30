@@ -159,6 +159,12 @@ class TestMainControlsMode:
         result = mode.on_button_released('unknown')
         assert result is None
 
+    def test_on_encoder_rotated_tempo_returns_none(self, mock_app):
+        """Tempo encoder is handled globally in app.py, not in MainControlsMode."""
+        mode = MainControlsMode(mock_app)
+        result = mode.on_encoder_rotated(push2_python.constants.ENCODER_TEMPO_ENCODER, 1)
+        assert result is None
+
     def test_update_buttons_sets_colors(self, mock_app):
         mode = MainControlsMode(mock_app)
         mock_app.use_push2_display = True

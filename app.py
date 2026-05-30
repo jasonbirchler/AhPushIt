@@ -45,8 +45,8 @@ from project_manager import ProjectManager
 
 buttons_pressed_state = {}
 pads_pressed_state = {}  # Track pad press times for long press detection
-
-
+# Track encoder touch state for tap detection
+encoder_touch_state = {}
 class PushItApp(object):
     """
     The App handles initializing everything at startup.
@@ -534,16 +534,37 @@ class PushItApp(object):
 @push2_python.on_encoder_touched()
 def on_encoder_touched(_, encoder_name):
     print(f"encoder {encoder_name} touched")
+    encoder_touch_state[encoder_name] = True
 
 
 @push2_python.on_encoder_released()
 def on_encoder_released(_, encoder_name):
     print(f"encoder {encoder_name} released")
+    if encoder_name == push2_python.constants.ENCODER_TEMPO_ENCODER:
+        if encoder_touch_state.get(encoder_name, False):
+            # Show tempo notification
+            tempo = app.seq.bpm
+            tempo_text = f"{tempo:.1f} BPM"
+            app.add_display_notification(tempo_text)
+            encoder_touch_state[encoder_name] = False
 
 
 @push2_python.on_encoder_rotated()
 def on_encoder_rotated(_, encoder_name, increment):
     try:
+        if encoder_name == push2_python.constants.ENCODER_TEMPO_ENCODER:
+            shift_held = app.is_button_being_pressed(push2_python.constants.BUTTON_SHIFT)
+            bpm_increment = 0.1 if shift_held else 1.0
+            new_bpm = app.seq.bpm + increment * bpm_increment
+            if new_bpm < 40:
+                new_bpm = 40
+            elif new_bpm > 240:
+                new_bpm = 240
+            app.seq.bpm = new_bpm
+            tempo_text = f"{new_bpm:.1f} BPM"
+            app.add_display_notification(tempo_text)
+            return
+
         for mode in app.active_modes[::-1]:
             action_performed = mode.on_encoder_rotated(encoder_name, increment)
             if action_performed:
