@@ -87,6 +87,16 @@ def mock_push2_environment():
     mock_constants.BUTTON_LEFT = 'left'
     mock_constants.BUTTON_RIGHT = 'right'
     mock_constants.BUTTON_SELECT = 'select'
+    mock_constants.BUTTON_METRONOME = 'metronome'
+    mock_constants.ENCODER_TEMPO_ENCODER = 'encoder_tempo'
+    mock_constants.ENCODER_TRACK1_ENCODER = 'encoder_track1'
+    mock_constants.ENCODER_TRACK2_ENCODER = 'encoder_track2'
+    mock_constants.ENCODER_TRACK3_ENCODER = 'encoder_track3'
+    mock_constants.ENCODER_TRACK4_ENCODER = 'encoder_track4'
+    mock_constants.ENCODER_TRACK5_ENCODER = 'encoder_track5'
+    mock_constants.ENCODER_TRACK6_ENCODER = 'encoder_track6'
+    mock_constants.ENCODER_TRACK7_ENCODER = 'encoder_track7'
+    mock_constants.ENCODER_TRACK8_ENCODER = 'encoder_track8'
     # Possibly other constants used
     mock_constants.ANIMATION_STATIC = 0
     mock_constants.ANIMATION_PULSING_QUARTER = 1
@@ -114,9 +124,14 @@ def mock_app(mock_push2_environment, mock_isobar_midi):
     app.buttons_need_update = False
     app.pads_need_update = False
 
+    # Mock sequencer with bpm property
+    app.seq = MagicMock()
+    app.seq.bpm = 120.0
+
     # Mock notification system
     app.notification_text = None
     app.notification_time = 0
+    app.add_display_notification = MagicMock()
 
     # Mock global timeline
     app.global_timeline = isobar.Timeline()
