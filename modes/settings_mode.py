@@ -34,15 +34,17 @@ class SettingsMode(definitions.PushItMode):
     # - Velocity curve
     # - Channel aftertouch range
 
-    # Session/Project settings
-    # - Save session
-    # - Load session
+    # Session settings
     # - Save current settings
     # - Controller version
     # - Repo commit
     # - SW update
     # - App restart
     # - FPS
+
+    # Project settings
+    # - Save session
+    # - Load session
 
     current_page = 0
     n_pages = len(Pages)
@@ -158,21 +160,27 @@ class SettingsMode(definitions.PushItMode):
                 push2_python.constants.BUTTON_UPPER_ROW_6, definitions.OFF_BTN_COLOR
             )
             self.push.buttons.set_button_color(
-                push2_python.constants.BUTTON_UPPER_ROW_7, definitions.OFF_BTN_COLOR
+                push2_python.constants.BUTTON_UPPER_ROW_7, definitions.BLACK
             )
             self.push.buttons.set_button_color(
-                push2_python.constants.BUTTON_UPPER_ROW_8, definitions.OFF_BTN_COLOR
+                push2_python.constants.BUTTON_UPPER_ROW_8, definitions.BLACK
             )
 
         elif self.current_page == Pages.SESSION:
-            self.push.buttons.set_button_color( # empty
-                push2_python.constants.BUTTON_UPPER_ROW_8, definitions.OFF_BTN_COLOR
+            self.push.buttons.set_button_color( # Last session on boot
+                push2_python.constants.BUTTON_UPPER_ROW_1, definitions.WHITE
             )
             self.push.buttons.set_button_color( # Save settings
-                push2_python.constants.BUTTON_UPPER_ROW_4, definitions.GREEN
+                push2_python.constants.BUTTON_UPPER_ROW_2, definitions.GREEN
             )
-            self.push.buttons.set_button_color( # Last session on boot
-                push2_python.constants.BUTTON_UPPER_ROW_5, definitions.WHITE
+            self.push.buttons.set_button_color( # Empty
+                push2_python.constants.BUTTON_UPPER_ROW_3, definitions.BLACK
+            )
+            self.push.buttons.set_button_color( # Empty
+                push2_python.constants.BUTTON_UPPER_ROW_4, definitions.BLACK
+            )
+            self.push.buttons.set_button_color( # Empty
+                push2_python.constants.BUTTON_UPPER_ROW_5, definitions.BLACK
             )
             self.push.buttons.set_button_color( # Reset MIDI
                 push2_python.constants.BUTTON_UPPER_ROW_6,
@@ -195,6 +203,24 @@ class SettingsMode(definitions.PushItMode):
             )
             self.push.buttons.set_button_color( # Load session
                 push2_python.constants.BUTTON_UPPER_ROW_2, definitions.WHITE
+            )
+            self.push.buttons.set_button_color( # Empty
+                push2_python.constants.BUTTON_UPPER_ROW_3, definitions.BLACK
+            )
+            self.push.buttons.set_button_color( # Empty
+                push2_python.constants.BUTTON_UPPER_ROW_4, definitions.BLACK
+            )
+            self.push.buttons.set_button_color( # Empty
+                push2_python.constants.BUTTON_UPPER_ROW_5, definitions.BLACK
+            )
+            self.push.buttons.set_button_color( # Empty
+                push2_python.constants.BUTTON_UPPER_ROW_6, definitions.BLACK
+            )
+            self.push.buttons.set_button_color( # Empty
+                push2_python.constants.BUTTON_UPPER_ROW_7, definitions.BLACK
+            )
+            self.push.buttons.set_button_color( # Empty
+                push2_python.constants.BUTTON_UPPER_ROW_8, definitions.BLACK
             )
 
     def update_display(self, ctx, w, h):
@@ -279,9 +305,7 @@ class SettingsMode(definitions.PushItMode):
                     show_value(ctx, part_x, h, self.app.melodic_mode.poly_at_curve_bending, color)
 
             elif self.current_page == Pages.SESSION:
-                if i == 3:  # Save settings
-                    show_title(ctx, part_x, h, 'SAVE SETTINGS')
-                elif i == 4:  # Last session on boot
+                if i == 0:  # Last session on boot
                     show_title(ctx, part_x, h, 'BOOT WITH')
                     show_value(
                         ctx,
@@ -289,6 +313,8 @@ class SettingsMode(definitions.PushItMode):
                         h,
                         'Last Session' if self.auto_open_last_project else 'Empty Session'
                     )
+                elif i == 1:  # Save settings
+                    show_title(ctx, part_x, h, 'SAVE SETTINGS')
                 elif i == 5:  # Re-send MIDI connection established to Push
                     show_title(
                         ctx,
@@ -541,14 +567,14 @@ class SettingsMode(definitions.PushItMode):
                 return True
 
         elif self.current_page == Pages.SESSION:
-            if button_name == push2_python.constants.BUTTON_UPPER_ROW_4:
-                # Save current settings
-                self.app.save_current_settings_to_file()
-                return True
-            if button_name == push2_python.constants.BUTTON_UPPER_ROW_5:
+            if button_name == push2_python.constants.BUTTON_UPPER_ROW_1:
                 self.auto_open_last_project = not self.auto_open_last_project
                 # Also update the app's settings dict to reflect the change immediately
                 self.app.settings['auto_open_last_project'] = self.auto_open_last_project
+                self.app.save_current_settings_to_file()
+                return True
+            if button_name == push2_python.constants.BUTTON_UPPER_ROW_2:
+                # Save current settings
                 self.app.save_current_settings_to_file()
                 return True
             if button_name == push2_python.constants.BUTTON_UPPER_ROW_6:

@@ -224,7 +224,7 @@ class TestSettingsMode:
         mode = SettingsMode(mock_app)
         mode.current_page = Pages.SESSION
         mock_app.save_current_settings_to_file = MagicMock()
-        result = mode.on_button_pressed(push2_python.constants.BUTTON_UPPER_ROW_4)
+        result = mode.on_button_pressed(push2_python.constants.BUTTON_UPPER_ROW_2)
         assert result is True
         mock_app.save_current_settings_to_file.assert_called_once()
 
@@ -234,7 +234,7 @@ class TestSettingsMode:
         mode.auto_open_last_project = False
         mock_app.settings = {}
         mock_app.save_current_settings_to_file = MagicMock()
-        result = mode.on_button_pressed(push2_python.constants.BUTTON_UPPER_ROW_5)
+        result = mode.on_button_pressed(push2_python.constants.BUTTON_UPPER_ROW_1)
         assert result is True
         assert mode.auto_open_last_project is True
         assert mock_app.settings['auto_open_last_project'] is True
