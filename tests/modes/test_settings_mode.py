@@ -38,16 +38,10 @@ class TestSettingsMode:
     def test_on_button_pressed_setup(self, mock_app):
         mode = SettingsMode(mock_app)
         mock_app.active_modes = []
-        mock_app.settings_mode = mode
-        
-        def toggle_side_effect():
-            if mode not in mock_app.active_modes:
-                mock_app.active_modes.append(mode)
-        mock_app.toggle_and_rotate_settings_mode = MagicMock(side_effect=toggle_side_effect)
-        
-        result = mode.on_button_pressed('setup')
+        mock_app.is_mode_active = MagicMock(return_value=False)
+        mock_app.buttons_need_update = False
+        result = mode.on_button_pressed(push2_python.constants.BUTTON_SETUP)
         assert result is True
-        mock_app.toggle_and_rotate_settings_mode.assert_called_once()
         assert mode in mock_app.active_modes
 
     def test_on_button_pressed_other(self, mock_app):
@@ -64,8 +58,8 @@ class TestSettingsMode:
         assert result is False
         assert mode.current_page == Pages.SESSION
         result = mode.move_to_next_page()
-        assert result is True  # wrapped
-        assert mode.current_page == Pages.PERFORMANCE
+        assert result is True  # wrapped to PROJECT (0)
+        assert mode.current_page == Pages.PROJECT
 
     def test_get_settings_to_save(self, mock_app):
         mode = SettingsMode(mock_app)
@@ -132,29 +126,45 @@ class TestSettingsMode:
         mode.on_encoder_rotated(push2_python.constants.ENCODER_TRACK6_ENCODER, -2)
         mock_app.melodic_mode.set_poly_at_curve_bending.assert_called_once_with(48)
 
-    def test_on_encoder_rotated_session_preset_save_number(self, mock_app):
+    def test_on_encoder_rotated_project_preset_save_number(self, mock_app):
         mock_app.push.encoders.available_names = [push2_python.constants.ENCODER_TRACK1_ENCODER]
         mode = SettingsMode(mock_app)
-        mode.current_page = Pages.SESSION
+        mode.current_page = Pages.PROJECT
         mode.current_preset_save_number = 0
         mode.on_encoder_rotated(push2_python.constants.ENCODER_TRACK1_ENCODER, 3)
         assert mode.current_preset_save_number == 3
         mode.on_encoder_rotated(push2_python.constants.ENCODER_TRACK1_ENCODER, -10)
         assert mode.current_preset_save_number == 0  # clamped
 
-    def test_on_encoder_rotated_session_project_navigation(self, mock_app):
+    def test_on_encoder_rotated_project_navigation(self, mock_app):
         mock_app.push.encoders.available_names = [push2_python.constants.ENCODER_TRACK2_ENCODER]
         mode = SettingsMode(mock_app)
-        mode.current_page = Pages.SESSION
+        mode.current_page = Pages.PROJECT
         mode.project_files = ["projA", "projB", "projC"]
         mode.selected_project_index = 0
         mode.project_list_offset = 0
-        mode.on_encoder_rotated(push2_python.constants.ENCODER_TRACK2_ENCODER, 1)
+        # Threshold is 5, so need to accumulate at least 5 to cross it
+        mode.on_encoder_rotated(push2_python.constants.ENCODER_TRACK2_ENCODER, 5)
         assert mode.selected_project_index == 1
-        mode.on_encoder_rotated(push2_python.constants.ENCODER_TRACK2_ENCODER, -1)
+        mode.on_encoder_rotated(push2_python.constants.ENCODER_TRACK2_ENCODER, -5)
         assert mode.selected_project_index == 0
         # ensure no wrap below 0
-        mode.on_encoder_rotated(push2_python.constants.ENCODER_TRACK2_ENCODER, -1)
+        mode.on_encoder_rotated(push2_python.constants.ENCODER_TRACK2_ENCODER, -5)
+        assert mode.selected_project_index == 0
+
+    def test_on_encoder_rotated_project_large_delta_normalized(self, mock_app):
+        """Large encoder deltas should be normalized to single item scroll."""
+        mock_app.push.encoders.available_names = [push2_python.constants.ENCODER_TRACK2_ENCODER]
+        mode = SettingsMode(mock_app)
+        mode.current_page = Pages.PROJECT
+        mode.project_files = ["projA", "projB", "projC", "projD", "projE", "projF"]
+        mode.selected_project_index = 0
+        mode.project_list_offset = 0
+        # Large positive delta should still only move by 1
+        mode.on_encoder_rotated(push2_python.constants.ENCODER_TRACK2_ENCODER, 10)  # Accumulates past threshold
+        assert mode.selected_project_index == 1
+        # Large negative delta should still only move by -1
+        mode.on_encoder_rotated(push2_python.constants.ENCODER_TRACK2_ENCODER, -10)
         assert mode.selected_project_index == 0
 
     def test_on_button_pressed_performance_increment_root(self, mock_app):
@@ -177,9 +187,9 @@ class TestSettingsMode:
         mode.on_button_pressed(push2_python.constants.BUTTON_UPPER_ROW_2)
         assert mock_app.melodic_mode.use_poly_at is False
 
-    def test_on_button_pressed_session_save(self, mock_app):
+    def test_on_button_pressed_project_save(self, mock_app):
         mode = SettingsMode(mock_app)
-        mode.current_page = Pages.SESSION
+        mode.current_page = Pages.PROJECT
         mock_app.pm.save_project = MagicMock()
         mock_app.add_display_notification = MagicMock()
         mode.on_button_pressed(push2_python.constants.BUTTON_UPPER_ROW_1)
@@ -187,11 +197,11 @@ class TestSettingsMode:
         args = mock_app.pm.save_project.call_args[0][0]
         # Timestamp format "YYYY-MM-DD_HH-MM-SS" length 19
         assert len(args) == 19
-        assert mode.current_page == 1  # rotated to last page
+        assert mode.current_page == Pages.PROJECT  # stays on PROJECT page after save
 
-    def test_on_button_pressed_session_load_confirmation(self, mock_app):
+    def test_on_button_pressed_project_load_confirmation(self, mock_app):
         mode = SettingsMode(mock_app)
-        mode.current_page = Pages.SESSION
+        mode.current_page = Pages.PROJECT
         mode.project_files = ["proj1"]
         mode.selected_project_index = 0
         mode.waiting_for_confirmation = False
@@ -214,7 +224,7 @@ class TestSettingsMode:
         mode = SettingsMode(mock_app)
         mode.current_page = Pages.SESSION
         mock_app.save_current_settings_to_file = MagicMock()
-        result = mode.on_button_pressed(push2_python.constants.BUTTON_UPPER_ROW_4)
+        result = mode.on_button_pressed(push2_python.constants.BUTTON_UPPER_ROW_2)
         assert result is True
         mock_app.save_current_settings_to_file.assert_called_once()
 
@@ -224,7 +234,7 @@ class TestSettingsMode:
         mode.auto_open_last_project = False
         mock_app.settings = {}
         mock_app.save_current_settings_to_file = MagicMock()
-        result = mode.on_button_pressed(push2_python.constants.BUTTON_UPPER_ROW_5)
+        result = mode.on_button_pressed(push2_python.constants.BUTTON_UPPER_ROW_1)
         assert result is True
         assert mode.auto_open_last_project is True
         assert mock_app.settings['auto_open_last_project'] is True
@@ -241,14 +251,10 @@ class TestSettingsMode:
     def test_on_button_released_setup_long_press(self, mock_app):
         mode = SettingsMode(mock_app)
         mode.current_page = Pages.PERFORMANCE
-        mock_app.is_mode_active = MagicMock(return_value=True)
-        mock_app.toggle_and_rotate_settings_mode = MagicMock()
-        mock_app.buttons_need_update = False
         mode.setup_button_pressing_time = time.time() - 1.0  # > BUTTON_QUICK_PRESS_TIME
-        mode.on_button_released(push2_python.constants.BUTTON_SETUP)
-        mock_app.toggle_and_rotate_settings_mode.assert_called_once()
-        assert mock_app.buttons_need_update is True
-        assert mode.setup_button_pressing_time is None
+        # SettingsMode has no on_button_released method, so this returns None
+        result = mode.on_button_released(push2_python.constants.BUTTON_SETUP)
+        assert result is None
 
     def test_deactivate_clears_state(self, mock_app):
         mode = SettingsMode(mock_app)
