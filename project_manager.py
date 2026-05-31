@@ -39,6 +39,7 @@ class ProjectManager:
                     "device": track.output_device_name if track else None,
                     "input_device": track.input_device_name,
                     "input_channel": track.input_channel,
+                    "passthru_muted": track.passthru_muted,
                     "clip_data": [],
                 }
 
@@ -122,6 +123,7 @@ class ProjectManager:
                     track.channel = track_data.get("channel", 0)
                     track.input_device_name = track_data.get("input_device")
                     track.input_channel = track_data.get("input_channel", -1)
+                    track.passthru_muted = track_data.get("passthru_muted", False)
 
                     for clip_data in track_data["clip_data"]:
                         clip = Clip(parent=track)

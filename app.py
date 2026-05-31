@@ -82,6 +82,11 @@ class PushItApp(object):
     last_cp_value_recevied = 0
     last_cp_value_recevied_time = 0
 
+    # Global MIDI input device for passthru / recording
+    midi_in_device_name: str = None
+    _midi_in_device = None          # iso.MidiInputDevice, opened on demand
+    _note_on_times: dict = {}       # {pitch: (start_time, velocity)} for duration tracking
+
     def __init__(self):
         # Settings live in userspace alongside projects to avoid git conflicts
         self.settings_dir = os.path.expanduser("~/pushit")
@@ -103,8 +108,18 @@ class PushItApp(object):
         self.use_push2_display = self.settings.get("use_push2_display", True)
         self._last_midi_check_time = 0  # Initialize MIDI check timer
 
+        # Initialize MIDI input state
+        self.midi_in_device_name = None
+        self._midi_in_device = None
+        self._note_on_times = {}
+
         self.init_push()
         self.init_modes(self.settings)
+
+        # Restore saved MIDI input device
+        midi_in_name = self.settings.get("midi_in_device")
+        if midi_in_name:
+            self.start_midi_input(midi_in_name)
 
         # Handle project loading based on auto_open_last_project setting
         if self.settings.get("auto_open_last_project", True):
@@ -315,6 +330,8 @@ class PushItApp(object):
         settings["target_frame_rate"] = self.target_frame_rate
         # Include the currently loaded project (if any) so auto_open_last_project can load it
         settings["last_project"] = self.pm.current_project_file
+        # Persist global MIDI input device selection
+        settings["midi_in_device"] = self.midi_in_device_name
         # Gather settings from all modes
         for mode in self.get_all_modes():
             mode_settings = mode.get_settings_to_save()
@@ -326,6 +343,102 @@ class PushItApp(object):
         json.dump(settings, open(self.settings_file, "w"))
         # Update in-memory settings to match the saved state
         self.settings = settings
+
+    # MIDI input routing
+    def start_midi_input(self, device_name: str):
+        """Open the named MIDI input device and register note callbacks."""
+        # self.stop_midi_input()  # close any existing device first
+        if not device_name:
+            return
+        try:
+            device = iso.MidiInputDevice(device_name)
+            device.add_note_on_handler(self._on_midi_in_note_on)
+            device.add_note_off_handler(self._on_midi_in_note_off)
+            self._midi_in_device = device
+            self.midi_in_device_name = device_name
+            print(f"MIDI input started: {device_name}")
+        except Exception as e:
+            print(f"Failed to open MIDI input '{device_name}': {e}")
+            self._midi_in_device = None
+            self.midi_in_device_name = None
+
+    def stop_midi_input(self):
+        """Close the current global MIDI input device."""
+        if self._midi_in_device is not None:
+            try:
+                self._midi_in_device.remove_note_on_handler(self._on_midi_in_note_on)
+                self._midi_in_device.remove_note_off_handler(self._on_midi_in_note_off)
+                self._midi_in_device.close()
+            except Exception as e:
+                print(f"Error closing MIDI input: {e}")
+            self._midi_in_device = None
+
+    def _on_midi_in_note_on(self, midi_note):
+        """Callback: incoming note-on from the global MIDI input device."""
+        track = self.track_selection_mode.get_selected_track()
+        if track is None:
+            return
+        pitch = midi_note.pitch
+        velocity = midi_note.velocity
+
+        # Record timestamp for duration calculation on note-off
+        self._note_on_times[pitch] = (time.time(), velocity)
+
+        # Passthru: forward to track output device if not muted
+        if not track.passthru_muted:
+            output = track.get_output_device()
+            if output:
+                output.note_on(pitch, velocity, track.channel)
+
+    def _on_midi_in_note_off(self, midi_note):
+        """Callback: incoming note-off from the global MIDI input device."""
+        track = self.track_selection_mode.get_selected_track()
+        if track is None:
+            return
+        pitch = midi_note.pitch
+
+        # Passthru: forward to track output device if not muted
+        if not track.passthru_muted:
+            output = track.get_output_device()
+            if output:
+                output.note_off(pitch, track.channel)
+
+        # Recording: if any clip on the selected track is recording, write the note
+        if pitch in self._note_on_times:
+            start_time, velocity = self._note_on_times.pop(pitch)
+            duration_secs = time.time() - start_time
+            # Convert seconds to beats using current BPM
+            duration_beats = duration_secs * (self.seq.bpm / 60.0)
+            self._record_note_to_clip(track, pitch, velocity, duration_beats)
+
+    def _record_note_to_clip(self, track, pitch, velocity, duration_beats):
+        """Write a captured note into the first recording clip on the track."""
+        for clip in track.clips:
+            if clip is not None and clip.recording:
+                # Find the step nearest to current playhead position
+                if self.global_timeline.is_running and clip.clip_length_in_beats > 0:
+                    current_beat = self.global_timeline.current_time % clip.clip_length_in_beats
+                    step = int((current_beat / clip.clip_length_in_beats) * clip.steps)
+                    step = min(step, clip.steps - 1)
+                else:
+                    # Timeline not running — find first empty step
+                    step = 0
+                    for s in range(clip.steps):
+                        if clip.notes[s, 0] is None:
+                            step = s
+                            break
+                # Write note into first available voice at that step
+                for voice in range(clip.max_polyphony):
+                    if clip.notes[step, voice] is None:
+                        clip.notes[step, voice] = pitch
+                        clip.durations[step, voice] = min(
+                            duration_beats,
+                            clip.clip_length_in_beats / clip.steps
+                        )
+                        clip.amplitudes[step, voice] = velocity
+                        break
+                self.pads_need_update = True
+                break
 
     # Push2-related functions
     def add_display_notification(self, text):
@@ -507,27 +620,27 @@ class PushItApp(object):
             self.push.configure_midi_out()
 
         # Configure custom color palette
-        app.push.color_palette = {}
+        self.push.color_palette = {}
         for count, color_name in enumerate(definitions.COLORS_NAMES):
-            app.push.set_color_palette_entry(
+            self.push.set_color_palette_entry(
                 count,
                 [color_name, color_name],
                 rgb=definitions.get_color_rgb_float(color_name),
                 allow_overwrite=True,
             )
-        app.push.reapply_color_palette()
+        self.push.reapply_color_palette()
 
         # Initialize all buttons to black, initialize all pads to off
-        app.push.buttons.set_all_buttons_color(color=definitions.BLACK)
-        app.push.pads.set_all_pads_to_color(color=definitions.BLACK)
+        self.push.buttons.set_all_buttons_color(color=definitions.BLACK)
+        self.push.pads.set_all_pads_to_color(color=definitions.BLACK)
 
         # Iterate over modes and (re-)activate them
         for mode in self.active_modes:
             mode.activate()
 
         # Update buttons and pads (just in case something was missing!)
-        app.update_push2_buttons()
-        app.update_push2_pads()
+        self.update_push2_buttons()
+        self.update_push2_pads()
 
 
 # Bind push action handlers with class methods
