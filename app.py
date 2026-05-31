@@ -207,6 +207,13 @@ class PushItApp(object):
         if self.is_metronome_enabled():
             self.global_timeline.disable_metronome()
         else:
+            # Configure metronome with a default output device before enabling
+            # to avoid MultipleOutputDevicesException when multiple output devices exist
+            if self.global_timeline.output_devices:
+                metro_device = self.global_timeline.output_devices[0]
+                self.global_timeline.configure_metronome(
+                    midi_output_device=metro_device,
+                )
             self.global_timeline.enable_metronome()
 
     def unset_mode_for_xor_group(self, mode_to_unset):
