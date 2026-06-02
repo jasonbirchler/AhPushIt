@@ -558,3 +558,80 @@ def draw_knob(ctx, x_part, parameter_name, value, vmin, vmax, value_display, col
     ctx.stroke()
 
     ctx.restore()
+
+
+class ScrollableList:
+    def __init__(self, items, x_part, item_height=16, list_start_y=30, max_width_before_scroll=0, pause_before_scroll=1.0):
+        self.items = list(items) if items is not None else []
+        self.selected_index = 0
+        self.scroll_offset = 0
+        self.x_part = x_part
+        self.item_height = item_height
+        self.list_start_y = list_start_y
+        self.max_width_before_scroll = max_width_before_scroll
+        self.pause_before_scroll = pause_before_scroll
+        self.last_scroll_time = time.time()
+        self.scroll_text_offset = 0
+        self.scroll_text_direction = 1
+
+    def select_index(self, delta):
+        if not self.items:
+            return False
+        new_index = self.selected_index + delta
+        new_index = max(0, min(len(self.items) - 1, new_index))
+        changed = (new_index != self.selected_index)
+        self.selected_index = new_index
+        if changed:
+            self.last_scroll_time = time.time()
+        return changed
+
+    def adjust_scroll_offset(self, visible_items):
+        if self.selected_index < self.scroll_offset:
+            self.scroll_offset = self.selected_index
+        elif self.selected_index >= self.scroll_offset + visible_items:
+            self.scroll_offset = self.selected_index - visible_items + 1
+
+    def get_visible_count(self, h):
+        label_y = h - 24
+        visible_items = (label_y - 2 - self.list_start_y) // self.item_height
+        return visible_items
+
+    def draw(self, ctx, h, label_y, selected_color, normal_color, get_display_text, empty_message):
+        display_w = push2_python.constants.DISPLAY_LINE_PIXELS
+        part_w = display_w // definitions.GRID_WIDTH
+        part_x = self.x_part * part_w
+        part_y = 0
+
+        if not self.items:
+            ctx.set_source_rgb(*normal_color)
+            ctx.select_font_face("Arial", 0, 0)
+            ctx.set_font_size(12)
+            ctx.move_to(part_x + 4, h // 2)
+            ctx.show_text(empty_message)
+            return
+
+        visible_items = self.get_visible_count(h)
+        self.adjust_scroll_offset(visible_items)
+
+        for idx, item in enumerate(self.items[self.scroll_offset:self.scroll_offset + visible_items]):
+            actual_idx = self.scroll_offset + idx
+            y_pos = part_y + self.list_start_y + idx * self.item_height
+
+            is_selected = (actual_idx == self.selected_index)
+
+            if is_selected:
+                ctx.set_source_rgb(*selected_color)
+                ctx.rectangle(part_x + 2, y_pos - 2, part_w - 6, self.item_height)
+                ctx.fill()
+
+            display_text = get_display_text(item, is_selected)
+
+            if is_selected:
+                ctx.set_source_rgb(0.0, 0.0, 0.0)
+            else:
+                ctx.set_source_rgb(*normal_color)
+
+            ctx.select_font_face("Arial", 0, 0)
+            ctx.set_font_size(14)
+            ctx.move_to(part_x + 4, y_pos + 10)
+            ctx.show_text(display_text)

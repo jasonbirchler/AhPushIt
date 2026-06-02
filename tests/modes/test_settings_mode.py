@@ -140,32 +140,32 @@ class TestSettingsMode:
         mock_app.push.encoders.available_names = [push2_python.constants.ENCODER_TRACK2_ENCODER]
         mode = SettingsMode(mock_app)
         mode.current_page = Pages.PROJECT
-        mode.project_files = ["projA", "projB", "projC"]
-        mode.selected_project_index = 0
-        mode.project_list_offset = 0
+        mode.project_list.items = ["projA", "projB", "projC"]
+        mode.project_list.selected_index = 0
+        mode.project_list.scroll_offset = 0
         # Threshold is 5, so need to accumulate at least 5 to cross it
         mode.on_encoder_rotated(push2_python.constants.ENCODER_TRACK2_ENCODER, 5)
-        assert mode.selected_project_index == 1
+        assert mode.project_list.selected_index == 1
         mode.on_encoder_rotated(push2_python.constants.ENCODER_TRACK2_ENCODER, -5)
-        assert mode.selected_project_index == 0
+        assert mode.project_list.selected_index == 0
         # ensure no wrap below 0
         mode.on_encoder_rotated(push2_python.constants.ENCODER_TRACK2_ENCODER, -5)
-        assert mode.selected_project_index == 0
+        assert mode.project_list.selected_index == 0
 
     def test_on_encoder_rotated_project_large_delta_normalized(self, mock_app):
         """Large encoder deltas should be normalized to single item scroll."""
         mock_app.push.encoders.available_names = [push2_python.constants.ENCODER_TRACK2_ENCODER]
         mode = SettingsMode(mock_app)
         mode.current_page = Pages.PROJECT
-        mode.project_files = ["projA", "projB", "projC", "projD", "projE", "projF"]
-        mode.selected_project_index = 0
-        mode.project_list_offset = 0
+        mode.project_list.items = ["projA", "projB", "projC", "projD", "projE", "projF"]
+        mode.project_list.selected_index = 0
+        mode.project_list.scroll_offset = 0
         # Large positive delta should still only move by 1
         mode.on_encoder_rotated(push2_python.constants.ENCODER_TRACK2_ENCODER, 10)  # Accumulates past threshold
-        assert mode.selected_project_index == 1
+        assert mode.project_list.selected_index == 1
         # Large negative delta should still only move by -1
         mode.on_encoder_rotated(push2_python.constants.ENCODER_TRACK2_ENCODER, -10)
-        assert mode.selected_project_index == 0
+        assert mode.project_list.selected_index == 0
 
     def test_on_button_pressed_performance_increment_root(self, mock_app):
         mode = SettingsMode(mock_app)
@@ -202,8 +202,8 @@ class TestSettingsMode:
     def test_on_button_pressed_project_load_confirmation(self, mock_app):
         mode = SettingsMode(mock_app)
         mode.current_page = Pages.PROJECT
-        mode.project_files = ["proj1"]
-        mode.selected_project_index = 0
+        mode.project_list.items = ["proj1"]
+        mode.project_list.selected_index = 0
         mode.waiting_for_confirmation = False
         mock_app.pm.load_project = MagicMock(return_value=True)
         mock_app.add_display_notification = MagicMock()
@@ -223,7 +223,7 @@ class TestSettingsMode:
     def test_on_button_pressed_session_save_settings(self, mock_app):
         mode = SettingsMode(mock_app)
         mode.current_page = Pages.SESSION
-        mode.midi_in_device_names = []  # empty — no device to apply
+        mode.midi_in_list.items = []  # empty — no device to apply
         mock_app.midi_in_device_name = None
         mock_app.save_current_settings_to_file = MagicMock()
         mock_app.add_display_notification = MagicMock()

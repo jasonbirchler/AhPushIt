@@ -3,20 +3,13 @@
 import push2_python
 
 import definitions
-from utils import clear_display, show_text, show_title, show_value
+from utils import clear_display, show_text, show_title, show_value, ScrollableList
 import isobar as iso
 from metronome import AhPushItMetronome
 
 
 class MetronomeMode(definitions.PushItMode):
     xor_group = "pads"
-
-    # Encoder-to-parameter mapping (mirrors AddTrackMode pattern)
-    ENCODER_DEVICE = push2_python.constants.ENCODER_TRACK2_ENCODER
-    ENCODER_CHANNEL = push2_python.constants.ENCODER_TRACK3_ENCODER
-    ENCODER_NOTES = push2_python.constants.ENCODER_TRACK4_ENCODER
-    ENCODER_VELOCITY = push2_python.constants.ENCODER_TRACK5_ENCODER
-    ENCODER_NOTE_DURATION = push2_python.constants.ENCODER_TRACK6_ENCODER
 
     available_devices = []
     device_idx = 0
@@ -57,11 +50,23 @@ class MetronomeMode(definitions.PushItMode):
             self.velocity_minor = metro.config.midi_velocity_minor
             self.note_duration = metro.config.midi_note_duration
 
+        self.metro_device_list = ScrollableList(
+            items=[],
+            x_part=1,
+            item_height=16,
+            list_start_y=30,
+            max_width_before_scroll=0,
+        )
+
     def activate(self):
         self.available_devices = sorted(self.app.session.output_device_names)
         if not self.available_devices:
             self.available_devices = ["None"]
         self.device_idx = min(self.device_idx, max(0, len(self.available_devices) - 1))
+
+        self.metro_device_list.items = self.available_devices
+        self.metro_device_list.selected_index = self.device_idx
+        self.metro_device_list.scroll_offset = 0
 
         self.update_buttons()
 
@@ -143,11 +148,19 @@ class MetronomeMode(definitions.PushItMode):
 
         # Column 2: Output device
         show_title(ctx, part_w * 1, h, "OUT DEVICE")
-        if 0 <= self.device_idx < len(self.available_devices):
-            out_name = self.available_devices[self.device_idx]
-        else:
-            out_name = "None"
-        show_value(ctx, part_w * 1, h, out_name, overflow="marquee")
+        
+        if not self.metro_device_list.items:
+            self.metro_device_list.items = sorted(self.app.session.output_device_names)
+            if self.metro_device_list.select_index >= len(self.metro_device_list.items):
+                self.metro_device_list.select_index = max(0, len(self.metro_device_list.items) - 1)
+                self.metro_device_list.scroll_offset = self.metro_device_list.select_index
+
+        self.metro_device_list.draw(
+            ctx, h, h - 24,
+            [1.0, 1.0, 1.0], [1.0, 1.0, 1.0],
+            lambda item, is_selected: item[:20] if len(item) > 20 else item,
+            "No outputs found"
+        )
 
         # Column 3: Channel
         show_title(ctx, part_w * 2, h, "CHANNEL")
@@ -186,25 +199,31 @@ class MetronomeMode(definitions.PushItMode):
         if delta == 0:
             return True
 
-        if encoder_name == self.ENCODER_DEVICE:
+        if encoder_name == push2_python.constants.ENCODER_TRACK2_ENCODER: # Output device
             self.device_idx = (self.device_idx + delta) % len(self.available_devices)
 
-        elif encoder_name == self.ENCODER_CHANNEL:
+            if self.metro_device_list.items and delta != 0:
+                    delta_norm = 1 if delta > 0 else -1
+                    if self.metro_device_list.select_index(delta_norm):
+                        visible_items = self.metro_device_list.get_visible_count(push2_python.constants.DISPLAY_N_LINES)
+                        self.metro_device_list.adjust_scroll_offset(visible_items)
+
+        elif encoder_name == push2_python.constants.ENCODER_TRACK3_ENCODER: # MIDI Channel
             self.channel = ((self.channel - 1 + delta) % 16) + 1
 
-        elif encoder_name == self.ENCODER_NOTES:
+        elif encoder_name == push2_python.constants.ENCODER_TRACK4_ENCODER: # High/Low note
             if self.accent_note_selected:
                 self.note_major = max(0, min(127, self.note_major + delta))
             else:
                 self.note_minor = max(0, min(127, self.note_minor + delta))
 
-        elif encoder_name == self.ENCODER_VELOCITY:
+        elif encoder_name == push2_python.constants.ENCODER_TRACK5_ENCODER: # High/Low velocity
             if self.accent_velocity_selected:
                 self.velocity_major = max(0, min(127, self.velocity_major + delta))
             else:
                 self.velocity_minor = max(0, min(127, self.velocity_minor + delta))
 
-        elif encoder_name == self.ENCODER_NOTE_DURATION:
+        elif encoder_name == push2_python.constants.ENCODER_TRACK6_ENCODER: # Note duration
             self.note_duration = max(0.01, min(5.0, round(self.note_duration + delta * 0.01, 2)))
 
         self.app.pads_need_update = True
