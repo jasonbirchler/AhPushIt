@@ -90,6 +90,7 @@ class SettingsMode(definitions.PushItMode):
         self.project_list = ScrollableList(
             items=[],
             x_part=1,
+            col_span=2,
             item_height=16,
             list_start_y=30,
             max_width_before_scroll=18,

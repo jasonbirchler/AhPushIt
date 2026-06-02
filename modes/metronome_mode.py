@@ -53,6 +53,7 @@ class MetronomeMode(definitions.PushItMode):
         self.metro_device_list = ScrollableList(
             items=[],
             x_part=1,
+            col_span=2,
             item_height=16,
             list_start_y=30,
             max_width_before_scroll=0,
@@ -89,6 +90,7 @@ class MetronomeMode(definitions.PushItMode):
     def update_buttons(self):
         # clear lower row
         for button_name in [
+            push2_python.constants.BUTTON_UPPER_ROW_3,
             push2_python.constants.BUTTON_LOWER_ROW_1,
             push2_python.constants.BUTTON_LOWER_ROW_2,
             push2_python.constants.BUTTON_LOWER_ROW_3,
@@ -102,21 +104,6 @@ class MetronomeMode(definitions.PushItMode):
 
         if self.accent_note_selected is True:
             self.push.buttons.set_button_color(
-                push2_python.constants.BUTTON_UPPER_ROW_4, definitions.WHITE
-            )
-            self.push.buttons.set_button_color(
-                push2_python.constants.BUTTON_LOWER_ROW_4, definitions.BLACK
-            )
-        else:
-            self.push.buttons.set_button_color(
-                push2_python.constants.BUTTON_UPPER_ROW_4, definitions.BLACK
-            )
-            self.push.buttons.set_button_color(
-                push2_python.constants.BUTTON_LOWER_ROW_4, definitions.WHITE
-            )
-
-        if self.accent_velocity_selected is True:
-            self.push.buttons.set_button_color(
                 push2_python.constants.BUTTON_UPPER_ROW_5, definitions.WHITE
             )
             self.push.buttons.set_button_color(
@@ -128,6 +115,21 @@ class MetronomeMode(definitions.PushItMode):
             )
             self.push.buttons.set_button_color(
                 push2_python.constants.BUTTON_LOWER_ROW_5, definitions.WHITE
+            )
+
+        if self.accent_velocity_selected is True:
+            self.push.buttons.set_button_color(
+                push2_python.constants.BUTTON_UPPER_ROW_6, definitions.WHITE
+            )
+            self.push.buttons.set_button_color(
+                push2_python.constants.BUTTON_LOWER_ROW_6, definitions.BLACK
+            )
+        else:
+            self.push.buttons.set_button_color(
+                push2_python.constants.BUTTON_UPPER_ROW_6, definitions.BLACK
+            )
+            self.push.buttons.set_button_color(
+                push2_python.constants.BUTTON_LOWER_ROW_6, definitions.WHITE
             )
 
         self.push.buttons.set_button_color(
@@ -162,34 +164,33 @@ class MetronomeMode(definitions.PushItMode):
             "No outputs found"
         )
 
-        # Column 3: Channel
-        show_title(ctx, part_w * 2, h, "CHANNEL")
-        show_value(ctx, part_w * 2, h, f"Ch {self.channel}")
+        # Column 4: Channel
+        show_title(ctx, part_w * 3, h, "CHANNEL")
+        show_value(ctx, part_w * 3, h, f"Ch {self.channel}")
 
-        # Column 4: Metronome notes
-        show_title(ctx, part_w * 3, h, "HIGH NOTE")
-        show_value(ctx, part_w * 3, h, f"{self.note_major}")
+        # Column 5: Metronome notes
+        show_title(ctx, part_w * 4, h, "HIGH NOTE")
+        show_value(ctx, part_w * 4, h, f"{self.note_major}")
 
-        show_text(ctx, 3, h - 40, "LOW NOTE", font_size_percentage=0.65)
-        show_text(ctx, 3, h - 20, f"{self.note_minor}", font_size_percentage=1)
+        show_text(ctx, 4, h - 40, "LOW NOTE", font_size_percentage=0.65)
+        show_text(ctx, 4, h - 20, f"{self.note_minor}", font_size_percentage=1)
 
-        # Column 5: Metronome velocities
-        show_title(ctx, part_w * 4, h, "ACC VEL")
-        show_value(ctx, part_w * 4, h, f"{self.velocity_major}")
+        # Column 6: Metronome velocities
+        show_title(ctx, part_w * 5, h, "ACC VEL")
+        show_value(ctx, part_w * 5, h, f"{self.velocity_major}")
 
-        show_text(ctx, 4, h - 40, "REG VEL", font_size_percentage=0.65)
-        show_text(ctx, 4, h - 20, f"{self.velocity_minor}", font_size_percentage=1)
+        show_text(ctx, 5, h - 40, "REG VEL", font_size_percentage=0.65)
+        show_text(ctx, 5, h - 20, f"{self.velocity_minor}", font_size_percentage=1)
 
-        # Column 6: Note duration
-        show_title(ctx, part_w * 5, h, "DURATION")
-        show_value(ctx, part_w * 5, h, f"{self.note_duration:.2f}s")
+        # Column 7: Note duration
+        show_title(ctx, part_w * 6, h, "DURATION")
+        show_value(ctx, part_w * 6, h, f"{self.note_duration:.2f}s")
 
-        # Column 7: Confirm
+        # Column 8: Confirm & Cancel
         show_text(ctx, 7, 5, "CONFIRM", height=16,
                   font_color=definitions.GREEN, background_color=definitions.BLACK,
                   margin_left=6, center_horizontally=False)
 
-        # Column 8: Cancel
         show_text(ctx, 7, h - 20, "CANCEL", height=16,
                   font_color=definitions.RED, background_color=definitions.BLACK,
                   margin_left=6, center_horizontally=False)
@@ -208,22 +209,22 @@ class MetronomeMode(definitions.PushItMode):
                         visible_items = self.metro_device_list.get_visible_count(push2_python.constants.DISPLAY_N_LINES)
                         self.metro_device_list.adjust_scroll_offset(visible_items)
 
-        elif encoder_name == push2_python.constants.ENCODER_TRACK3_ENCODER: # MIDI Channel
+        elif encoder_name == push2_python.constants.ENCODER_TRACK4_ENCODER: # MIDI Channel
             self.channel = ((self.channel - 1 + delta) % 16) + 1
 
-        elif encoder_name == push2_python.constants.ENCODER_TRACK4_ENCODER: # High/Low note
+        elif encoder_name == push2_python.constants.ENCODER_TRACK5_ENCODER: # High/Low note
             if self.accent_note_selected:
                 self.note_major = max(0, min(127, self.note_major + delta))
             else:
                 self.note_minor = max(0, min(127, self.note_minor + delta))
 
-        elif encoder_name == push2_python.constants.ENCODER_TRACK5_ENCODER: # High/Low velocity
+        elif encoder_name == push2_python.constants.ENCODER_TRACK6_ENCODER: # High/Low velocity
             if self.accent_velocity_selected:
                 self.velocity_major = max(0, min(127, self.velocity_major + delta))
             else:
                 self.velocity_minor = max(0, min(127, self.velocity_minor + delta))
 
-        elif encoder_name == push2_python.constants.ENCODER_TRACK6_ENCODER: # Note duration
+        elif encoder_name == push2_python.constants.ENCODER_TRACK7_ENCODER: # Note duration
             self.note_duration = max(0.01, min(5.0, round(self.note_duration + delta * 0.01, 2)))
 
         self.app.pads_need_update = True
@@ -231,21 +232,21 @@ class MetronomeMode(definitions.PushItMode):
 
     def on_button_pressed(self, button_name):
         # Select which note value is affected by encoder
-        if button_name == push2_python.constants.BUTTON_UPPER_ROW_4:
+        if button_name == push2_python.constants.BUTTON_UPPER_ROW_5:
             self.accent_note_selected = True
             self.app.buttons_need_update = True
             return True
-        if button_name == push2_python.constants.BUTTON_LOWER_ROW_4:
+        if button_name == push2_python.constants.BUTTON_LOWER_ROW_5:
             self.accent_note_selected = False
             self.app.buttons_need_update = True
             return True
 
         # Select which velocity value is affected by encoder
-        if button_name == push2_python.constants.BUTTON_UPPER_ROW_5:
+        if button_name == push2_python.constants.BUTTON_UPPER_ROW_6:
             self.accent_velocity_selected = True
             self.app.buttons_need_update = True
             return True
-        if button_name == push2_python.constants.BUTTON_LOWER_ROW_5:
+        if button_name == push2_python.constants.BUTTON_LOWER_ROW_6:
             self.accent_velocity_selected = False
             self.app.buttons_need_update = True
             return True

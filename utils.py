@@ -561,11 +561,12 @@ def draw_knob(ctx, x_part, parameter_name, value, vmin, vmax, value_display, col
 
 
 class ScrollableList:
-    def __init__(self, items, x_part, item_height=16, list_start_y=30, max_width_before_scroll=0, pause_before_scroll=1.0):
+    def __init__(self, items, x_part, item_height=16, list_start_y=30, max_width_before_scroll=0, pause_before_scroll=1.0, col_span=1):
         self.items = list(items) if items is not None else []
         self.selected_index = 0
         self.scroll_offset = 0
         self.x_part = x_part
+        self.col_span = col_span
         self.item_height = item_height
         self.list_start_y = list_start_y
         self.max_width_before_scroll = max_width_before_scroll
@@ -600,7 +601,7 @@ class ScrollableList:
         if max_width is None:
             display_w = push2_python.constants.DISPLAY_LINE_PIXELS
             part_w = display_w // definitions.GRID_WIDTH
-            max_width = part_w - 10
+            max_width = part_w * self.col_span - 10
         return _truncate_with_elipsis(ctx, text, 14, max_width)
 
     def draw(self, ctx, h, label_y, selected_color, normal_color, get_display_text, empty_message):
@@ -628,7 +629,7 @@ class ScrollableList:
 
             if is_selected:
                 ctx.set_source_rgb(*selected_color)
-                ctx.rectangle(part_x + 2, y_pos - 2, part_w - 6, self.item_height)
+                ctx.rectangle(part_x + 2, y_pos - 2, part_w * self.col_span - 6, self.item_height)
                 ctx.fill()
 
             display_text = get_display_text(item, is_selected)
