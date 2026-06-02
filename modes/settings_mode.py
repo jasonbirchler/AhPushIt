@@ -6,12 +6,9 @@ from datetime import datetime
 import push2_python.constants
 
 import definitions
-from utils import draw_text_at, show_text, show_title, show_value
+from utils import draw_text_at, show_text, show_title, show_value, ScrollableList
 
 IS_RUNNING_SW_UPDATE = ''
-
-MAX_WIDTH_BEFORE_SCROLL = 18
-PAUSE_BEFORE_HORIZONTAL_SCROLL = 1.0
 
 """
 This enum determines the order in which the settings pages display
@@ -54,15 +51,8 @@ class SettingsMode(definitions.PushItMode):
     current_preset_save_number = 0
     current_preset_load_number = 0
 
-    # Project list state for SESSION page
-    project_files = []           # List of available project files
-    selected_project_index = 0   # Currently selected project index
-    project_list_offset = 0      # Scroll offset for display
-    waiting_for_confirmation = False  # Confirmation state flag
-    project_to_confirm = None    # Project filename awaiting confirmation
-    last_scroll_time = 0         # Timestamp of last scroll activity
-    scroll_text_offset = 0       # Horizontal scroll offset for long filenames
-    scroll_text_direction = 1    # Direction of horizontal scrolling (1 or -1)
+    waiting_for_confirmation = False
+    project_to_confirm = None
 
     encoder_accumulators = {}  # encoder_name: accumulated_value
 
@@ -87,24 +77,28 @@ class SettingsMode(definitions.PushItMode):
                 'last_message_received': current_time,
             }
 
-        # Initialize encoder accumulators
         for encoder_name in self.push.encoders.available_names:
             self.encoder_accumulators[encoder_name] = 0
 
-        # Initialize project list state
-        self.project_files = []
-        self.selected_project_index = 0
-        self.project_list_offset = 0
+        self.midi_in_list = ScrollableList(
+            items=[],
+            x_part=1,
+            item_height=16,
+            list_start_y=30,
+            max_width_before_scroll=0,
+        )
+        self.project_list = ScrollableList(
+            items=[],
+            x_part=2,
+            col_span=2,
+            item_height=16,
+            list_start_y=30,
+            max_width_before_scroll=18,
+            pause_before_scroll=1.0,
+        )
+
         self.waiting_for_confirmation = False
         self.project_to_confirm = None
-        self.last_scroll_time = current_time
-        self.scroll_text_offset = 0
-        self.scroll_text_direction = 1
-
-        # Initialize MIDI In device list state (SESSION page, column 2)
-        self.midi_in_device_names = []
-        self.midi_in_selected_index = 0
-        self.midi_in_list_offset = 0
 
         self.auto_open_last_project = settings.get("auto_open_last_project", False)
 
@@ -114,22 +108,42 @@ class SettingsMode(definitions.PushItMode):
         }
 
     def activate(self):
-        self.midi_in_device_names = []  # Force re-scan on next display render
-        self.midi_in_selected_index = 0
-        self.midi_in_list_offset = 0
+        self.midi_in_list.items = []
+        self.midi_in_list.selected_index = 0
+        self.midi_in_list.scroll_offset = 0
         self.update_buttons()
         self._sync_midi_in_selection_to_active_device()
 
     def _sync_midi_in_selection_to_active_device(self):
         """Sync the selected index to the currently active MIDI input device (called once on activate)."""
-        if not self.midi_in_device_names:
-            self.midi_in_device_names = self.app.session._get_safe_input_device_names()
-        if self.midi_in_device_names:
+        if not self.midi_in_list.items:
+            self.midi_in_list.items = self.app.session._get_safe_input_device_names()
+        if self.midi_in_list.items:
             active_name = self.app.midi_in_device_name
-            for idx, name in enumerate(self.midi_in_device_names):
+            for idx, name in enumerate(self.midi_in_list.items):
                 if name == active_name:
-                    self.midi_in_selected_index = idx
+                    self.midi_in_list.selected_index = idx
                     break
+
+    def _get_project_display_text(self, item, is_selected):
+        if not is_selected:
+            return item
+
+        if len(item) <= self.project_list.max_width_before_scroll:
+            return item
+
+        current_time = time.time()
+        if current_time - self.project_list.last_scroll_time > self.project_list.pause_before_scroll:
+            self.project_list.scroll_text_offset += self.project_list.scroll_text_direction
+
+        text_width = len(item) * 6
+        visible_width = self.project_list.x_part * (push2_python.constants.DISPLAY_LINE_PIXELS // definitions.GRID_WIDTH) - 10
+        if text_width > visible_width:
+            start_pos = (self.project_list.scroll_text_offset // 6) % len(item)
+            display_text = item[start_pos:] + " " + item[:start_pos]
+        else:
+            display_text = item
+        return display_text
 
     def deactivate(self):
         self.push.buttons.set_button_color(push2_python.constants.BUTTON_UPPER_ROW_1, definitions.BLACK)
@@ -140,6 +154,9 @@ class SettingsMode(definitions.PushItMode):
         self.push.buttons.set_button_color(push2_python.constants.BUTTON_UPPER_ROW_6, definitions.BLACK)
         self.push.buttons.set_button_color(push2_python.constants.BUTTON_UPPER_ROW_7, definitions.BLACK)
         self.push.buttons.set_button_color(push2_python.constants.BUTTON_UPPER_ROW_8, definitions.BLACK)
+        self.push.buttons.set_button_color(push2_python.constants.BUTTON_LOWER_ROW_1, definitions.BLACK)
+        self.push.buttons.set_button_color(push2_python.constants.BUTTON_LOWER_ROW_2, definitions.BLACK)
+        self.push.buttons.set_button_color(push2_python.constants.BUTTON_LOWER_ROW_3, definitions.BLACK)
         self.push.buttons.set_button_color(push2_python.constants.BUTTON_UP, definitions.BLACK)
         self.push.buttons.set_button_color(push2_python.constants.BUTTON_DOWN, definitions.BLACK)
         self.current_page = 0
@@ -218,11 +235,11 @@ class SettingsMode(definitions.PushItMode):
             self.push.buttons.set_button_color( # Save session
                 push2_python.constants.BUTTON_UPPER_ROW_1, definitions.WHITE
             )
-            self.push.buttons.set_button_color( # Load session
-                push2_python.constants.BUTTON_UPPER_ROW_2, definitions.WHITE
-            )
             self.push.buttons.set_button_color( # Empty
-                push2_python.constants.BUTTON_UPPER_ROW_3, definitions.BLACK
+                push2_python.constants.BUTTON_UPPER_ROW_2, definitions.BLACK
+            )
+            self.push.buttons.set_button_color( # Load session
+                push2_python.constants.BUTTON_UPPER_ROW_3, definitions.WHITE
             )
             self.push.buttons.set_button_color( # Empty
                 push2_python.constants.BUTTON_UPPER_ROW_4, definitions.BLACK
@@ -242,17 +259,19 @@ class SettingsMode(definitions.PushItMode):
 
     def update_display(self, ctx, w, h):
         # Divide display in 8 parts to show different settings
-        part_w = w // 8
+        part_w = w // definitions.GRID_WIDTH
         part_h = h
 
-        # Draw labels and values
+        # First pass: backgrounds
         for i in range(0, 8):
             part_x = i * part_w
-            part_y = 0
-
-            ctx.set_source_rgb(0, 0, 0)  # Draw black background
-            ctx.rectangle(part_x - 3, part_y, w, h)  # do x -3 to add some margin between parts
+            ctx.set_source_rgb(0, 0, 0)
+            ctx.rectangle(part_x - 3, 0, part_w + 6, h)
             ctx.fill()
+
+        # Second pass: labels and values
+        for i in range(0, 8):
+            part_x = i * part_w
 
             color = [1.0, 1.0, 1.0]
 
@@ -333,41 +352,18 @@ class SettingsMode(definitions.PushItMode):
                 elif i == 1:  # MIDI Input Device
                     show_title(ctx, part_x, h, "MIDI IN")
 
-                    # Lazy-load input device names
-                    if not self.midi_in_device_names:
-                        self.midi_in_device_names = self.app.session._get_safe_input_device_names()
+                    if not self.midi_in_list.items:
+                        self.midi_in_list.items = self.app.session._get_safe_input_device_names()
+                        if self.midi_in_list.selected_index >= len(self.midi_in_list.items):
+                            self.midi_in_list.selected_index = max(0, len(self.midi_in_list.items) - 1)
+                            self.midi_in_list.scroll_offset = self.midi_in_list.selected_index
 
-                    if self.midi_in_device_names:
-                        item_height = 16
-                        list_start_y = 30
-                        label_y = h - 24
-                        visible_items = (label_y - 2 - list_start_y) // item_height
-
-                        for idx, name in enumerate(
-                            self.midi_in_device_names[self.midi_in_list_offset:self.midi_in_list_offset + visible_items]
-                        ):
-                            actual_idx = self.midi_in_list_offset + idx
-                            y_pos = part_y + 30 + idx * item_height
-
-                            if actual_idx == self.midi_in_selected_index:
-                                ctx.set_source_rgb(1.0, 1.0, 1.0)
-                                ctx.rectangle(part_x + 2, y_pos - 2, part_w - 6, item_height)
-                                ctx.fill()
-                                ctx.set_source_rgb(0.0, 0.0, 0.0)
-                            else:
-                                ctx.set_source_rgb(*color)
-
-                            ctx.select_font_face("Arial", 0, 0)
-                            ctx.set_font_size(14)
-                            display_text = name[:20] if len(name) > 20 else name
-                            ctx.move_to(part_x + 4, y_pos + 10)
-                            ctx.show_text(display_text)
-                    else:
-                        ctx.set_source_rgb(*color)
-                        ctx.select_font_face("Arial", 0, 0)
-                        ctx.set_font_size(12)
-                        ctx.move_to(part_x + 4, part_h // 2)
-                        ctx.show_text("No inputs found")
+                    self.midi_in_list.draw(
+                        ctx, h, h - 24,
+                        [1.0, 1.0, 1.0], color,
+                        lambda item, is_selected: self.midi_in_list.truncate_text(ctx, item),
+                        "No inputs found"
+                    )
                 elif i == 2:  # Save settings
                     show_title(ctx, part_x, h, 'SAVE SETTINGS')
                 elif i == 5:  # Re-send MIDI connection established to Push
@@ -396,74 +392,21 @@ class SettingsMode(definitions.PushItMode):
                 if i == 0:  # Save session
                     show_title(ctx, part_x, h, 'SAVE PROJECT')
                     show_value(ctx, part_x, h, self.app.pm.current_project_file, color)
-                elif i == 1:  # Load session
+                elif i == 2:  # Load session
                     show_title(ctx, part_x, h, 'LOAD PROJECT')
 
-                    # Get project files if not already loaded
-                    if not self.project_files:
-                        self.project_files = self.app.pm.list_projects()
+                    if not self.project_list.items:
+                        self.project_list.items = self.app.pm.list_projects()
+                        if self.project_list.selected_index >= len(self.project_list.items):
+                            self.project_list.selected_index = max(0, len(self.project_list.items) - 1)
+                            self.project_list.scroll_offset = self.project_list.selected_index
 
-                    # Display project list with scrolling
-                    if self.project_files:
-                        # Calculate visible items based on part height
-                        item_height = 16  # pixels per item
-                        list_start_y = 30  # first item y offset
-                        label_y = h - 24   # lower row button label y
-                        visible_items = (label_y - 2 - list_start_y) // item_height  # end list 2px above label
-
-                        # Handle horizontal text scrolling for long filenames
-                        current_time = time.time()
-                        if current_time - self.last_scroll_time > PAUSE_BEFORE_HORIZONTAL_SCROLL:  # 500ms pause
-                            # Auto-scroll long text
-                            selected_project = self.project_files[self.selected_project_index] if self.project_files else ""
-                            if len(selected_project) > MAX_WIDTH_BEFORE_SCROLL:  # If text is long
-                                self.scroll_text_offset += self.scroll_text_direction
-
-                        # Draw visible project files
-                        for idx, project in enumerate(self.project_files[self.project_list_offset:self.project_list_offset + visible_items]):
-                            actual_idx = self.project_list_offset + idx
-                            y_pos = part_y + 30 + idx * item_height
-
-                            # Draw selection bar (fixed position for selected item)
-                            if actual_idx == self.selected_project_index:
-                                # Calculate y position relative to scroll offset
-                                selected_y = part_y + 30 + (self.selected_project_index - self.project_list_offset) * item_height
-                                if selected_y >= part_y + 30 and selected_y < part_y + 30 + visible_items * item_height:
-                                    ctx.set_source_rgb(1.0, 1.0, 1.0)  # White background
-                                    ctx.rectangle(part_x + 2, selected_y - 2, part_w - 6, item_height)
-                                    ctx.fill()
-
-                            # Draw project name
-                            if actual_idx == self.selected_project_index:
-                                ctx.set_source_rgb(0.0, 0.0, 0.0)  # Black text for selected item
-                            else:
-                                ctx.set_source_rgb(*color)  # Normal color
-
-                            ctx.select_font_face("Arial", 0, 0)
-                            ctx.set_font_size(14)
-
-                            # Apply horizontal scroll offset for selected item
-                            display_text = project
-                            if actual_idx == self.selected_project_index and len(project) > MAX_WIDTH_BEFORE_SCROLL:
-                                # Create scrolling effect by offsetting the starting position
-                                text_width = len(project) * 6  # Approximate width
-                                visible_width = part_w - 10
-                                if text_width > visible_width:
-                                    # Calculate visible portion
-                                    start_pos = (self.scroll_text_offset // 6) % len(project)
-                                    display_text = project[start_pos:] + " " + project[:start_pos]
-                                    # Limit length to fit in space
-                                    display_text = display_text[:25]
-
-                            ctx.move_to(part_x + 4, y_pos + 10)
-                            ctx.show_text(display_text)
-                    else:
-                        # No projects available
-                        ctx.set_source_rgb(*color)
-                        ctx.select_font_face("Arial", 0, 0)
-                        ctx.set_font_size(12)
-                        ctx.move_to(part_x + 4, part_h // 2)
-                        ctx.show_text("No projects found")
+                    self.project_list.draw(
+                        ctx, h, h - 24,
+                        [1.0, 1.0, 1.0], color,
+                        lambda item, is_selected: self.project_list.truncate_text(ctx, self._get_project_display_text(item, is_selected)),
+                        "No projects found"
+                    )
         # After drawing all labels and values, draw other stuff if required
         if self.current_page == Pages.PERFORMANCE:
 
@@ -536,23 +479,13 @@ class SettingsMode(definitions.PushItMode):
 
         elif self.current_page == Pages.SESSION:
             if encoder_name == push2_python.constants.ENCODER_TRACK2_ENCODER:
-                if not self.midi_in_device_names:
-                    self.midi_in_device_names = self.app.session._get_safe_input_device_names()
-                if self.midi_in_device_names and delta != 0:
+                if not self.midi_in_list.items:
+                    self.midi_in_list.items = self.app.session._get_safe_input_device_names()
+                if self.midi_in_list.items and delta != 0:
                     delta_norm = 1 if delta > 0 else -1
-                    self.midi_in_selected_index = max(0, min(
-                        len(self.midi_in_device_names) - 1,
-                        self.midi_in_selected_index + delta_norm
-                    ))
-                    # Adjust scroll offset to keep selection visible
-                    item_height = 16
-                    list_start_y = 30
-                    label_y = push2_python.constants.DISPLAY_N_LINES - 24
-                    visible_items = (label_y - 2 - list_start_y) // item_height
-                    if self.midi_in_selected_index < self.midi_in_list_offset:
-                        self.midi_in_list_offset = self.midi_in_selected_index
-                    elif self.midi_in_selected_index >= self.midi_in_list_offset + visible_items:
-                        self.midi_in_list_offset = self.midi_in_selected_index - visible_items + 1
+                    if self.midi_in_list.select_index(delta_norm):
+                        visible_items = self.midi_in_list.get_visible_count(push2_python.constants.DISPLAY_N_LINES)
+                        self.midi_in_list.adjust_scroll_offset(visible_items)
 
         elif self.current_page == Pages.PROJECT:
             if encoder_name == push2_python.constants.ENCODER_TRACK1_ENCODER:
@@ -561,36 +494,13 @@ class SettingsMode(definitions.PushItMode):
                     if self.current_preset_save_number < 0:
                         self.current_preset_save_number = 0
 
-            elif encoder_name == push2_python.constants.ENCODER_TRACK2_ENCODER:
-                if self.project_files:  # Only respond if we have projects
-                    if delta != 0:
-                        # Normalize delta to ±1 for single-item scrolling
-                        delta = 1 if delta > 0 else -1
-                        # Change selection
-                        self.selected_project_index += delta
+            elif encoder_name == push2_python.constants.ENCODER_TRACK3_ENCODER:
+                if self.project_list.items and delta != 0:
+                    delta_norm = 1 if delta > 0 else -1
+                    if self.project_list.select_index(delta_norm):
+                        visible_items = self.project_list.get_visible_count(push2_python.constants.DISPLAY_N_LINES)
+                        self.project_list.adjust_scroll_offset(visible_items)
 
-                        # Clamp to valid range (no wrap-around)
-                        if self.selected_project_index < 0:
-                            self.selected_project_index = 0
-                        elif self.selected_project_index >= len(self.project_files):
-                            self.selected_project_index = len(self.project_files) - 1
-
-                        # Calculate visible items based on part height (must match update_display)
-                        item_height = 16  # pixels per item
-                        list_start_y = 30  # first item y offset
-                        label_y = push2_python.constants.DISPLAY_N_LINES - 24   # lower row button label y
-                        visible_items = (label_y - 2 - list_start_y) // item_height  # end list 2px above label
-
-                        # Adjust scroll offset to keep selection visible
-                        if self.selected_project_index < self.project_list_offset:
-                            self.project_list_offset = self.selected_project_index
-                        elif self.selected_project_index >= self.project_list_offset + visible_items:
-                            self.project_list_offset = self.selected_project_index - visible_items + 1
-
-                        # Update last scroll time for horizontal text scrolling
-                        self.last_scroll_time = time.time()
-
-                        # Clear any pending confirmation
                         self.waiting_for_confirmation = False
                         self.project_to_confirm = None
 
@@ -650,8 +560,8 @@ class SettingsMode(definitions.PushItMode):
                 return True
             if button_name == push2_python.constants.BUTTON_UPPER_ROW_3:
                 # Apply selected MIDI In device if changed, then save settings
-                if self.midi_in_device_names:
-                    selected_name = self.midi_in_device_names[self.midi_in_selected_index]
+                if self.midi_in_list.items:
+                    selected_name = self.midi_in_list.items[self.midi_in_list.selected_index]
                     if selected_name != self.app.midi_in_device_name:
                         self.app.start_midi_input(selected_name)
                 self.app.save_current_settings_to_file()
@@ -685,12 +595,12 @@ class SettingsMode(definitions.PushItMode):
 
                 return True
 
-            if button_name == push2_python.constants.BUTTON_UPPER_ROW_2:
-                if self.project_files:
+            if button_name == push2_python.constants.BUTTON_UPPER_ROW_3:
+                if self.project_list.items:
                     if not self.waiting_for_confirmation:
                         # First press: show confirmation
                         self.waiting_for_confirmation = True
-                        self.project_to_confirm = self.project_files[self.selected_project_index]
+                        self.project_to_confirm = self.project_list.items[self.project_list.selected_index]
                         self.app.add_display_notification(
                             f"Press again to load: {self.project_to_confirm}"
                         )

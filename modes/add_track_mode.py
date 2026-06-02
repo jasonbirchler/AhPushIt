@@ -1,7 +1,7 @@
 import push2_python
 
 import definitions
-from utils import show_text, show_title, show_value
+from utils import show_text, show_title, show_value, ScrollableList
 
 
 class AddTrackMode(definitions.PushItMode):
@@ -43,6 +43,15 @@ class AddTrackMode(definitions.PushItMode):
         if settings and 'editing_track' in settings:
             self.editing_track = settings['editing_track']
             self._load_track_settings(self.editing_track)
+
+        self.output_device_list = ScrollableList(
+            items=[],
+            x_part=2,
+            col_span=2,
+            item_height=16,
+            list_start_y=30,
+            max_width_before_scroll=0,
+        )
 
     def _load_track_settings(self, track):
         """
@@ -96,11 +105,19 @@ class AddTrackMode(definitions.PushItMode):
             self.input_device_idx, max(0, len(self.available_input_devices) - 1)
         )
 
+        self.output_device_list.items = self.available_output_devices
+        self.output_device_list.selected_index = self.output_device_idx
+        self.output_device_list.scroll_offset = 0
+
         self.update_buttons()
         self.app.pads_need_update = True
 
     def deactivate(self):
         for button_name in [
+            push2_python.constants.BUTTON_UPPER_ROW_1,
+            push2_python.constants.BUTTON_UPPER_ROW_2,
+            push2_python.constants.BUTTON_UPPER_ROW_3,
+            push2_python.constants.BUTTON_UPPER_ROW_4,
             push2_python.constants.BUTTON_UPPER_ROW_5,
             push2_python.constants.BUTTON_UPPER_ROW_6,
             push2_python.constants.BUTTON_UPPER_ROW_7,
@@ -110,7 +127,7 @@ class AddTrackMode(definitions.PushItMode):
 
     def update_buttons(self):
         self.push.buttons.set_button_color(
-            push2_python.constants.BUTTON_UPPER_ROW_5, definitions.BLACK
+            push2_python.constants.BUTTON_UPPER_ROW_4, definitions.BLACK
         )
         self.push.buttons.set_button_color(
             push2_python.constants.BUTTON_UPPER_ROW_6, definitions.BLACK
@@ -161,28 +178,30 @@ class AddTrackMode(definitions.PushItMode):
             h,
             "OUT DEVICE"
         )
-        if 0 <= self.output_device_idx < len(self.available_output_devices):
-            out_name = self.available_output_devices[self.output_device_idx]
-        else:
-            out_name = "None"
-        show_value(
-            ctx,
-            part_w * 2,
-            h,
-            out_name,
-            overflow="marquee"
+
+        if not self.output_device_list.items:
+            self.output_device_list.items = sorted(self.app.session.output_device_names)
+            if self.output_device_list.select_index >= len(self.output_device_list.items):
+                self.output_device_list.select_index = max(0, len(self.output_device_list.items) - 1)
+                self.output_device_list.scroll_offset = self.output_device_list.select_index
+
+        self.output_device_list.draw(
+            ctx, h, h - 24,
+            [1.0, 1.0, 1.0], [1.0, 1.0, 1.0],
+            lambda item, is_selected: self.output_device_list.truncate_text(ctx, item),
+            "No outputs found"
         )
 
-        # Section 4: Output channel
+        # Section 5: Output channel
         show_title(
             ctx,
-            part_w * 3,
+            part_w * 4,
             h,
             "CHANNEL"
         )
         show_value(
             ctx,
-            part_w * 3,
+            part_w * 4,
             h,
             f"Ch {self.output_channel}",
         )
@@ -226,19 +245,11 @@ class AddTrackMode(definitions.PushItMode):
             self.output_device_idx = (self.output_device_idx + delta) % len(
                 self.available_output_devices
             )
-            # Adjust list offset
-            if self.output_device_idx < self.output_device_list_offset:
-                self.output_device_list_offset = self.output_device_idx
-            elif (
-                self.output_device_idx
-                >= self.output_device_list_offset + self.visible_rows
-            ):
-                self.output_device_list_offset = (
-                    self.output_device_idx - self.visible_rows + 1
-                )
+            # Sync the ScrollableList selection with the canonical index
+            self.output_device_list.selected_index = self.output_device_idx
 
-        # Encoder 4: Output channel
-        elif encoder_name == push2_python.constants.ENCODER_TRACK4_ENCODER:
+        # Encoder 5: Output channel
+        elif encoder_name == push2_python.constants.ENCODER_TRACK5_ENCODER:
             if self.output_channel is None:
                 self.output_channel = 1
             self.output_channel = ((self.output_channel - 1 + delta) % 16) + 1
@@ -256,7 +267,7 @@ class AddTrackMode(definitions.PushItMode):
             self.app.pads_need_update = True
             return True
 
-        if button_name == push2_python.constants.BUTTON_UPPER_ROW_4:
+        if button_name == push2_python.constants.BUTTON_UPPER_ROW_5:
             self.output_device_idx = (self.output_device_idx + 1) % len(
                 self.available_output_devices
             )
