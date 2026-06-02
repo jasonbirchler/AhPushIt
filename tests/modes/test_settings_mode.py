@@ -223,8 +223,11 @@ class TestSettingsMode:
     def test_on_button_pressed_session_save_settings(self, mock_app):
         mode = SettingsMode(mock_app)
         mode.current_page = Pages.SESSION
+        mode.midi_in_device_names = []  # empty — no device to apply
+        mock_app.midi_in_device_name = None
         mock_app.save_current_settings_to_file = MagicMock()
-        result = mode.on_button_pressed(push2_python.constants.BUTTON_UPPER_ROW_2)
+        mock_app.add_display_notification = MagicMock()
+        result = mode.on_button_pressed(push2_python.constants.BUTTON_UPPER_ROW_3)
         assert result is True
         mock_app.save_current_settings_to_file.assert_called_once()
 

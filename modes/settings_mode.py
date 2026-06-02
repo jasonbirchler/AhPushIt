@@ -101,6 +101,11 @@ class SettingsMode(definitions.PushItMode):
         self.scroll_text_offset = 0
         self.scroll_text_direction = 1
 
+        # Initialize MIDI In device list state (SESSION page, column 2)
+        self.midi_in_device_names = []
+        self.midi_in_selected_index = 0
+        self.midi_in_list_offset = 0
+
         self.auto_open_last_project = settings.get("auto_open_last_project", False)
 
     def get_settings_to_save(self):
@@ -109,7 +114,22 @@ class SettingsMode(definitions.PushItMode):
         }
 
     def activate(self):
+        self.midi_in_device_names = []  # Force re-scan on next display render
+        self.midi_in_selected_index = 0
+        self.midi_in_list_offset = 0
         self.update_buttons()
+        self._sync_midi_in_selection_to_active_device()
+
+    def _sync_midi_in_selection_to_active_device(self):
+        """Sync the selected index to the currently active MIDI input device (called once on activate)."""
+        if not self.midi_in_device_names:
+            self.midi_in_device_names = self.app.session._get_safe_input_device_names()
+        if self.midi_in_device_names:
+            active_name = self.app.midi_in_device_name
+            for idx, name in enumerate(self.midi_in_device_names):
+                if name == active_name:
+                    self.midi_in_selected_index = idx
+                    break
 
     def deactivate(self):
         self.push.buttons.set_button_color(push2_python.constants.BUTTON_UPPER_ROW_1, definitions.BLACK)
@@ -171,10 +191,7 @@ class SettingsMode(definitions.PushItMode):
                 push2_python.constants.BUTTON_UPPER_ROW_1, definitions.WHITE
             )
             self.push.buttons.set_button_color( # Save settings
-                push2_python.constants.BUTTON_UPPER_ROW_2, definitions.GREEN
-            )
-            self.push.buttons.set_button_color( # Empty
-                push2_python.constants.BUTTON_UPPER_ROW_3, definitions.BLACK
+                push2_python.constants.BUTTON_UPPER_ROW_3, definitions.GREEN
             )
             self.push.buttons.set_button_color( # Empty
                 push2_python.constants.BUTTON_UPPER_ROW_4, definitions.BLACK
@@ -313,7 +330,45 @@ class SettingsMode(definitions.PushItMode):
                         h,
                         'Last Session' if self.auto_open_last_project else 'Empty Session'
                     )
-                elif i == 1:  # Save settings
+                elif i == 1:  # MIDI Input Device
+                    show_title(ctx, part_x, h, "MIDI IN")
+
+                    # Lazy-load input device names
+                    if not self.midi_in_device_names:
+                        self.midi_in_device_names = self.app.session._get_safe_input_device_names()
+
+                    if self.midi_in_device_names:
+                        item_height = 16
+                        list_start_y = 30
+                        label_y = h - 24
+                        visible_items = (label_y - 2 - list_start_y) // item_height
+
+                        for idx, name in enumerate(
+                            self.midi_in_device_names[self.midi_in_list_offset:self.midi_in_list_offset + visible_items]
+                        ):
+                            actual_idx = self.midi_in_list_offset + idx
+                            y_pos = part_y + 30 + idx * item_height
+
+                            if actual_idx == self.midi_in_selected_index:
+                                ctx.set_source_rgb(1.0, 1.0, 1.0)
+                                ctx.rectangle(part_x + 2, y_pos - 2, part_w - 6, item_height)
+                                ctx.fill()
+                                ctx.set_source_rgb(0.0, 0.0, 0.0)
+                            else:
+                                ctx.set_source_rgb(*color)
+
+                            ctx.select_font_face("Arial", 0, 0)
+                            ctx.set_font_size(14)
+                            display_text = name[:20] if len(name) > 20 else name
+                            ctx.move_to(part_x + 4, y_pos + 10)
+                            ctx.show_text(display_text)
+                    else:
+                        ctx.set_source_rgb(*color)
+                        ctx.select_font_face("Arial", 0, 0)
+                        ctx.set_font_size(12)
+                        ctx.move_to(part_x + 4, part_h // 2)
+                        ctx.show_text("No inputs found")
+                elif i == 2:  # Save settings
                     show_title(ctx, part_x, h, 'SAVE SETTINGS')
                 elif i == 5:  # Re-send MIDI connection established to Push
                     show_title(
@@ -479,6 +534,26 @@ class SettingsMode(definitions.PushItMode):
                 if delta != 0:
                     self.app.melodic_mode.set_poly_at_curve_bending(self.app.melodic_mode.poly_at_curve_bending + delta)
 
+        elif self.current_page == Pages.SESSION:
+            if encoder_name == push2_python.constants.ENCODER_TRACK2_ENCODER:
+                if not self.midi_in_device_names:
+                    self.midi_in_device_names = self.app.session._get_safe_input_device_names()
+                if self.midi_in_device_names and delta != 0:
+                    delta_norm = 1 if delta > 0 else -1
+                    self.midi_in_selected_index = max(0, min(
+                        len(self.midi_in_device_names) - 1,
+                        self.midi_in_selected_index + delta_norm
+                    ))
+                    # Adjust scroll offset to keep selection visible
+                    item_height = 16
+                    list_start_y = 30
+                    label_y = push2_python.constants.DISPLAY_N_LINES - 24
+                    visible_items = (label_y - 2 - list_start_y) // item_height
+                    if self.midi_in_selected_index < self.midi_in_list_offset:
+                        self.midi_in_list_offset = self.midi_in_selected_index
+                    elif self.midi_in_selected_index >= self.midi_in_list_offset + visible_items:
+                        self.midi_in_list_offset = self.midi_in_selected_index - visible_items + 1
+
         elif self.current_page == Pages.PROJECT:
             if encoder_name == push2_python.constants.ENCODER_TRACK1_ENCODER:
                 if delta != 0:
@@ -573,9 +648,14 @@ class SettingsMode(definitions.PushItMode):
                 self.app.settings['auto_open_last_project'] = self.auto_open_last_project
                 self.app.save_current_settings_to_file()
                 return True
-            if button_name == push2_python.constants.BUTTON_UPPER_ROW_2:
-                # Save current settings
+            if button_name == push2_python.constants.BUTTON_UPPER_ROW_3:
+                # Apply selected MIDI In device if changed, then save settings
+                if self.midi_in_device_names:
+                    selected_name = self.midi_in_device_names[self.midi_in_selected_index]
+                    if selected_name != self.app.midi_in_device_name:
+                        self.app.start_midi_input(selected_name)
                 self.app.save_current_settings_to_file()
+                self.app.add_display_notification("Settings saved")
                 return True
             if button_name == push2_python.constants.BUTTON_UPPER_ROW_6:
                 self.app.on_midi_push_connection_established()

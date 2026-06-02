@@ -22,8 +22,6 @@ class TestTrack:
         assert track.channel == 0
         assert track.input_monitoring is False
         assert track.output_device_name is None
-        assert track.input_device_name is None
-        assert track.input_channel == -1
         assert track._send_clock is False
         assert track.clips == [None] * 8  # Default 8 clips
 
@@ -59,20 +57,6 @@ class TestTrack:
         assert track.input_monitoring is True
         track.set_input_monitoring(False)
         assert track.input_monitoring is False
-
-    def test_track_set_input_device(self, session):
-        """Test setting input device by name."""
-        track = Track(parent=session)
-        track.set_input_device_by_name("MIDI Keyboard")
-        assert track.input_device_name == "MIDI Keyboard"
-
-    def test_track_set_input_channel(self, session):
-        """Test setting input channel."""
-        track = Track(parent=session)
-        track.set_input_channel(5)
-        assert track.input_channel == 5
-        track.set_input_channel(-1)
-        assert track.input_channel == -1
 
     def test_track_output_device_property(self, session):
         """Test output_device property getter/setter."""

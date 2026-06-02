@@ -49,6 +49,7 @@ class TestProjectManager:
         track.output_device_name = "TestDevice"
         track.input_device_name = "TestInput"
         track.input_channel = 0
+        track.passthru_muted = False
         track.clips = [None] * 8  # 8 clip slots
         
         # Create a real clip for testing
@@ -103,6 +104,7 @@ class TestProjectManager:
         track.output_device_name = "TestDevice"
         track.input_device_name = None
         track.input_channel = -1
+        track.passthru_muted = False
         track.clips = [None] * 8
         mock_app.session.tracks = [track] + [None] * 7
         mock_app.seq.bpm = 100

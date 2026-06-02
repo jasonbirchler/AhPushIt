@@ -12,8 +12,6 @@ class Track(BaseClass):
     channel: int
     input_monitoring: bool
     output_device_name: str
-    input_device_name: str = None
-    input_channel: int = -1
     remove_when_done: bool = False
     timeline: iso.Timeline
     type: Literal["drum", "melodic"] = "melodic"
@@ -24,13 +22,12 @@ class Track(BaseClass):
         self.channel = 0
         self.input_monitoring = False
         self.output_device_name = None
-        self.input_device_name = None
-        self.input_channel = -1
         self.type = "melodic"
         
         self.clips: List[Clip] = [None, None, None, None, None, None, None, None]
 
         self._send_clock = False
+        self._passthru_muted = False
         self._output_device = iso.MidiOutputDevice(self.output_device_name, send_clock=self.send_clock)
         self._device_short_name = None
         self._reload_track_info = False
@@ -56,14 +53,6 @@ class Track(BaseClass):
 
     def set_input_monitoring(self, enabled):
         self.input_monitoring = enabled
-
-    def set_input_device_by_name(self, name) -> None:
-        """Set the input device by name"""
-        self.input_device_name = name
-
-    def set_input_channel(self, channel) -> None:
-        """Set the input channel (-1 for All, 1-16 for specific)"""
-        self.input_channel = channel
 
     def set_active_ui_notes_monitoring(self):
         print("implement set_active_ui_notes_monitoring in a way that doesn't require WS")
@@ -148,4 +137,14 @@ class Track(BaseClass):
     def reload_track_info(self, value: bool) -> None:
         """Set track reload state"""
         self._reload_track_info = value
+
+    @property
+    def passthru_muted(self) -> bool:
+        """Get whether passthru is muted"""
+        return self._passthru_muted
+
+    @passthru_muted.setter
+    def passthru_muted(self, value: bool) -> None:
+        """Set whether passthru is muted"""
+        self._passthru_muted = value
 

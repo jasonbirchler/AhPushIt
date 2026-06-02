@@ -194,7 +194,10 @@ class TrackSelectionMode(definitions.PushItMode):
         # Update track buttons with their colors
         for count, name in enumerate(self.track_button_names):
             if count < len(self.app.session.tracks) and self.app.session.tracks[count] is not None:
+                track = self.app.session.tracks[count]
                 color = self.get_track_color(count)
+                if track.passthru_muted:
+                    color = color + '_darker1'
             else:
                 color = definitions.BLACK
             self.push.buttons.set_button_color(name, color)
@@ -324,7 +327,12 @@ class TrackSelectionMode(definitions.PushItMode):
             track_idx = self.track_button_names.index(button_name)
             track = self.app.session.get_track_by_idx(track_idx)
             if track is not None:
-                if long_press:
+                shift_held = self.app.is_button_being_pressed(push2_python.constants.BUTTON_SHIFT)
+                if shift_held:
+                    # Toggle passthru mute for this track
+                    track.passthru_muted = not track.passthru_muted
+                    self.app.buttons_need_update = True
+                elif long_press:
                     # Toggle input monitoring
                     track.set_input_monitoring(not track.input_monitoring)
                 else:

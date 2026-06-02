@@ -101,12 +101,20 @@ class AddTrackMode(definitions.PushItMode):
 
     def deactivate(self):
         for button_name in [
+            push2_python.constants.BUTTON_UPPER_ROW_5,
+            push2_python.constants.BUTTON_UPPER_ROW_6,
             push2_python.constants.BUTTON_UPPER_ROW_7,
             push2_python.constants.BUTTON_UPPER_ROW_8,
         ]:
             self.push.buttons.set_button_color(button_name, definitions.BLACK)
 
     def update_buttons(self):
+        self.push.buttons.set_button_color(
+            push2_python.constants.BUTTON_UPPER_ROW_5, definitions.BLACK
+        )
+        self.push.buttons.set_button_color(
+            push2_python.constants.BUTTON_UPPER_ROW_6, definitions.BLACK
+        )
         self.push.buttons.set_button_color(
             push2_python.constants.BUTTON_UPPER_ROW_7, definitions.GREEN
         )
@@ -179,43 +187,6 @@ class AddTrackMode(definitions.PushItMode):
             f"Ch {self.output_channel}",
         )
 
-        # Section 5: Input device
-        show_title(
-            ctx,
-            part_w * 4,
-            h,
-            "RCV FROM"
-        )
-        if 0 <= self.input_device_idx < len(self.available_input_devices):
-            in_name = self.available_input_devices[self.input_device_idx]
-        else:
-            in_name = "All"
-        show_value(
-            ctx,
-            part_w * 4,
-            h,
-            in_name,
-            overflow="marquee"
-        )
-
-        # Section 6: Input channel
-        show_title(
-            ctx,
-            part_w * 5,
-            h,
-            "RCV CHANNEL"
-        )
-        if self.input_channel == -1:
-            ch_label = "All"
-        else:
-            ch_label = f"Ch {self.input_channel}"
-        show_value(
-            ctx,
-            part_w * 5,
-            h,
-            ch_label
-        )
-
         # Section 7: Confirm
         show_text(
             ctx,
@@ -272,35 +243,6 @@ class AddTrackMode(definitions.PushItMode):
                 self.output_channel = 1
             self.output_channel = ((self.output_channel - 1 + delta) % 16) + 1
 
-        # Encoder 5: Input device
-        elif encoder_name == push2_python.constants.ENCODER_TRACK5_ENCODER:
-            if self.input_device_idx is None:
-                self.input_device_idx = 0
-            self.input_device_idx = (self.input_device_idx + delta) % len(
-                self.available_input_devices
-            )
-            if self.input_device_idx < self.input_device_list_offset:
-                self.input_device_list_offset = self.input_device_idx
-            elif (
-                self.input_device_idx
-                >= self.input_device_list_offset + self.visible_rows
-            ):
-                self.input_device_list_offset = (
-                    self.input_device_idx - self.visible_rows + 1
-                )
-
-        # Encoder 6: Input channel
-        elif encoder_name == push2_python.constants.ENCODER_TRACK6_ENCODER:
-            # Cycle: -1 (All), 1, 2, ..., 16
-            if self.input_channel == -1:
-                self.input_channel = 1 if delta > 0 else 16
-            else:
-                self.input_channel += delta
-                if self.input_channel < 1:
-                    self.input_channel = -1
-                elif self.input_channel > 16:
-                    self.input_channel = -1
-
         self.app.pads_need_update = True
         return True
 
@@ -325,20 +267,6 @@ class AddTrackMode(definitions.PushItMode):
                 self.output_device_list_offset = (
                     self.output_device_idx - self.visible_rows + 1
                 )
-            self.app.pads_need_update = True
-            return True
-
-        if button_name == push2_python.constants.BUTTON_UPPER_ROW_5:
-            self.output_channel = (
-                16 if self.output_channel == 1 else self.output_channel - 1
-            )
-            self.app.pads_need_update = True
-            return True
-
-        if button_name == push2_python.constants.BUTTON_UPPER_ROW_6:
-            self.output_channel = (
-                1 if self.output_channel == 16 else self.output_channel + 1
-            )
             self.app.pads_need_update = True
             return True
 
