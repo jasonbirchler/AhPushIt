@@ -89,7 +89,7 @@ class SettingsMode(definitions.PushItMode):
         )
         self.project_list = ScrollableList(
             items=[],
-            x_part=1,
+            x_part=2,
             col_span=2,
             item_height=16,
             list_start_y=30,
@@ -154,6 +154,9 @@ class SettingsMode(definitions.PushItMode):
         self.push.buttons.set_button_color(push2_python.constants.BUTTON_UPPER_ROW_6, definitions.BLACK)
         self.push.buttons.set_button_color(push2_python.constants.BUTTON_UPPER_ROW_7, definitions.BLACK)
         self.push.buttons.set_button_color(push2_python.constants.BUTTON_UPPER_ROW_8, definitions.BLACK)
+        self.push.buttons.set_button_color(push2_python.constants.BUTTON_LOWER_ROW_1, definitions.BLACK)
+        self.push.buttons.set_button_color(push2_python.constants.BUTTON_LOWER_ROW_2, definitions.BLACK)
+        self.push.buttons.set_button_color(push2_python.constants.BUTTON_LOWER_ROW_3, definitions.BLACK)
         self.push.buttons.set_button_color(push2_python.constants.BUTTON_UP, definitions.BLACK)
         self.push.buttons.set_button_color(push2_python.constants.BUTTON_DOWN, definitions.BLACK)
         self.current_page = 0
@@ -232,11 +235,11 @@ class SettingsMode(definitions.PushItMode):
             self.push.buttons.set_button_color( # Save session
                 push2_python.constants.BUTTON_UPPER_ROW_1, definitions.WHITE
             )
-            self.push.buttons.set_button_color( # Load session
-                push2_python.constants.BUTTON_UPPER_ROW_2, definitions.WHITE
-            )
             self.push.buttons.set_button_color( # Empty
-                push2_python.constants.BUTTON_UPPER_ROW_3, definitions.BLACK
+                push2_python.constants.BUTTON_UPPER_ROW_2, definitions.BLACK
+            )
+            self.push.buttons.set_button_color( # Load session
+                push2_python.constants.BUTTON_UPPER_ROW_3, definitions.WHITE
             )
             self.push.buttons.set_button_color( # Empty
                 push2_python.constants.BUTTON_UPPER_ROW_4, definitions.BLACK
@@ -256,17 +259,19 @@ class SettingsMode(definitions.PushItMode):
 
     def update_display(self, ctx, w, h):
         # Divide display in 8 parts to show different settings
-        part_w = w // 8
+        part_w = w // definitions.GRID_WIDTH
         part_h = h
 
-        # Draw labels and values
+        # First pass: backgrounds
         for i in range(0, 8):
             part_x = i * part_w
-            part_y = 0
-
-            ctx.set_source_rgb(0, 0, 0)  # Draw black background
-            ctx.rectangle(part_x - 3, part_y, w, h)  # do x -3 to add some margin between parts
+            ctx.set_source_rgb(0, 0, 0)
+            ctx.rectangle(part_x - 3, 0, part_w + 6, h)
             ctx.fill()
+
+        # Second pass: labels and values
+        for i in range(0, 8):
+            part_x = i * part_w
 
             color = [1.0, 1.0, 1.0]
 
@@ -387,7 +392,7 @@ class SettingsMode(definitions.PushItMode):
                 if i == 0:  # Save session
                     show_title(ctx, part_x, h, 'SAVE PROJECT')
                     show_value(ctx, part_x, h, self.app.pm.current_project_file, color)
-                elif i == 1:  # Load session
+                elif i == 2:  # Load session
                     show_title(ctx, part_x, h, 'LOAD PROJECT')
 
                     if not self.project_list.items:
@@ -489,7 +494,7 @@ class SettingsMode(definitions.PushItMode):
                     if self.current_preset_save_number < 0:
                         self.current_preset_save_number = 0
 
-            elif encoder_name == push2_python.constants.ENCODER_TRACK2_ENCODER:
+            elif encoder_name == push2_python.constants.ENCODER_TRACK3_ENCODER:
                 if self.project_list.items and delta != 0:
                     delta_norm = 1 if delta > 0 else -1
                     if self.project_list.select_index(delta_norm):
@@ -590,7 +595,7 @@ class SettingsMode(definitions.PushItMode):
 
                 return True
 
-            if button_name == push2_python.constants.BUTTON_UPPER_ROW_2:
+            if button_name == push2_python.constants.BUTTON_UPPER_ROW_3:
                 if self.project_list.items:
                     if not self.waiting_for_confirmation:
                         # First press: show confirmation

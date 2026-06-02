@@ -44,7 +44,7 @@ class MetronomeMode(definitions.PushItMode):
                     self.device_idx = self.available_devices.index(device_name)
 
             self.channel = metro.config.midi_channel + 1  # 1-16
-            self.note_major = metro.config.midi_note_major
+            self.note_major = metro.config.midi_note_majorq
             self.note_minor = metro.config.midi_note_minor
             self.velocity_major = metro.config.midi_velocity_major
             self.velocity_minor = metro.config.midi_velocity_minor
