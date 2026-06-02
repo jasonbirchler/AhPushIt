@@ -137,34 +137,34 @@ class TestSettingsMode:
         assert mode.current_preset_save_number == 0  # clamped
 
     def test_on_encoder_rotated_project_navigation(self, mock_app):
-        mock_app.push.encoders.available_names = [push2_python.constants.ENCODER_TRACK2_ENCODER]
+        mock_app.push.encoders.available_names = [push2_python.constants.ENCODER_TRACK3_ENCODER]
         mode = SettingsMode(mock_app)
         mode.current_page = Pages.PROJECT
         mode.project_list.items = ["projA", "projB", "projC"]
         mode.project_list.selected_index = 0
         mode.project_list.scroll_offset = 0
         # Threshold is 5, so need to accumulate at least 5 to cross it
-        mode.on_encoder_rotated(push2_python.constants.ENCODER_TRACK2_ENCODER, 5)
+        mode.on_encoder_rotated(push2_python.constants.ENCODER_TRACK3_ENCODER, 5)
         assert mode.project_list.selected_index == 1
-        mode.on_encoder_rotated(push2_python.constants.ENCODER_TRACK2_ENCODER, -5)
+        mode.on_encoder_rotated(push2_python.constants.ENCODER_TRACK3_ENCODER, -5)
         assert mode.project_list.selected_index == 0
         # ensure no wrap below 0
-        mode.on_encoder_rotated(push2_python.constants.ENCODER_TRACK2_ENCODER, -5)
+        mode.on_encoder_rotated(push2_python.constants.ENCODER_TRACK3_ENCODER, -5)
         assert mode.project_list.selected_index == 0
 
     def test_on_encoder_rotated_project_large_delta_normalized(self, mock_app):
         """Large encoder deltas should be normalized to single item scroll."""
-        mock_app.push.encoders.available_names = [push2_python.constants.ENCODER_TRACK2_ENCODER]
+        mock_app.push.encoders.available_names = [push2_python.constants.ENCODER_TRACK3_ENCODER]
         mode = SettingsMode(mock_app)
         mode.current_page = Pages.PROJECT
         mode.project_list.items = ["projA", "projB", "projC", "projD", "projE", "projF"]
         mode.project_list.selected_index = 0
         mode.project_list.scroll_offset = 0
         # Large positive delta should still only move by 1
-        mode.on_encoder_rotated(push2_python.constants.ENCODER_TRACK2_ENCODER, 10)  # Accumulates past threshold
+        mode.on_encoder_rotated(push2_python.constants.ENCODER_TRACK3_ENCODER, 10)  # Accumulates past threshold
         assert mode.project_list.selected_index == 1
         # Large negative delta should still only move by -1
-        mode.on_encoder_rotated(push2_python.constants.ENCODER_TRACK2_ENCODER, -10)
+        mode.on_encoder_rotated(push2_python.constants.ENCODER_TRACK3_ENCODER, -10)
         assert mode.project_list.selected_index == 0
 
     def test_on_button_pressed_performance_increment_root(self, mock_app):
@@ -209,13 +209,13 @@ class TestSettingsMode:
         mock_app.add_display_notification = MagicMock()
         mock_app.set_clip_triggering_mode = MagicMock()
         # First press
-        result = mode.on_button_pressed(push2_python.constants.BUTTON_UPPER_ROW_2)
+        result = mode.on_button_pressed(push2_python.constants.BUTTON_UPPER_ROW_3)
         assert result is True
         assert mode.waiting_for_confirmation is True
         assert mode.project_to_confirm == "proj1"
         mock_app.add_display_notification.assert_called_with("Press again to load: proj1")
         # Second press
-        result = mode.on_button_pressed(push2_python.constants.BUTTON_UPPER_ROW_2)
+        result = mode.on_button_pressed(push2_python.constants.BUTTON_UPPER_ROW_3)
         assert result is True
         mock_app.pm.load_project.assert_called_once_with("proj1")
         assert mode.waiting_for_confirmation is False
