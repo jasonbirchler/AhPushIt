@@ -85,7 +85,6 @@ class PushItApp(object):
 
     # Global MIDI input device for passthru / recording
     midi_in_device_name: str = None
-    _midi_in_device = None          # iso.MidiInputDevice, opened on demand
     _note_on_times: dict = {}       # {pitch: (start_time, velocity)} for duration tracking
 
     def __init__(self):
@@ -111,7 +110,6 @@ class PushItApp(object):
 
         # Initialize MIDI input state
         self.midi_in_device_name = None
-        self._midi_in_device = None
         self._note_on_times = {}
 
         self.init_push()
@@ -347,35 +345,27 @@ class PushItApp(object):
 
     # MIDI input routing
     def start_midi_input(self, device_name: str):
-        """Open the named MIDI input device and register note callbacks."""
-        # self.stop_midi_input()  # close any existing device first
+        """
+        Set the active MIDI input device for routing.
+        All input devices remain open; this only changes which device's events are processed.
+        """
         if not device_name:
-            return
-        try:
-            device = iso.MidiInputDevice(device_name)
-            device.add_note_on_handler(self._on_midi_in_note_on)
-            device.add_note_off_handler(self._on_midi_in_note_off)
-            self._midi_in_device = device
-            self.midi_in_device_name = device_name
-            print(f"MIDI input started: {device_name}")
-        except Exception as e:
-            print(f"Failed to open MIDI input '{device_name}': {e}")
-            self._midi_in_device = None
             self.midi_in_device_name = None
+            self.session.set_active_input_device(None)
+            print("MIDI input disabled")
+            return
 
-    def stop_midi_input(self):
-        """Close the current global MIDI input device."""
-        if self._midi_in_device is not None:
-            try:
-                self._midi_in_device.remove_note_on_handler(self._on_midi_in_note_on)
-                self._midi_in_device.remove_note_off_handler(self._on_midi_in_note_off)
-                self._midi_in_device.close()
-            except Exception as e:
-                print(f"Error closing MIDI input: {e}")
-            self._midi_in_device = None
+        # Verify device exists in session's input devices
+        if device_name in self.session.input_device_names:
+            if device_name != self.midi_in_device_name:
+                self.midi_in_device_name = device_name
+                self.session.set_active_input_device(device_name)
+                print(f"MIDI input active: {device_name}")
+        else:
+            print(f"MIDI input device not found: {device_name}")
 
     def _on_midi_in_note_on(self, midi_note):
-        """Callback: incoming note-on from the global MIDI input device."""
+        """Callback: incoming note-on from active MIDI input device."""
         track = self.track_selection_mode.get_selected_track()
         if track is None:
             return
@@ -392,7 +382,7 @@ class PushItApp(object):
                 output.note_on(pitch, velocity, track.channel)
 
     def _on_midi_in_note_off(self, midi_note):
-        """Callback: incoming note-off from the global MIDI input device."""
+        """Callback: incoming note-off from active MIDI input device."""
         track = self.track_selection_mode.get_selected_track()
         if track is None:
             return

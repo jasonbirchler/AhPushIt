@@ -40,6 +40,7 @@ class Session(BaseClass):
         self.output_device_names = self._get_safe_output_device_names()
         self.input_devices: Dict[str, iso.MidiInputDevice] = {}
         self.output_devices: Dict[str, iso.MidiOutputDevice] = {}
+        self._active_input_device_name: str = None
         self.track_schedules: Dict[str, object] = {}  # track_uuid -> schedule object
         self.track_clips: Dict[str, object] = {}  # track_uuid -> clip object
         self.pending_actions: List[Dict] = []  # List of {beat, action, clip}
@@ -250,14 +251,12 @@ class Session(BaseClass):
     ############################################################################
     def initialize_devices(self):
         """Scan and initialize all MIDI devices"""
-        # Get available MIDI devices (excluding Push and system devices)
-        self.update_midi_devices()
-
-        # Create isobar output devices and add them to the input_devices dict
+        # Create isobar input devices and add them to input_devices dict
         for name in self.input_device_names:
             try:
                 device = iso.MidiInputDevice(name)
                 self.input_devices[name] = device
+                self._register_midi_input_handlers(device, name)
                 print(f"Added isobar MIDI input: {name}")
             except Exception as e:
                 print(f"Failed to add isobar input {name}: {e}")
@@ -270,6 +269,30 @@ class Session(BaseClass):
                 print(f"Initialized MIDI output: {name}")
             except Exception as e:
                 print(f"Failed to initialize output {name}: {e}")
+
+    def set_active_input_device(self, device_name: str):
+        """Set the currently active MIDI input device for routing."""
+        self._active_input_device_name = device_name
+        print(f"Active MIDI input device set to: {device_name}")
+
+    def _register_midi_input_handlers(self, device, device_name):
+        """Register note handlers on an input device that filter by active device name."""
+        def make_filtered_note_on(app):
+            def on_note_on(midi_note):
+                if self._active_input_device_name is not None and self._active_input_device_name == device_name:
+                    app._on_midi_in_note_on(midi_note)
+            return on_note_on
+
+        def make_filtered_note_off(app):
+            def on_note_off(midi_note):
+                if self._active_input_device_name is not None and self._active_input_device_name == device_name:
+                    app._on_midi_in_note_off(midi_note)
+            return on_note_off
+
+        # Use a closure to store reference to app
+        app = self.app
+        device.add_note_on_handler(make_filtered_note_on(app))
+        device.add_note_off_handler(make_filtered_note_off(app))
 
     def get_output_device(self, device_name: str) -> Optional[iso.MidiOutputDevice]:
         """Get output device by name"""
@@ -289,6 +312,16 @@ class Session(BaseClass):
             self.output_device_names = list(
                 set(self.output_device_names + self._get_safe_output_device_names())
             )
+            # Create MidiInputDevice instances for any newly discovered input devices
+            for name in self.input_device_names:
+                if name not in self.input_devices:
+                    try:
+                        device = iso.MidiInputDevice(name)
+                        self.input_devices[name] = device
+                        self._register_midi_input_handlers(device, name)
+                        print(f"Added isobar MIDI input: {name}")
+                    except Exception as e:
+                        print(f"Failed to add isobar input {name}: {e}")
         except Exception as e:
             print(f"Error checking for new MIDI devices: {e}")
 
