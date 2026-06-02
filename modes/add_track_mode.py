@@ -245,12 +245,8 @@ class AddTrackMode(definitions.PushItMode):
             self.output_device_idx = (self.output_device_idx + delta) % len(
                 self.available_output_devices
             )
-            # Adjust list offset
-            if self.output_device_list.items and delta != 0:
-                delta_norm = 1 if delta > 0 else -1
-                if self.output_device_list.select_index(delta_norm):
-                    visible_items = self.output_device_list.get_visible_count(push2_python.constants.DISPLAY_N_LINES)
-                    self.output_device_list.adjust_scroll_offset(visible_items)
+            # Sync the ScrollableList selection with the canonical index
+            self.output_device_list.selected_index = self.output_device_idx
 
         # Encoder 5: Output channel
         elif encoder_name == push2_python.constants.ENCODER_TRACK5_ENCODER:
