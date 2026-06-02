@@ -158,7 +158,7 @@ class MetronomeMode(definitions.PushItMode):
         self.metro_device_list.draw(
             ctx, h, h - 24,
             [1.0, 1.0, 1.0], [1.0, 1.0, 1.0],
-            lambda item, is_selected: item[:20] if len(item) > 20 else item,
+            lambda item, is_selected: self.metro_device_list.truncate_text(ctx, item),
             "No outputs found"
         )
 

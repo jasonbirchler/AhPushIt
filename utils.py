@@ -596,6 +596,13 @@ class ScrollableList:
         visible_items = (label_y - 2 - self.list_start_y) // self.item_height
         return visible_items
 
+    def truncate_text(self, ctx, text, max_width=None):
+        if max_width is None:
+            display_w = push2_python.constants.DISPLAY_LINE_PIXELS
+            part_w = display_w // definitions.GRID_WIDTH
+            max_width = part_w - 10
+        return _truncate_with_elipsis(ctx, text, 14, max_width)
+
     def draw(self, ctx, h, label_y, selected_color, normal_color, get_display_text, empty_message):
         display_w = push2_python.constants.DISPLAY_LINE_PIXELS
         part_w = display_w // definitions.GRID_WIDTH

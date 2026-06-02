@@ -125,21 +125,21 @@ class SettingsMode(definitions.PushItMode):
                     break
 
     def _get_project_display_text(self, item, is_selected):
-        if not is_selected or len(item) <= self.project_list.max_width_before_scroll:
+        if not is_selected:
+            return item
+
+        if len(item) <= self.project_list.max_width_before_scroll:
             return item
 
         current_time = time.time()
         if current_time - self.project_list.last_scroll_time > self.project_list.pause_before_scroll:
             self.project_list.scroll_text_offset += self.project_list.scroll_text_direction
 
-        display_w = push2_python.constants.DISPLAY_LINE_PIXELS
-        part_w = display_w // definitions.GRID_WIDTH
         text_width = len(item) * 6
-        visible_width = part_w - 10
+        visible_width = self.project_list.x_part * (push2_python.constants.DISPLAY_LINE_PIXELS // definitions.GRID_WIDTH) - 10
         if text_width > visible_width:
             start_pos = (self.project_list.scroll_text_offset // 6) % len(item)
             display_text = item[start_pos:] + " " + item[:start_pos]
-            display_text = display_text[:25]
         else:
             display_text = item
         return display_text
@@ -355,7 +355,7 @@ class SettingsMode(definitions.PushItMode):
                     self.midi_in_list.draw(
                         ctx, h, h - 24,
                         [1.0, 1.0, 1.0], color,
-                        lambda item, is_selected: item[:20] if len(item) > 20 else item,
+                        lambda item, is_selected: self.midi_in_list.truncate_text(ctx, item),
                         "No inputs found"
                     )
                 elif i == 2:  # Save settings
@@ -398,7 +398,7 @@ class SettingsMode(definitions.PushItMode):
                     self.project_list.draw(
                         ctx, h, h - 24,
                         [1.0, 1.0, 1.0], color,
-                        self._get_project_display_text,
+                        lambda item, is_selected: self.project_list.truncate_text(ctx, self._get_project_display_text(item, is_selected)),
                         "No projects found"
                     )
         # After drawing all labels and values, draw other stuff if required
