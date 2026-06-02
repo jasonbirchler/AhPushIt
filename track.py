@@ -27,6 +27,7 @@ class Track(BaseClass):
         self.clips: List[Clip] = [None, None, None, None, None, None, None, None]
 
         self._send_clock = False
+        self._passthru_muted = False
         self._output_device = iso.MidiOutputDevice(self.output_device_name, send_clock=self.send_clock)
         self._device_short_name = None
         self._reload_track_info = False
@@ -136,4 +137,14 @@ class Track(BaseClass):
     def reload_track_info(self, value: bool) -> None:
         """Set track reload state"""
         self._reload_track_info = value
+
+    @property
+    def passthru_muted(self) -> bool:
+        """Get whether passthru is muted"""
+        return self._passthru_muted
+
+    @passthru_muted.setter
+    def passthru_muted(self, value: bool) -> None:
+        """Set whether passthru is muted"""
+        self._passthru_muted = value
 
