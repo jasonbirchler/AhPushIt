@@ -4,6 +4,8 @@ import push2_python
 
 import definitions
 from utils import clear_display, show_text, show_title, show_value
+import isobar as iso
+from metronome import AhPushItMetronome
 
 
 class MetronomeMode(definitions.PushItMode):
@@ -35,12 +37,18 @@ class MetronomeMode(definitions.PushItMode):
             self.velocity_major = 64
             self.velocity_minor = 48
             self.note_duration = 0.1
+            metro = AhPushItMetronome(self.app.global_timeline)
+            print(f"Metronome created {metro}")
         else:
-            device_name = metro.config.midi_output_device
-            if device_name is None or device_name not in self.available_devices:
+            device_obj = metro.config.midi_output_device
+            if device_obj is None:
                 self.device_idx = 0
             else:
-                self.device_idx = self.available_devices.index(device_name)
+                device_name = getattr(device_obj, 'name', str(device_obj))
+                if device_name not in self.available_devices:
+                    self.device_idx = 0
+                else:
+                    self.device_idx = self.available_devices.index(device_name)
 
             self.channel = metro.config.midi_channel + 1  # 1-16
             self.note_major = metro.config.midi_note_major

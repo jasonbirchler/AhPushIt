@@ -27,6 +27,7 @@ import push2_python
 
 import definitions
 from utils import show_notification
+from metronome import AhPushItMetronome
 from modes.add_track_mode import AddTrackMode
 from modes.clip_edit_mode import ClipEditMode
 from modes.clip_triggering_mode import ClipTriggeringMode
@@ -201,13 +202,13 @@ class PushItApp(object):
         self.unset_mode_for_xor_group(self.metronome_mode)
 
     def is_metronome_enabled(self):
-        return self.global_timeline.metronome is not None
+        return self.global_timeline.metronome is not None and hasattr(self.global_timeline.metronome, 'tick')
 
     def toggle_metronome(self):
         if self.is_metronome_enabled():
             self.global_timeline.disable_metronome()
         else:
-            self.global_timeline.enable_metronome()
+            self.global_timeline.metronome = AhPushItMetronome(self.global_timeline)
 
     def unset_mode_for_xor_group(self, mode_to_unset):
         """This deactivates the mode_to_unset and reactivates the previous mode that was active for this xor_group.
