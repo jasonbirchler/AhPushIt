@@ -2,11 +2,13 @@ import json
 import os
 from datetime import datetime
 
+import isobar as iso
 import numpy as np
 from numpyencoder import NumpyEncoder
 
 from track import Track
 from clip import Clip
+from modes.scale_mode import _canonical_key_name, get_isobar_scale, get_scale_pattern, KEY_TO_MIDI
 
 
 class ProjectManager:
@@ -28,6 +30,7 @@ class ProjectManager:
             "bpm": self.app.seq.bpm,
             "scale": str(self.app.seq.scale),
             "key": str(self.app.seq.key),
+            "pad_grid_chromatic": self.app.melodic_mode.pad_grid_chromatic,
             "tracks": [],
         }
 
@@ -99,13 +102,20 @@ class ProjectManager:
             self.app.seq.bpm = project_data.get("bpm", 120)
 
             # Load scale and key
-            scale_parts = project_data.get("scale", "Chromatic").split(" ", 1)
-            scale_name = scale_parts[0]
-            key_str = project_data.get("key", "C").split(" ", 1)
-            key_parts = key_str[1]
-            root = key_parts[0] if key_parts[0] else "C"
-            self.app.seq.scale = scale_name
+            scale_name = project_data.get("scale", "Chromatic").split(" ", 1)[0]
+            raw_key = project_data.get("key", "C")
+            root = _canonical_key_name(raw_key)
+            scale = get_isobar_scale(scale_name, root)
+            self.app.seq.scale = scale
             self.app.seq.root = root
+            self.app.session.scale = scale
+            self.app.session.root = root
+            self.app.session.key = iso.Key(root, scale)
+            self.app.seq.key = iso.Key(root, scale)
+            self.app.melodic_mode.root_midi_note = KEY_TO_MIDI.get(root, 60)
+            self.app.melodic_mode.scale_pattern = get_scale_pattern(scale_name)
+            self.app.melodic_mode.pad_grid_chromatic = project_data.get("pad_grid_chromatic", True)
+            self.app.pads_need_update = True
 
             # Load tracks
             for track_data in project_data["tracks"]:
@@ -147,6 +157,9 @@ class ProjectManager:
 
             # Notify MIDI CC mode to reload definitions for all tracks
             self.app.midi_cc_mode.new_track_selected()
+
+            if hasattr(self.app, 'scale_mode'):
+                self.app.scale_mode.sync_from_sequencer()
 
             return True
 

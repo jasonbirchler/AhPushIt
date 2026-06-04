@@ -23,6 +23,7 @@ class MelodicMode(definitions.PushItMode):
         False,
         True,
     ]
+    pad_grid_chromatic = True  # synced from ScaleMode
     fixed_velocity_mode = False
     use_poly_at = False  # default redefined in initialize
     channel_at_range_start = 401  # default redefined in initialize
@@ -118,7 +119,15 @@ class MelodicMode(definitions.PushItMode):
         self.notes_being_played = []
 
     def pad_ij_to_midi_note(self, pad_ij):
-        return self.root_midi_note + ((7 - pad_ij[0]) * 5 + pad_ij[1])
+        if self.pad_grid_chromatic:
+            return self.root_midi_note + ((7 - pad_ij[0]) * 5 + pad_ij[1])
+        scale_degrees = self.get_scale_degrees()
+        num_degrees = len(scale_degrees)
+        pos = (definitions.GRID_WIDTH - 1 - pad_ij[0]) * definitions.GRID_HEIGHT + pad_ij[1]
+        octave = pos // num_degrees
+        degree = pos % num_degrees
+        midi_note = self.root_midi_note + scale_degrees[degree] + 12 * octave
+        return max(0, min(127, midi_note))
 
     def is_midi_note_root_octave(self, midi_note):
         relative_midi_note = (midi_note - self.root_midi_note) % 12
@@ -146,6 +155,9 @@ class MelodicMode(definitions.PushItMode):
             self.root_midi_note = 0
         elif self.root_midi_note > 127:
             self.root_midi_note = 127
+
+    def get_scale_degrees(self):
+        return [i for i, in_scale in enumerate(self.scale_pattern) if in_scale]
 
     def activate(self):
 

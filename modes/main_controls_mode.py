@@ -13,7 +13,6 @@ RECORD_BUTTON = push2_python.constants.BUTTON_RECORD
 PLAY_BUTTON = push2_python.constants.BUTTON_PLAY
 METRONOME_BUTTON = push2_python.constants.BUTTON_METRONOME
 
-
 class MainControlsMode(definitions.PushItMode):
 
     preset_selection_button_pressing_time = None
@@ -30,6 +29,7 @@ class MainControlsMode(definitions.PushItMode):
         self.push.buttons.set_button_color(SETTINGS_BUTTON, definitions.BLACK)
         self.push.buttons.set_button_color(PRESET_SELECTION_MODE_BUTTON, definitions.BLACK)
         self.push.buttons.set_button_color(METRONOME_BUTTON, definitions.BLACK)
+        self.push.buttons.set_button_color(push2_python.constants.BUTTON_SCALE, definitions.BLACK)
 
     def update_buttons(self):
         # Note button, to toggle melodic/rhythmic mode
@@ -47,6 +47,13 @@ class MainControlsMode(definitions.PushItMode):
             self.push.buttons.set_button_color(SETTINGS_BUTTON, definitions.WHITE, animation=definitions.DEFAULT_ANIMATION)
         else:
             self.push.buttons.set_button_color(SETTINGS_BUTTON, definitions.WHITE)
+
+        # Scale button, to toggle scale mode
+        if self.app.is_mode_active(self.app.scale_mode):
+            self.push.buttons.set_button_color(push2_python.constants.BUTTON_SCALE, definitions.BLACK)
+            self.push.buttons.set_button_color(push2_python.constants.BUTTON_SCALE, definitions.WHITE, animation=definitions.DEFAULT_ANIMATION)
+        else:
+            self.push.buttons.set_button_color(push2_python.constants.BUTTON_SCALE, definitions.WHITE)
 
         # Clip triggering mode button
         if self.app.is_mode_active(self.app.clip_triggering_mode):
@@ -137,6 +144,15 @@ class MainControlsMode(definitions.PushItMode):
                 self.app.session.start_timeline()
             self.app.buttons_need_update = True
             return True
+        elif button_name == push2_python.constants.BUTTON_SCALE:
+            if self.app.is_mode_active(self.app.scale_mode):
+                self.app.unset_mode_for_xor_group(self.app.scale_mode)
+            else:
+                self.app.set_mode_for_xor_group(self.app.scale_mode)
+            self.app.buttons_need_update = True
+            return True
+
+        return None
 
     def on_button_released(self, button_name):
 
