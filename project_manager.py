@@ -30,6 +30,7 @@ class ProjectManager:
             "bpm": self.app.seq.bpm,
             "scale": str(self.app.seq.scale),
             "key": str(self.app.seq.key),
+            "pad_grid_chromatic": self.app.melodic_mode.pad_grid_chromatic,
             "tracks": [],
         }
 
@@ -113,7 +114,7 @@ class ProjectManager:
             self.app.seq.key = iso.Key(root, scale)
             self.app.melodic_mode.root_midi_note = KEY_TO_MIDI.get(root, 60)
             self.app.melodic_mode.scale_pattern = get_scale_pattern(scale_name)
-            self.app.melodic_mode.pad_grid_chromatic = True
+            self.app.melodic_mode.pad_grid_chromatic = project_data.get("pad_grid_chromatic", True)
             self.app.pads_need_update = True
 
             # Load tracks
