@@ -168,6 +168,14 @@ def _canonical_key_name(raw_key):
 class ScaleMode(definitions.PushItMode):
     xor_group = "buttons"
     buttons_used = ["scale"]
+    navigation_encoders = [
+        push2_python.constants.ENCODER_TRACK2_ENCODER,
+        push2_python.constants.ENCODER_TRACK3_ENCODER,
+        push2_python.constants.ENCODER_TRACK4_ENCODER,
+        push2_python.constants.ENCODER_TRACK5_ENCODER,
+        push2_python.constants.ENCODER_TRACK6_ENCODER,
+        push2_python.constants.ENCODER_TRACK7_ENCODER,
+    ]
 
     def __init__(self, app, settings=None):
         super().__init__(app, settings=settings)
@@ -175,6 +183,7 @@ class ScaleMode(definitions.PushItMode):
         self.selected_key = _canonical_key_name(self.app.seq.root)
         self.selected_scale = self._sync_scale_from_sequencer()
         self.grid_list.set_index(SCALE_NAMES.index(self.selected_scale))
+        self.pad_grid_chromatic = True
 
     def _sync_scale_from_sequencer(self):
         scale = str(self.app.seq.scale).lower()
@@ -223,10 +232,12 @@ class ScaleMode(definitions.PushItMode):
             push2_python.constants.BUTTON_UPPER_ROW_8, definitions.BLACK
         )
         self.push.buttons.set_button_color(
-            push2_python.constants.BUTTON_LOWER_ROW_1, definitions.OFF_BTN_COLOR
-        )
-        self.push.buttons.set_button_color(
             push2_python.constants.BUTTON_LOWER_ROW_8, definitions.BLACK
+        )
+
+        # Init key/chromatic button
+        self.push.buttons.set_button_color(
+            push2_python.constants.BUTTON_LOWER_ROW_1, definitions.WHITE
         )
 
         upper_keys = ["C", "G", "D", "A", "E", "B"]
@@ -285,6 +296,27 @@ class ScaleMode(definitions.PushItMode):
 
         self._draw_key_labels(ctx, w, h)
 
+        show_text(
+                ctx,
+                0,
+                h - 26,
+                "In key",
+                font_color=definitions.GRAY_DARK if self.pad_grid_chromatic else definitions.WHITE,
+                height=16,
+                margin_left=5,
+                center_vertically=True,
+            )
+        show_text(
+                ctx,
+                0,
+                h - 26,
+                "Chromatic",
+                font_color=definitions.WHITE if self.pad_grid_chromatic else definitions.GRAY_DARK,
+                height=16,
+                margin_left=45,
+                center_vertically=True,
+            )
+
         part_w = w // definitions.GRID_WIDTH
         visible = self.grid_list.get_visible_items()
         n_rows = 4
@@ -332,9 +364,10 @@ class ScaleMode(definitions.PushItMode):
                 return True
             else:
                 return False
-
-        if not self.app.is_mode_active(self):
-            return False
+        elif button_name == push2_python.constants.BUTTON_LOWER_ROW_1:
+            self.pad_grid_chromatic = not self.pad_grid_chromatic
+            self.update_buttons()
+            return True
 
         for idx, key in enumerate(upper_keys):
             btn = getattr(push2_python.constants, f"BUTTON_UPPER_ROW_{idx + 2}")
@@ -355,18 +388,16 @@ class ScaleMode(definitions.PushItMode):
         return False
 
     def on_encoder_rotated(self, encoder_name, increment):
-        if encoder_name != push2_python.constants.ENCODER_TRACK2_ENCODER:
-            return False
-
         if not self.app.is_mode_active(self):
             return False
 
-        threshold = 1
-        delta = self._apply_encoder_threshold(encoder_name, increment, threshold)
-        if delta == 0:
-            return True
+        if encoder_name in self.navigation_encoders:
+            threshold = 1
+            delta = self._apply_encoder_threshold(encoder_name, increment, threshold)
+            if delta == 0:
+                return True
 
-        self.grid_list.scroll(delta)
-        self.selected_scale = SCALE_NAMES[self.grid_list.selected_index]
-        self._apply_selection()
-        return True
+            self.grid_list.scroll(delta)
+            self.selected_scale = SCALE_NAMES[self.grid_list.selected_index]
+            self._apply_selection()
+            return True
