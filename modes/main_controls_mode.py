@@ -13,7 +13,6 @@ RECORD_BUTTON = push2_python.constants.BUTTON_RECORD
 PLAY_BUTTON = push2_python.constants.BUTTON_PLAY
 METRONOME_BUTTON = push2_python.constants.BUTTON_METRONOME
 
-
 class MainControlsMode(definitions.PushItMode):
 
     preset_selection_button_pressing_time = None
@@ -30,6 +29,7 @@ class MainControlsMode(definitions.PushItMode):
         self.push.buttons.set_button_color(SETTINGS_BUTTON, definitions.BLACK)
         self.push.buttons.set_button_color(PRESET_SELECTION_MODE_BUTTON, definitions.BLACK)
         self.push.buttons.set_button_color(METRONOME_BUTTON, definitions.BLACK)
+        self.push.buttons.set_button_color(SCALE_BUTTON, definitions.BLACK)
 
     def update_buttons(self):
         # Note button, to toggle melodic/rhythmic mode
@@ -53,7 +53,7 @@ class MainControlsMode(definitions.PushItMode):
             self.push.buttons.set_button_color(push2_python.constants.BUTTON_SCALE, definitions.BLACK)
             self.push.buttons.set_button_color(push2_python.constants.BUTTON_SCALE, definitions.WHITE, animation=definitions.DEFAULT_ANIMATION)
         else:
-            self.push.buttons.set_button_color(push2_python.constants.BUTTON_SCALE, definitions.OFF_BTN_COLOR)
+            self.push.buttons.set_button_color(push2_python.constants.BUTTON_SCALE, definitions.WHITE)
 
         # Clip triggering mode button
         if self.app.is_mode_active(self.app.clip_triggering_mode):
