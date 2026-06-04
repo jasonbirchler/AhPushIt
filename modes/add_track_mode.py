@@ -181,9 +181,9 @@ class AddTrackMode(definitions.PushItMode):
 
         if not self.output_device_list.items:
             self.output_device_list.items = sorted(self.app.session.output_device_names)
-            if self.output_device_list.select_index >= len(self.output_device_list.items):
-                self.output_device_list.select_index = max(0, len(self.output_device_list.items) - 1)
-                self.output_device_list.scroll_offset = self.output_device_list.select_index
+            if self.output_device_list.selected_index >= len(self.output_device_list.items):
+                self.output_device_list.selected_index = max(0, len(self.output_device_list.items) - 1)
+                self.output_device_list.scroll_offset = self.output_device_list.selected_index
 
         self.output_device_list.draw(
             ctx, h, h - 24,

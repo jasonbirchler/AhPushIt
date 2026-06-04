@@ -153,9 +153,9 @@ class MetronomeMode(definitions.PushItMode):
         
         if not self.metro_device_list.items:
             self.metro_device_list.items = sorted(self.app.session.output_device_names)
-            if self.metro_device_list.select_index >= len(self.metro_device_list.items):
-                self.metro_device_list.select_index = max(0, len(self.metro_device_list.items) - 1)
-                self.metro_device_list.scroll_offset = self.metro_device_list.select_index
+            if self.metro_device_list.selected_index >= len(self.metro_device_list.items):
+                self.metro_device_list.selected_index = max(0, len(self.metro_device_list.items) - 1)
+                self.metro_device_list.scroll_offset = self.metro_device_list.selected_index
 
         self.metro_device_list.draw(
             ctx, h, h - 24,
