@@ -39,6 +39,7 @@ from modes.preset_selection_mode import PresetSelectionMode
 from modes.rhythmic_mode import RhythmicMode
 from modes.settings_mode import SettingsMode
 from modes.slice_notes_mode import SliceNotesMode
+from modes.scale_mode import ScaleMode
 from modes.track_selection_mode import TrackSelectionMode
 from session import Session
 from sequencer import Sequencer
@@ -161,6 +162,7 @@ class PushItApp(object):
         )
 
         self.settings_mode = SettingsMode(self, settings=settings)
+        self.scale_mode = ScaleMode(self, settings=settings)
 
     def get_all_modes(self):
         return [

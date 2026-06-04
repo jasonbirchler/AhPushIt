@@ -1,13 +1,45 @@
+"""Various utility functions and classes.
+"""
 import math
 import time
-
 import cairo
 import push2_python
 
 import definitions
 
-
 BEATS_PER_BAR = 4
+
+class ScaleGridList:
+    def __init__(self, items, n_columns=6, n_rows=4):
+        self.items = list(items)
+        self.n_columns = n_columns
+        self.n_rows = n_rows
+        self.selected_index = 0
+
+    def _clamp(self):
+        self.selected_index = max(0, min(len(self.items) - 1, self.selected_index))
+
+    def scroll(self, delta):
+        self.selected_index += delta
+        self._clamp()
+
+    def set_index(self, index):
+        self.selected_index = index
+        self._clamp()
+
+    def get_visible_items(self):
+        visible = list(self.items)
+        max_visible = self.n_columns * self.n_rows
+        while len(visible) < max_visible:
+            visible.append(None)
+        return visible[:max_visible]
+
+    def get_item(self, column, row):
+        col_start = column * self.n_rows
+        idx = col_start + row
+        if 0 <= idx < len(self.items):
+            return self.items[idx]
+        return None
 
 
 def get_beats_until_next_bar(timeline_or_time):

@@ -148,6 +148,9 @@ class ProjectManager:
             # Notify MIDI CC mode to reload definitions for all tracks
             self.app.midi_cc_mode.new_track_selected()
 
+            if hasattr(self.app, 'scale_mode'):
+                self.app.scale_mode.sync_from_sequencer()
+
             return True
 
         except Exception as e:

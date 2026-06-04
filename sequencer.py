@@ -16,7 +16,7 @@ class Sequencer:
         self.timeline = app.global_timeline
         self._bpm = 120.0
         self._root = "C"
-        self._scale = iso.Scale.minor
+        self._scale = iso.Scale.major
         self._key = iso.Key(self._root, self._scale)
         self._quantize = 1
         self.device_names = []
