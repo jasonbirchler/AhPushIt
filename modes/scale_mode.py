@@ -143,7 +143,7 @@ SCALE_NAMES = [name for name, _, _ in SCALES]
 def get_scale_pattern(name):
     name = name.lower()
     for n, pattern, _ in SCALES:
-        if n == name:
+        if n.lower() == name:
             return list(pattern)
     return [True] * 12
 
@@ -151,7 +151,7 @@ def get_scale_pattern(name):
 def get_isobar_scale(name, root):
     name = name.lower()
     for n, _, build in SCALES:
-        if n == name:
+        if n.lower() == name:
             return build(root)
     return iso.Scale.major
 
@@ -184,12 +184,15 @@ class ScaleMode(definitions.PushItMode):
         self.selected_scale = self._sync_scale_from_sequencer()
         self.grid_list.set_index(SCALE_NAMES.index(self.selected_scale))
         self.pad_grid_chromatic = True
+        if settings and "pad_grid_chromatic" in settings:
+            self.pad_grid_chromatic = settings["pad_grid_chromatic"]
 
     def _sync_scale_from_sequencer(self):
         scale = str(self.app.seq.scale).lower()
-        if scale not in SCALE_NAMES:
-            scale = SCALE_NAMES[0]
-        return scale
+        for n in SCALE_NAMES:
+            if n.lower() == scale:
+                return n
+        return SCALE_NAMES[0]
 
     def sync_from_sequencer(self):
         self.selected_key = _canonical_key_name(self.app.seq.root)
@@ -201,7 +204,7 @@ class ScaleMode(definitions.PushItMode):
         pass
 
     def get_settings_to_save(self):
-        return {}
+        return {"pad_grid_chromatic": self.pad_grid_chromatic}
 
     def activate(self):
         self.sync_from_sequencer()
@@ -220,6 +223,7 @@ class ScaleMode(definitions.PushItMode):
         self.app.session.scale = scale
         self.app.seq.scale = scale
         self.app.melodic_mode.scale_pattern = get_scale_pattern(self.selected_scale)
+        self.app.melodic_mode.pad_grid_chromatic = self.pad_grid_chromatic
         self.app.pads_need_update = True
         self.app.buttons_need_update = True
 
