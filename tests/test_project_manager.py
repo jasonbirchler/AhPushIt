@@ -22,7 +22,7 @@ class TestProjectManager:
         with patch.object(ProjectManager, '_ensure_projects_dir'):
             pm = ProjectManager(mock_app)
             pm.projects_dir = str(tmp_path / "pushit")
-        
+
         assert pm.app is mock_app
         assert pm.current_project_file is None
 
@@ -30,12 +30,12 @@ class TestProjectManager:
         """Test _ensure_projects_dir creates directory if it doesn't exist."""
         pm = ProjectManager(mock_app)
         pm.projects_dir = str(tmp_path / "test-projects")
-        
+
         # Directory shouldn't exist yet
         assert not os.path.exists(pm.projects_dir)
-        
+
         pm._ensure_projects_dir()
-        
+
         assert os.path.exists(pm.projects_dir)
 
     def test_save_project_basic(self, mock_app, tmp_path):
@@ -43,7 +43,7 @@ class TestProjectManager:
         pm = ProjectManager(mock_app)
         pm.projects_dir = str(tmp_path / "projects")
         pm._ensure_projects_dir()
-        
+
         # Setup mock session with a track
         track = MagicMock(spec=Track)
         track.output_device_name = "TestDevice"
@@ -51,7 +51,7 @@ class TestProjectManager:
         track.input_channel = 0
         track.passthru_muted = False
         track.clips = [None] * 8  # 8 clip slots
-        
+
         # Create a real clip for testing
         clip = MagicMock(spec=Clip)
         clip.name = "TestClip"
@@ -62,26 +62,30 @@ class TestProjectManager:
         clip.durations = np.array([0.5, 0.5, 0.5], dtype=np.float32)
         clip.amplitudes = np.array([127, 100, 80], dtype=np.uint8)
         track.clips[0] = clip
-        
+
         mock_app.session.tracks = [track] + [None] * 7
-        
+
         # Mock seq attributes
         mock_app.seq.bpm = 120
         mock_app.seq.scale = "Major"
         mock_app.seq.root = "C"
         mock_app.seq.key = "C"
-        
+
+        # Set up melodic_mode
+        mock_app.melodic_mode = MagicMock()
+        mock_app.melodic_mode.pad_grid_chromatic = True
+
         # Save
         pm.save_project("test_project")
-        
+
         # Verify file created
         expected_path = tmp_path / "projects" / "test_project.json"
         assert expected_path.exists()
-        
+
         # Verify content
         with open(expected_path) as f:
             data = json.load(f)
-        
+
         assert data["version"] == "1.0"
         assert data["bpm"] == 120
         assert data["scale"] == "Major"
@@ -90,7 +94,7 @@ class TestProjectManager:
         # First track should have clip data
         assert len(data["tracks"][0]["clip_data"]) == 1
         assert data["tracks"][0]["clip_data"][0]["name"] == "TestClip"
-        
+
         assert pm.current_project_file == "test_project"
 
     def test_save_project_empty_tracks(self, mock_app, tmp_path):
@@ -98,7 +102,7 @@ class TestProjectManager:
         pm = ProjectManager(mock_app)
         pm.projects_dir = str(tmp_path / "projects")
         pm._ensure_projects_dir()
-        
+
         # Track with no clips
         track = MagicMock(spec=Track)
         track.output_device_name = "TestDevice"
@@ -107,16 +111,21 @@ class TestProjectManager:
         track.passthru_muted = False
         track.clips = [None] * 8
         mock_app.session.tracks = [track] + [None] * 7
+
         mock_app.seq.bpm = 100
         mock_app.seq.scale = "Minor"
         mock_app.seq.root = "A"
         mock_app.seq.key = "A"
-        
+
+        # Set up melodic_mode
+        mock_app.melodic_mode = MagicMock()
+        mock_app.melodic_mode.pad_grid_chromatic = True
+
         pm.save_project("empty_project")
-        
+
         expected_path = tmp_path / "projects" / "empty_project.json"
         assert expected_path.exists()
-        
+
         with open(expected_path) as f:
             data = json.load(f)
         assert data["tracks"][0]["clip_data"] == []
@@ -127,7 +136,7 @@ class TestProjectManager:
         projects_dir = tmp_path / "projects"
         projects_dir.mkdir()
         project_file = projects_dir / "saved_project.json"
-        
+
         project_data = {
             "version": "1.0",
             "bpm": 140,
@@ -154,37 +163,37 @@ class TestProjectManager:
                 }
             ] + [{"index": i} for i in range(1, 8)]  # Fill remaining tracks with minimal data
         }
-        
+
         with open(project_file, 'w') as f:
             json.dump(project_data, f)
-        
+
         pm = ProjectManager(mock_app)
         pm.projects_dir = str(projects_dir)
-        
+
         # Mock track selection mode and midi_cc_mode
         mock_app.midi_cc_mode = MagicMock()
-        
+
         # Prepare session.tracks as a list of 8 Nones (like in app)
         mock_app.session.tracks = [None] * 8
-        
+
         # Mock set_output_device_by_name to avoid needing real device
         with patch.object(Track, 'set_output_device_by_name'):
             result = pm.load_project("saved_project")
-        
+
         assert result is True
         assert pm.current_project_file == "saved_project"
         assert mock_app.seq.bpm == 140
         # The scale and root are set directly as strings from the JSON
         # In real code, seq.scale expects an iso.Scale object but for mock it's fine
         assert mock_app.seq.root == "G"
-        
+
         # Verify track was created
         loaded_track = mock_app.session.tracks[0]
         assert loaded_track is not None
         assert loaded_track.output_device_name == "Device1"
         assert loaded_track.input_device_name == "Input1"
         assert loaded_track.input_channel == 2
-        
+
         # Verify clip
         clip = loaded_track.clips[0]
         assert clip.name == "LoadedClip"
@@ -195,7 +204,7 @@ class TestProjectManager:
         pm = ProjectManager(mock_app)
         pm.projects_dir = str(tmp_path / "projects")
         pm._ensure_projects_dir()
-        
+
         result = pm.load_project("nonexistent")
         assert result is False
 
@@ -204,12 +213,12 @@ class TestProjectManager:
         pm = ProjectManager(mock_app)
         pm.projects_dir = str(tmp_path / "projects")
         pm._ensure_projects_dir()
-        
+
         # Create an invalid JSON file
         project_file = tmp_path / "projects" / "bad.json"
         with open(project_file, 'w') as f:
             f.write("{invalid json")
-        
+
         # Call load_project - should return False and not crash
         result = pm.load_project("bad")
         assert result is False
@@ -221,19 +230,19 @@ class TestProjectManager:
         """Test listing available project files."""
         projects_dir = tmp_path / "projects"
         projects_dir.mkdir()
-        
+
         # Create some project files
         (projects_dir / "project1.json").touch()
         (projects_dir / "project2.json").touch()
         (projects_dir / "project3.json").touch()
         # Create a non-json file that should be ignored
         (projects_dir / "notes.txt").touch()
-        
+
         pm = ProjectManager(mock_app)
         pm.projects_dir = str(projects_dir)
-        
+
         projects = pm.list_projects()
-        
+
         assert len(projects) == 3
         assert "project1" in projects
         assert "project2" in projects
@@ -245,10 +254,10 @@ class TestProjectManager:
         """Test listing projects when directory is empty."""
         projects_dir = tmp_path / "empty_projects"
         projects_dir.mkdir()
-        
+
         pm = ProjectManager(mock_app)
         pm.projects_dir = str(projects_dir)
-        
+
         projects = pm.list_projects()
         assert projects == []
 
@@ -257,7 +266,7 @@ class TestProjectManager:
         project_file = tmp_path / "projects" / "minimal.json"
         projects_dir = tmp_path / "projects"
         projects_dir.mkdir()
-        
+
         # Minimal valid project
         minimal_data = {
             "bpm": 120,
@@ -265,10 +274,10 @@ class TestProjectManager:
         }
         with open(project_file, 'w') as f:
             json.dump(minimal_data, f)
-        
+
         pm = ProjectManager(mock_app)
         pm.projects_dir = str(projects_dir)
-        
+
         # Should not crash, but may fail partially
         # For now, just ensure it doesn't raise
         result = pm.load_project("minimal")
