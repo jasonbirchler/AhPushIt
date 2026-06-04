@@ -157,11 +157,19 @@ def get_isobar_scale(name, root):
 
 
 def _canonical_key_name(raw_key):
+
     if raw_key is None:
         return "C"
-    raw = str(raw_key)
-    if " " in raw:
+    raw = str(raw_key).strip()
+    if not raw:
+        return "C"
+    if raw.startswith("Key:"):
+        parts = raw.split()
+        if len(parts) >= 2:
+            raw = parts[1]
+    elif " " in raw:
         raw = raw.split(" ", 1)[0]
+    raw = raw.split("-")[0]
     return FLAT_NAME_MAP.get(raw, raw)
 
 
@@ -188,9 +196,10 @@ class ScaleMode(definitions.PushItMode):
             self.pad_grid_chromatic = settings["pad_grid_chromatic"]
 
     def _sync_scale_from_sequencer(self):
-        scale = str(self.app.seq.scale).lower()
+        scale_str = str(self.app.seq.scale).lower()
+        scale_name = scale_str.split(" ", 1)[0]
         for n in SCALE_NAMES:
-            if n.lower() == scale:
+            if n.lower() == scale_name:
                 return n
         return SCALE_NAMES[0]
 
