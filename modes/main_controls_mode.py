@@ -12,6 +12,7 @@ CLIP_TRIGGERING_MODE_BUTTON = push2_python.constants.BUTTON_SESSION
 RECORD_BUTTON = push2_python.constants.BUTTON_RECORD
 PLAY_BUTTON = push2_python.constants.BUTTON_PLAY
 METRONOME_BUTTON = push2_python.constants.BUTTON_METRONOME
+SCALE_BUTTON = push2_python.constants.BUTTON_SCALE
 
 class MainControlsMode(definitions.PushItMode):
 
@@ -50,10 +51,10 @@ class MainControlsMode(definitions.PushItMode):
 
         # Scale button, to toggle scale mode
         if self.app.is_mode_active(self.app.scale_mode):
-            self.push.buttons.set_button_color(push2_python.constants.BUTTON_SCALE, definitions.BLACK)
-            self.push.buttons.set_button_color(push2_python.constants.BUTTON_SCALE, definitions.WHITE, animation=definitions.DEFAULT_ANIMATION)
+            self.push.buttons.set_button_color(SCALE_BUTTON, definitions.BLACK)
+            self.push.buttons.set_button_color(SCALE_BUTTON, definitions.WHITE, animation=definitions.DEFAULT_ANIMATION)
         else:
-            self.push.buttons.set_button_color(push2_python.constants.BUTTON_SCALE, definitions.WHITE)
+            self.push.buttons.set_button_color(SCALE_BUTTON, definitions.WHITE)
 
         # Clip triggering mode button
         if self.app.is_mode_active(self.app.clip_triggering_mode):
@@ -144,7 +145,7 @@ class MainControlsMode(definitions.PushItMode):
                 self.app.session.start_timeline()
             self.app.buttons_need_update = True
             return True
-        elif button_name == push2_python.constants.BUTTON_SCALE:
+        elif button_name == SCALE_BUTTON:
             if self.app.is_mode_active(self.app.scale_mode):
                 self.app.unset_mode_for_xor_group(self.app.scale_mode)
             else:
