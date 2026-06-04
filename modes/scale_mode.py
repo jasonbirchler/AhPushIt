@@ -370,6 +370,7 @@ class ScaleMode(definitions.PushItMode):
                 return False
         elif button_name == push2_python.constants.BUTTON_LOWER_ROW_1:
             self.pad_grid_chromatic = not self.pad_grid_chromatic
+            self._apply_selection()
             self.update_buttons()
             return True
 
