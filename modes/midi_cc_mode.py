@@ -105,6 +105,24 @@ class MIDICCControl(object):
 
 class MIDICCMode(PushItMode):
 
+    def reload_all_instrument_midi_control_ccs(self):
+        """Reload MIDI CC definitions for all known instrument short names.
+        Clears existing caches and loads definitions anew. Used after
+        hardware device definitions have been updated.
+        """
+        # Clear existing mappings
+        self.instrument_midi_control_ccs.clear()
+        self.current_selected_section_and_page.clear()
+        # Load definitions for each distinct instrument short name
+        all_names = self.app.track_selection_mode.get_all_distinct_device_short_names()
+        for name in all_names:
+            self._load_instrument_definition(name)
+        # Ensure default (None) mapping exists
+        self._load_instrument_definition(None)
+        # Reset active controls for current track
+        self.active_midi_control_ccs = self.get_midi_cc_controls_for_current_track_section_and_page()
+        self.app.buttons_need_update = True
+
     midi_cc_button_names = [
         push2_python.constants.BUTTON_UPPER_ROW_1,
         push2_python.constants.BUTTON_UPPER_ROW_2,

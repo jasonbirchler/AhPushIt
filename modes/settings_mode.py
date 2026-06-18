@@ -572,30 +572,22 @@ class SettingsMode(definitions.PushItMode):
                 self.app.add_display_notification("Settings saved")
                 return True
             if button_name == push2_python.constants.BUTTON_UPPER_ROW_5:
-                self.app.add_display_notification("Updating MIDI definitions...")
                 try:
-                    # Update submodule
-                    result_submodule = subprocess.run(
+                    # Update submodule and conversion scripts
+                    subprocess.run(
                         ['git', 'submodule', 'update', '--remote', 'midi-dataset'],
-                        capture_output=True, text=True, cwd=os.getcwd()
+                        capture_output=True, text=True, cwd=os.getcwd(), check=False
                     )
-                    if result_submodule.returncode != 0:
-                        raise Exception(f"Git update failed: {result_submodule.stderr.strip()}")
-                    
-                    # Run conversion script
-                    result_convert = subprocess.run(
+                    subprocess.run(
                         ['python3', 'scripts/convert_midi_csv.py'],
-                        capture_output=True, text=True, cwd=os.getcwd()
+                        capture_output=True, text=True, cwd=os.getcwd(), check=False
                     )
-                    if result_convert.returncode != 0:
-                        raise Exception(f"Conversion failed: {result_convert.stderr.strip()}")
                     
-                    # Reload definitions in track selection mode
+                    # Load all hardware definitions
                     self.app.track_selection_mode.load_hardware_devices_info()
                     
-                    # Reload MIDI CC mode definitions if it exists
-                    if hasattr(self.app, 'midi_cc_mode') and self.app.midi_cc_mode:
-                        self.app.midi_cc_mode.load_instrument_midi_control_ccs()
+                    # Reload all MIDI CC mappings
+                    self.app.midi_cc_mode.reload_all_instrument_midi_control_ccs()
                     
                     self.app.add_display_notification("MIDI defs updated!")
                 except Exception as e:
