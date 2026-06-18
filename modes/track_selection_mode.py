@@ -41,22 +41,36 @@ class TrackSelectionMode(definitions.PushItMode):
     def load_hardware_devices_info(self):
         """
         This method loads hardware device (aka instrument) definitions from definition files.
-        These contain some information about the device which is useful to show a proper UI (
-        for example, a list of midi CC parameter mappings).
+        These contain some information about the device which is useful to show a proper UI.
+        Manual definitions take precedence over generated ones.
         """
         print('Loading hardware device definitions...')
-        try:
-            for filename in os.listdir(definitions.INSTRUMENT_DEFINITION_FOLDER):
+        self.devices_info = {}
+        
+        # 1. Load generated definitions first
+        generated_folder = os.path.join(definitions.INSTRUMENT_DEFINITION_FOLDER, 'generated')
+        if os.path.exists(generated_folder):
+            for filename in os.listdir(generated_folder):
                 if filename.endswith('.json'):
                     device_short_name = filename.replace('.json', '')
-                    json_file_path = os.path.join(definitions.INSTRUMENT_DEFINITION_FOLDER, filename)
+                    json_file_path = os.path.join(generated_folder, filename)
+                    try:
+                        with open(json_file_path, 'r', encoding='utf-8') as file:
+                            self.devices_info[device_short_name] = json.load(file)
+                    except (FileNotFoundError, json.JSONDecodeError) as e:
+                        print(f'Error loading generated {device_short_name}: {e}')
+
+        # 2. Load manual definitions (overrides generated)
+        for filename in os.listdir(definitions.INSTRUMENT_DEFINITION_FOLDER):
+            if filename.endswith('.json'):
+                device_short_name = filename.replace('.json', '')
+                json_file_path = os.path.join(definitions.INSTRUMENT_DEFINITION_FOLDER, filename)
+                try:
                     with open(json_file_path, 'r', encoding='utf-8') as file:
                         self.devices_info[device_short_name] = json.load(file)
                     print(f'- {device_short_name}')
-        except FileNotFoundError:
-            # No definitions file present
-            print(f'No definition file found for {device_short_name}')
-            pass
+                except (FileNotFoundError, json.JSONDecodeError) as e:
+                    print(f'Error loading {device_short_name}: {e}')
 
     def get_settings_to_save(self):
         return {}
@@ -74,10 +88,21 @@ class TrackSelectionMode(definitions.PushItMode):
         if device_name in self.devices_info:
             return device_name
         
-        # Check if any definition name is contained in the device name
-        for def_name in self.devices_info.keys():
-            # Case-insensitive match: check if definition name is in the device name
+        # Check if any definition name or instrument name is contained in the device name,
+        # or if the device name is contained in the instrument name.
+        for def_name, info in self.devices_info.items():
+            instrument_name = info.get('instrument_name', '').upper()
+            
+            # Check if definition name is in device name
             if def_name.upper() in device_name.upper():
+                return def_name
+            
+            # Check if instrument name is in device name (e.g., "KORG NTS-1" in "KORG NTS-1 digital kit")
+            if instrument_name and instrument_name in device_name.upper():
+                return def_name
+                
+            # Check if device name is in instrument name (e.g., "NTS-1" in "KORG NTS-1")
+            if device_name.upper() in instrument_name:
                 return def_name
         
         # No match found, return original name

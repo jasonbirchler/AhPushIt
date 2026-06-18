@@ -1,5 +1,6 @@
 settings.json
 favourite_presets.json
+instrument_definitions/generated
 .DS_Store
 
 # Byte-compiled / optimized / DLL files

@@ -1,4 +1,5 @@
 import os
+import subprocess
 import time
 from enum import IntEnum
 from datetime import datetime
@@ -213,8 +214,8 @@ class SettingsMode(definitions.PushItMode):
             self.push.buttons.set_button_color( # Empty
                 push2_python.constants.BUTTON_UPPER_ROW_4, definitions.BLACK
             )
-            self.push.buttons.set_button_color( # Empty
-                push2_python.constants.BUTTON_UPPER_ROW_5, definitions.BLACK
+            self.push.buttons.set_button_color( # Update MIDI Definitions
+                push2_python.constants.BUTTON_UPPER_ROW_5, definitions.CYAN
             )
             self.push.buttons.set_button_color( # Reset MIDI
                 push2_python.constants.BUTTON_UPPER_ROW_6,
@@ -366,6 +367,9 @@ class SettingsMode(definitions.PushItMode):
                     )
                 elif i == 2:  # Save settings
                     show_title(ctx, part_x, h, 'SAVE SETTINGS')
+                elif i == 4:  # Update MIDI Definitions
+                    show_title(ctx, part_x, h, 'UPDATE MIDI')
+                    show_value(ctx, part_x, h, 'DEFS', color)
                 elif i == 5:  # Re-send MIDI connection established to Push
                     show_title(
                         ctx,
@@ -566,6 +570,36 @@ class SettingsMode(definitions.PushItMode):
                         self.app.start_midi_input(selected_name)
                 self.app.save_current_settings_to_file()
                 self.app.add_display_notification("Settings saved")
+                return True
+            if button_name == push2_python.constants.BUTTON_UPPER_ROW_5:
+                self.app.add_display_notification("Updating MIDI definitions...")
+                try:
+                    # Update submodule
+                    result_submodule = subprocess.run(
+                        ['git', 'submodule', 'update', '--remote', 'midi-dataset'],
+                        capture_output=True, text=True, cwd=os.getcwd()
+                    )
+                    if result_submodule.returncode != 0:
+                        raise Exception(f"Git update failed: {result_submodule.stderr.strip()}")
+                    
+                    # Run conversion script
+                    result_convert = subprocess.run(
+                        ['python3', 'scripts/convert_midi_csv.py'],
+                        capture_output=True, text=True, cwd=os.getcwd()
+                    )
+                    if result_convert.returncode != 0:
+                        raise Exception(f"Conversion failed: {result_convert.stderr.strip()}")
+                    
+                    # Reload definitions in track selection mode
+                    self.app.track_selection_mode.load_hardware_devices_info()
+                    
+                    # Reload MIDI CC mode definitions if it exists
+                    if hasattr(self.app, 'midi_cc_mode') and self.app.midi_cc_mode:
+                        self.app.midi_cc_mode.load_instrument_midi_control_ccs()
+                    
+                    self.app.add_display_notification("MIDI defs updated!")
+                except Exception as e:
+                    self.app.add_display_notification(f"Update failed: {str(e)[:35]}")
                 return True
             if button_name == push2_python.constants.BUTTON_UPPER_ROW_6:
                 self.app.on_midi_push_connection_established()

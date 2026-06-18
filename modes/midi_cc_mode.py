@@ -184,10 +184,17 @@ class MIDICCMode(PushItMode):
             self.instrument_midi_control_ccs[definition_name] = []
             for section in midi_cc:
                 section_name = section['section']
-                for name, cc_number in section['controls'].items():
+                for name, control_data in section['controls'].items():
+                    if isinstance(control_data, dict):
+                        cc_number = control_data.get('cc')
+                    else:
+                        cc_number = control_data  # Backward compatibility for flat format
+                    
                     control = MIDICCControl(cc_number, name, section_name, self.get_current_track_color_helper, self.send_midi_cc)
                     if section.get('control_value_label_maps', {}).get(name, False):
                         control.value_labels_map = section['control_value_label_maps'][name]
+                    elif isinstance(control_data, dict) and control_data.get('value_labels_map'):
+                        control.value_labels_map = control_data['value_labels_map']
                     self.instrument_midi_control_ccs[definition_name].append(control)
             print('Loaded {0} MIDI cc mappings for instrument {1}'.format(len(self.instrument_midi_control_ccs[definition_name]), definition_name))
         else:
