@@ -151,3 +151,96 @@ class TestUnsetModeForXorGroup:
         app_module.on_encoder_rotated(None, constants.ENCODER_TEMPO_ENCODER, 1)
         assert mock_sequencer.bpm == 130.5
         mock_app.add_display_notification.assert_called_with("130.5 BPM")
+
+
+class TestComputeAcceleratedIncrement:
+
+    @pytest.fixture(autouse=True)
+    def _reset_state(self):
+        """Clear module-level acceleration state before each test."""
+        import app as app_module
+        app_module.encoder_last_event_time.clear()
+        app_module.encoder_speed_multiplier.clear()
+        yield
+        app_module.encoder_last_event_time.clear()
+        app_module.encoder_speed_multiplier.clear()
+
+    def test_slow_increment_returns_one(self, mock_push2_environment):
+        import app as app_module
+        import time
+        # Each call is an isolated slow notch (long idle interval between them),
+        # so the timing-based component yields multiplier 1 and increment ±1 passes through.
+        app_module.compute_accelerated_increment("enc1", 1)
+        app_module.encoder_last_event_time["enc1"] = 0  # simulate long idle before next notch
+        assert app_module.compute_accelerated_increment("enc1", -1) == -1
+        app_module.encoder_last_event_time["enc1"] = 0
+        assert app_module.compute_accelerated_increment("enc1", 1) == 1
+
+    def test_zero_increment_returns_zero(self, mock_push2_environment):
+        import app as app_module
+        assert app_module.compute_accelerated_increment("enc1", 0) == 0
+
+    def test_fast_large_value_is_accelerated(self, mock_push2_environment):
+        import app as app_module
+        result = app_module.compute_accelerated_increment("enc1", 20)
+        # Large hardware value (up to ±63) must scale well beyond 1
+        assert abs(result) > 1
+        # Bounded by the max acceleration cap
+        assert abs(result) <= 20 * app_module.MAX_ENCODER_ACCELERATION
+
+    def test_acceleration_capped(self, mock_push2_environment):
+        import app as app_module
+        result = app_module.compute_accelerated_increment("enc1", 63)
+        assert abs(result) <= 63 * app_module.MAX_ENCODER_ACCELERATION
+        assert app_module.encoder_speed_multiplier["enc1"] <= app_module.MAX_ENCODER_ACCELERATION
+
+    def test_rapid_succession_increases_multiplier(self, mock_push2_environment):
+        import app as app_module
+        import time
+        # First moderate event
+        app_module.compute_accelerated_increment("enc1", 1)
+        # Second event immediately after (short interval) should accelerate
+        result = app_module.compute_accelerated_increment("enc1", 1, now=time.time())
+        assert abs(result) >= 1
+
+
+class TestOnEncoderRotatedAcceleration:
+
+    def test_simulator_bypasses_acceleration(self, mock_app, mock_push2_environment):
+        """In simulator mode, the raw increment passes through unchanged."""
+        import app as app_module
+
+        mock_sequencer = MagicMock()
+        mock_sequencer.bpm = 120.0
+        mock_app.seq = mock_sequencer
+        mock_app.add_display_notification = MagicMock()
+        mock_app.push = mock_push2_environment['push2']
+        mock_app.push.simulator_controller = MagicMock()  # simulator active
+        mock_app.is_button_being_pressed = MagicMock(return_value=False)
+
+        mode = MagicMock()
+        mode.on_encoder_rotated = MagicMock(return_value=True)
+        mock_app.active_modes = [mode]
+
+        app_module.app = mock_app
+        app_module.on_encoder_rotated(None, "some_encoder", 1)
+        # Simulator should pass exactly the raw increment, not an accelerated value
+        mode.on_encoder_rotated.assert_called_once_with("some_encoder", 1)
+
+    def test_hardware_accelerates_before_dispatch(self, mock_app, mock_push2_environment):
+        """On hardware, a large increment is scaled before reaching the mode."""
+        import app as app_module
+
+        mock_app.push = mock_push2_environment['push2']
+        mock_app.push.simulator_controller = None  # hardware
+        mock_app.is_button_being_pressed = MagicMock(return_value=False)
+
+        mode = MagicMock()
+        mode.on_encoder_rotated = MagicMock(return_value=True)
+        mock_app.active_modes = [mode]
+
+        app_module.app = mock_app
+        app_module.on_encoder_rotated(None, "some_encoder", 20)
+        called_increment = mode.on_encoder_rotated.call_args[0][1]
+        assert abs(called_increment) > 1
+

@@ -49,6 +49,62 @@ buttons_pressed_state = {}
 pads_pressed_state = {}  # Track pad press times for long press detection
 # Track encoder touch state for tap detection
 encoder_touch_state = {}
+
+# Track encoder rotation speed state for acceleration (module-level so it is
+# shared across all modes, mirroring encoder_touch_state above)
+encoder_last_event_time = {}
+encoder_speed_multiplier = {}
+
+# Maximum acceleration multiplier to prevent a single fast flick overshooting
+MAX_ENCODER_ACCELERATION = 8
+# Inter-event interval (seconds) below which the timing-based speed boost peaks
+FAST_ROTATION_INTERVAL = 0.2
+
+
+def compute_accelerated_increment(encoder_name, increment, now=None):
+    """Compute the effective (accelerated) increment for an encoder rotation.
+
+    The hardware packs rotation speed into the increment magnitude (±1 slow, up
+    to ±63 fast). This is combined with the inter-event interval: when events
+    arrive in rapid succession the multiplier grows further. The result is
+    bounded by ``MAX_ENCODER_ACCELERATION``.
+
+    This is the single source of truth for acceleration; modes should use the
+    returned value directly instead of re-deriving speed.
+    """
+    if now is None:
+        now = time.time()
+
+    mag = abs(increment)
+    if mag == 0:
+        return 0
+
+    # Value-based component: slow single notch (1) -> 1, large hardware value
+    # already encodes speed, so scale proportionally.
+    value_factor = max(1, mag)
+
+    # Timing-based component: shorter interval between events -> larger boost.
+    last_time = encoder_last_event_time.get(encoder_name)
+    if last_time is not None:
+        interval = now - last_time
+        # Map interval to a 1..MAX contribution: fast (<=FAST_ROTATION_INTERVAL)
+        # yields the max boost, slow (>1s) yields 1.
+        if interval <= FAST_ROTATION_INTERVAL:
+            timing_factor = MAX_ENCODER_ACCELERATION
+        else:
+            timing_factor = max(1, min(MAX_ENCODER_ACCELERATION,
+                                       int(MAX_ENCODER_ACCELERATION * FAST_ROTATION_INTERVAL / interval)))
+    else:
+        timing_factor = 1
+
+    encoder_last_event_time[encoder_name] = now
+
+    multiplier = min(MAX_ENCODER_ACCELERATION, max(1, value_factor * timing_factor))
+    encoder_speed_multiplier[encoder_name] = multiplier
+
+    return int(increment * multiplier)
+
+
 class PushItApp(object):
     """
     The App handles initializing everything at startup.
@@ -671,8 +727,15 @@ def on_encoder_rotated(_, encoder_name, increment):
             app.add_display_notification(tempo_text)
             return
 
+        # Accelerate the increment based on hardware speed (skipped in simulator
+        # mode, which always emits ±1 and should move exactly one step per click)
+        if app.push.simulator_controller is not None:
+            effective_increment = increment
+        else:
+            effective_increment = compute_accelerated_increment(encoder_name, increment)
+
         for mode in app.active_modes[::-1]:
-            action_performed = mode.on_encoder_rotated(encoder_name, increment)
+            action_performed = mode.on_encoder_rotated(encoder_name, effective_increment)
             if action_performed:
                 break  # If mode took action, stop event propagation
     except NameError as e:

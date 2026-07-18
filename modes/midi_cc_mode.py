@@ -399,7 +399,7 @@ class MIDICCMode(PushItMode):
                 push2_python.constants.ENCODER_TRACK8_ENCODER,
             ].index(encoder_name)
             if self.active_midi_control_ccs:
-                delta = self._apply_encoder_threshold(encoder_name, increment, threshold=1)
+                delta = increment
                 if delta != 0:
                     self.active_midi_control_ccs[encoder_num].update_value(delta)
         except ValueError:

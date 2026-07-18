@@ -168,6 +168,13 @@ class PushItMode(object):
         """
         Apply threshold logic to encoder increments.
         Returns the accumulated signed delta when threshold is crossed, otherwise 0.
+
+        .. deprecated::
+            Encoder acceleration is now handled centrally in ``app.py`` via
+            :func:`compute_accelerated_increment`. Modes should consume the
+            already-accelerated ``increment`` directly. This helper is retained
+            only to avoid breaking the shared base class contract; do not use it
+            in new code.
         """
         self.encoder_accumulators[encoder_name] = (
             self.encoder_accumulators.get(encoder_name, 0) + increment
