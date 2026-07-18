@@ -83,7 +83,11 @@ class TrackSelectionMode(definitions.PushItMode):
         """
         if device_name is None:
             return None
-        
+
+        # Only work with string device names
+        if not isinstance(device_name, str):
+            return None
+
         # Check for exact match first
         if device_name in self.devices_info:
             return device_name
