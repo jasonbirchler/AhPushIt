@@ -441,12 +441,10 @@ class SettingsMode(definitions.PushItMode):
 
     def on_encoder_rotated(self, encoder_name, increment):
         self.encoders_state[encoder_name]['last_message_received'] = time.time()
-        threshold = 1 if self.app.push.simulator_controller is not None else 5
-        delta = self._apply_encoder_threshold(encoder_name, increment, threshold)
+        delta = increment
 
         if self.current_page == Pages.PERFORMANCE:
             if encoder_name == push2_python.constants.ENCODER_TRACK1_ENCODER:
-                threshold = 1 if self.app.push.simulator_controller is not None else 5
                 if delta != 0:
                     self.app.melodic_mode.set_root_midi_note(self.app.melodic_mode.root_midi_note + delta)
                 self.app.pads_need_update = True  # Using async update method because we don't really need immediate response here
@@ -482,8 +480,7 @@ class SettingsMode(definitions.PushItMode):
                 if not self.midi_in_list.items:
                     self.midi_in_list.items = self.app.session._get_safe_input_device_names()
                 if self.midi_in_list.items and delta != 0:
-                    delta_norm = 1 if delta > 0 else -1
-                    if self.midi_in_list.select_index(delta_norm):
+                    if self.midi_in_list.select_index(delta):
                         visible_items = self.midi_in_list.get_visible_count(push2_python.constants.DISPLAY_N_LINES)
                         self.midi_in_list.adjust_scroll_offset(visible_items)
 
@@ -496,8 +493,7 @@ class SettingsMode(definitions.PushItMode):
 
             elif encoder_name == push2_python.constants.ENCODER_TRACK3_ENCODER:
                 if self.project_list.items and delta != 0:
-                    delta_norm = 1 if delta > 0 else -1
-                    if self.project_list.select_index(delta_norm):
+                    if self.project_list.select_index(delta):
                         visible_items = self.project_list.get_visible_count(push2_python.constants.DISPLAY_N_LINES)
                         self.project_list.adjust_scroll_offset(visible_items)
 

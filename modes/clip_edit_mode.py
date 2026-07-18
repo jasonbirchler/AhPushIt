@@ -673,8 +673,7 @@ class ClipEditMode(definitions.PushItMode):
         return True
 
     def on_encoder_rotated(self, encoder_name, increment):
-        threshold = 1 if self.app.push.simulator_controller is not None else 5
-        delta = self._apply_encoder_threshold(encoder_name, increment, threshold)
+        delta = increment
         if self.mode == self.MODE_CLIP:
             if encoder_name == push2_python.constants.ENCODER_TRACK1_ENCODER:
                 if self.available_clips:

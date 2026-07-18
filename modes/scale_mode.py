@@ -406,8 +406,7 @@ class ScaleMode(definitions.PushItMode):
             return False
 
         if encoder_name in self.navigation_encoders:
-            threshold = 1
-            delta = self._apply_encoder_threshold(encoder_name, increment, threshold)
+            delta = increment
             if delta == 0:
                 return True
 
