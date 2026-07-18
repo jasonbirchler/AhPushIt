@@ -196,16 +196,13 @@ class MetronomeMode(definitions.PushItMode):
                   margin_left=6, center_horizontally=False)
 
     def on_encoder_rotated(self, encoder_name, increment):
-        delta = self._apply_encoder_threshold(encoder_name, increment)
-        if delta == 0:
-            return True
+        delta = increment
 
         if encoder_name == push2_python.constants.ENCODER_TRACK2_ENCODER: # Output device
             self.device_idx = (self.device_idx + delta) % len(self.available_devices)
 
             if self.metro_device_list.items and delta != 0:
-                    delta_norm = 1 if delta > 0 else -1
-                    if self.metro_device_list.select_index(delta_norm):
+                    if self.metro_device_list.select_index(delta):
                         visible_items = self.metro_device_list.get_visible_count(push2_python.constants.DISPLAY_N_LINES)
                         self.metro_device_list.adjust_scroll_offset(visible_items)
 

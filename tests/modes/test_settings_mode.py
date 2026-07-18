@@ -143,29 +143,29 @@ class TestSettingsMode:
         mode.project_list.items = ["projA", "projB", "projC"]
         mode.project_list.selected_index = 0
         mode.project_list.scroll_offset = 0
-        # Threshold is 5, so need to accumulate at least 5 to cross it
-        mode.on_encoder_rotated(push2_python.constants.ENCODER_TRACK3_ENCODER, 5)
+        # Single-notch rotation (simulator-style) moves by one item
+        mode.on_encoder_rotated(push2_python.constants.ENCODER_TRACK3_ENCODER, 1)
         assert mode.project_list.selected_index == 1
-        mode.on_encoder_rotated(push2_python.constants.ENCODER_TRACK3_ENCODER, -5)
+        mode.on_encoder_rotated(push2_python.constants.ENCODER_TRACK3_ENCODER, -1)
         assert mode.project_list.selected_index == 0
         # ensure no wrap below 0
-        mode.on_encoder_rotated(push2_python.constants.ENCODER_TRACK3_ENCODER, -5)
+        mode.on_encoder_rotated(push2_python.constants.ENCODER_TRACK3_ENCODER, -1)
         assert mode.project_list.selected_index == 0
 
-    def test_on_encoder_rotated_project_large_delta_normalized(self, mock_app):
-        """Large encoder deltas should be normalized to single item scroll."""
+    def test_on_encoder_rotated_project_large_delta_scrolls_multiple(self, mock_app):
+        """Large (accelerated) encoder deltas should scroll multiple items."""
         mock_app.push.encoders.available_names = [push2_python.constants.ENCODER_TRACK3_ENCODER]
         mode = SettingsMode(mock_app)
         mode.current_page = Pages.PROJECT
         mode.project_list.items = ["projA", "projB", "projC", "projD", "projE", "projF"]
         mode.project_list.selected_index = 0
         mode.project_list.scroll_offset = 0
-        # Large positive delta should still only move by 1
-        mode.on_encoder_rotated(push2_python.constants.ENCODER_TRACK3_ENCODER, 10)  # Accumulates past threshold
+        # Large positive delta moves by that many items (clamped to list size)
+        mode.on_encoder_rotated(push2_python.constants.ENCODER_TRACK3_ENCODER, 3)
+        assert mode.project_list.selected_index == 3
+        # Large negative delta moves back by that many items
+        mode.on_encoder_rotated(push2_python.constants.ENCODER_TRACK3_ENCODER, -2)
         assert mode.project_list.selected_index == 1
-        # Large negative delta should still only move by -1
-        mode.on_encoder_rotated(push2_python.constants.ENCODER_TRACK3_ENCODER, -10)
-        assert mode.project_list.selected_index == 0
 
     def test_on_button_pressed_performance_increment_root(self, mock_app):
         mode = SettingsMode(mock_app)
