@@ -441,7 +441,14 @@ class SettingsMode(definitions.PushItMode):
 
     def on_encoder_rotated(self, encoder_name, increment):
         self.encoders_state[encoder_name]['last_message_received'] = time.time()
-        delta = increment
+        # Lists are scrolled with the "slow" profile for precise one-item
+        # movement; numeric value edits use the default "fast" profile.
+        list_encoders = (
+            push2_python.constants.ENCODER_TRACK2_ENCODER,
+            push2_python.constants.ENCODER_TRACK3_ENCODER,
+        )
+        profile = "slow" if encoder_name in list_encoders else "fast"
+        delta = self.app.accelerate_encoder(encoder_name, increment, profile=profile)
 
         if self.current_page == Pages.PERFORMANCE:
             if encoder_name == push2_python.constants.ENCODER_TRACK1_ENCODER:

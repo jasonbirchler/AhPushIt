@@ -161,13 +161,15 @@ class TestComputeAcceleratedIncrement:
         import app as app_module
         app_module.encoder_last_event_time.clear()
         app_module.encoder_speed_multiplier.clear()
+        saved_app = app_module.app
+        app_module.app = None
         yield
         app_module.encoder_last_event_time.clear()
         app_module.encoder_speed_multiplier.clear()
+        app_module.app = saved_app
 
     def test_slow_increment_returns_one(self, mock_push2_environment):
         import app as app_module
-        import time
         # Each call is an isolated slow notch (long idle interval between them),
         # so the timing-based component yields multiplier 1 and increment ±1 passes through.
         app_module.compute_accelerated_increment("enc1", 1)
@@ -182,32 +184,73 @@ class TestComputeAcceleratedIncrement:
 
     def test_fast_large_value_is_accelerated(self, mock_push2_environment):
         import app as app_module
-        result = app_module.compute_accelerated_increment("enc1", 20)
+        result = app_module.compute_accelerated_increment("enc1", 20, profile="fast")
         # Large hardware value (up to ±63) must scale well beyond 1
         assert abs(result) > 1
-        # Bounded by the max acceleration cap
-        assert abs(result) <= 20 * app_module.MAX_ENCODER_ACCELERATION
+        # Bounded by the "fast" profile max multiplier
+        fast_max = app_module.ENCODER_ACCEL_PROFILES["fast"]["max_multiplier"]
+        assert abs(result) <= 20 * fast_max
 
     def test_acceleration_capped(self, mock_push2_environment):
         import app as app_module
-        result = app_module.compute_accelerated_increment("enc1", 63)
-        assert abs(result) <= 63 * app_module.MAX_ENCODER_ACCELERATION
-        assert app_module.encoder_speed_multiplier["enc1"] <= app_module.MAX_ENCODER_ACCELERATION
+        fast_max = app_module.ENCODER_ACCEL_PROFILES["fast"]["max_multiplier"]
+        result = app_module.compute_accelerated_increment("enc1", 63, profile="fast")
+        assert abs(result) <= 63 * fast_max
+        assert app_module.encoder_speed_multiplier["enc1"] <= fast_max
 
     def test_rapid_succession_increases_multiplier(self, mock_push2_environment):
         import app as app_module
         import time
         # First moderate event
-        app_module.compute_accelerated_increment("enc1", 1)
+        app_module.compute_accelerated_increment("enc1", 1, profile="fast")
         # Second event immediately after (short interval) should accelerate
-        result = app_module.compute_accelerated_increment("enc1", 1, now=time.time())
+        result = app_module.compute_accelerated_increment("enc1", 1, now=time.time(), profile="fast")
         assert abs(result) >= 1
+
+    def test_slow_profile_is_less_sensitive_than_fast(self, mock_push2_environment):
+        """A fast flick on a list (slow profile) accelerates far less than on a value (fast)."""
+        import app as app_module
+        import time
+        slow_max = app_module.ENCODER_ACCEL_PROFILES["slow"]["max_multiplier"]
+        fast_max = app_module.ENCODER_ACCEL_PROFILES["fast"]["max_multiplier"]
+        assert slow_max < fast_max
+        # Same rapid large flick -> slow profile capped lower than fast profile
+        app_module.compute_accelerated_increment("enc2", 63, profile="fast")
+        fast_result = app_module.compute_accelerated_increment("enc2", 63, now=time.time(), profile="fast")
+        app_module.encoder_last_event_time["enc2"] = 0
+        app_module.compute_accelerated_increment("enc2", 63, profile="slow")
+        slow_result = app_module.compute_accelerated_increment("enc2", 63, now=time.time(), profile="slow")
+        assert abs(slow_result) < abs(fast_result)
+
+
+class TestAccelerateEncoder:
+
+    def test_simulator_bypasses_acceleration(self, mock_app, mock_push2_environment):
+        """compute_accelerated_increment returns the raw increment in simulator mode."""
+        import app as app_module
+        mock_app.push = mock_push2_environment['push2']
+        mock_app.push.simulator_controller = MagicMock()  # simulator active
+        app_module.app = mock_app
+        assert app_module.compute_accelerated_increment("enc1", 5, profile="fast") == 5
+        assert app_module.compute_accelerated_increment("enc1", 5, profile="slow") == 5
+
+    def test_hardware_accelerates_per_profile(self, mock_app, mock_push2_environment):
+        """On hardware, a large increment scales, capped by the chosen profile."""
+        import app as app_module
+        mock_app.push = mock_push2_environment['push2']
+        mock_app.push.simulator_controller = None  # hardware
+        app_module.app = mock_app
+        fast_result = app_module.compute_accelerated_increment("enc1", 20, profile="fast")
+        slow_result = app_module.compute_accelerated_increment("enc1", 20, profile="slow")
+        assert abs(fast_result) > 1
+        assert abs(slow_result) > 1
+        assert abs(slow_result) <= abs(fast_result)
 
 
 class TestOnEncoderRotatedAcceleration:
 
-    def test_simulator_bypasses_acceleration(self, mock_app, mock_push2_environment):
-        """In simulator mode, the raw increment passes through unchanged."""
+    def test_simulator_passes_raw_increment(self, mock_app, mock_push2_environment):
+        """In simulator mode the raw increment is dispatched unchanged."""
         import app as app_module
 
         mock_sequencer = MagicMock()
@@ -227,8 +270,8 @@ class TestOnEncoderRotatedAcceleration:
         # Simulator should pass exactly the raw increment, not an accelerated value
         mode.on_encoder_rotated.assert_called_once_with("some_encoder", 1)
 
-    def test_hardware_accelerates_before_dispatch(self, mock_app, mock_push2_environment):
-        """On hardware, a large increment is scaled before reaching the mode."""
+    def test_hardware_dispatches_raw_increment_to_mode(self, mock_app, mock_push2_environment):
+        """On hardware, the raw increment is dispatched; the mode accelerates itself."""
         import app as app_module
 
         mock_app.push = mock_push2_environment['push2']
@@ -241,6 +284,6 @@ class TestOnEncoderRotatedAcceleration:
 
         app_module.app = mock_app
         app_module.on_encoder_rotated(None, "some_encoder", 20)
+        # app.py no longer pre-accelerates; the mode receives the raw increment
         called_increment = mode.on_encoder_rotated.call_args[0][1]
-        assert abs(called_increment) > 1
-
+        assert called_increment == 20
