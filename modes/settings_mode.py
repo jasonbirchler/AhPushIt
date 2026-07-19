@@ -182,7 +182,7 @@ class SettingsMode(definitions.PushItMode):
                 push2_python.constants.BUTTON_UPPER_ROW_1, definitions.WHITE
             )
             self.push.buttons.set_button_color(
-                push2_python.constants.BUTTON_UPPER_ROW_2, definitions.WHITE
+                push2_python.constants.BUTTON_UPPER_ROW_2, definitions.OFF_BTN_COLOR
             )
             self.push.buttons.set_button_color(
                 push2_python.constants.BUTTON_UPPER_ROW_3, definitions.OFF_BTN_COLOR
@@ -194,7 +194,7 @@ class SettingsMode(definitions.PushItMode):
                 push2_python.constants.BUTTON_UPPER_ROW_5, definitions.OFF_BTN_COLOR
             )
             self.push.buttons.set_button_color(
-                push2_python.constants.BUTTON_UPPER_ROW_6, definitions.OFF_BTN_COLOR
+                push2_python.constants.BUTTON_UPPER_ROW_6, definitions.BLACK
             )
             self.push.buttons.set_button_color(
                 push2_python.constants.BUTTON_UPPER_ROW_7, definitions.BLACK
@@ -304,37 +304,30 @@ class SettingsMode(definitions.PushItMode):
                 )
 
             if self.current_page == Pages.PERFORMANCE:
-                if i == 0:  # Root note
-                    if not self.app.is_mode_active(self.app.melodic_mode):
-                        color = definitions.get_color_rgb_float(definitions.FONT_COLOR_DISABLED)
-                    show_title(ctx, part_x, h, 'ROOT NOTE')
-                    show_value(ctx, part_x, h, "{0} ({1})".format(self.app.melodic_mode.note_number_to_name(
-                        self.app.melodic_mode.root_midi_note), self.app.melodic_mode.root_midi_note), color)
-
-                elif i == 1:  # Poly AT/channel AT
+                if i == 0:  # Poly AT/channel AT
                     show_title(ctx, part_x, h, 'AFTERTOUCH')
                     show_value(ctx, part_x, h, 'polyAT' if self.app.melodic_mode.use_poly_at else 'channel', color)
 
 
-                elif i == 2:  # Channel AT range start
+                elif i == 1:  # Channel AT range start
                     if self.app.melodic_mode.last_time_at_params_edited is not None:
                         color = definitions.get_color_rgb_float(definitions.FONT_COLOR_DELAYED_ACTIONS)
                     show_title(ctx, part_x, h, 'cAT START')
                     show_value(ctx, part_x, h, self.app.melodic_mode.channel_at_range_start, color)
 
-                elif i == 3:  # Channel AT range end
+                elif i == 2:  # Channel AT range end
                     if self.app.melodic_mode.last_time_at_params_edited is not None:
                         color = definitions.get_color_rgb_float(definitions.FONT_COLOR_DELAYED_ACTIONS)
                     show_title(ctx, part_x, h, 'cAT END')
                     show_value(ctx, part_x, h, self.app.melodic_mode.channel_at_range_end, color)
 
-                elif i == 4:  # Poly AT range
+                elif i == 3:  # Poly AT range
                     if self.app.melodic_mode.last_time_at_params_edited is not None:
                         color = definitions.get_color_rgb_float(definitions.FONT_COLOR_DELAYED_ACTIONS)
                     show_title(ctx, part_x, h, 'pAT RANGE')
                     show_value(ctx, part_x, h, self.app.melodic_mode.poly_at_max_range, color)
 
-                elif i == 5:  # Poly AT curve
+                elif i == 4:  # Poly AT curve
                     if self.app.melodic_mode.last_time_at_params_edited is not None:
                         color = definitions.get_color_rgb_float(definitions.FONT_COLOR_DELAYED_ACTIONS)
                     show_title(ctx, part_x, h, 'pAT CURVE')
@@ -442,11 +435,15 @@ class SettingsMode(definitions.PushItMode):
     def on_encoder_rotated(self, encoder_name, increment):
         self.encoders_state[encoder_name]['last_message_received'] = time.time()
         # Lists are scrolled with the "slow" profile for precise one-item
-        # movement; numeric value edits use the default "fast" profile.
-        list_encoders = (
-            push2_python.constants.ENCODER_TRACK2_ENCODER,
-            push2_python.constants.ENCODER_TRACK3_ENCODER,
-        )
+        # movement; numeric value edits use the default "fast" profile. The
+        # list encoders differ per settings page.
+        if self.current_page == Pages.SESSION:
+            list_encoders = (push2_python.constants.ENCODER_TRACK2_ENCODER,)
+        elif self.current_page == Pages.PROJECT:
+            list_encoders = (push2_python.constants.ENCODER_TRACK3_ENCODER,)
+        else:
+            # PERFORMANCE (and any other page) has no list scrolling
+            list_encoders = ()
         profile = "slow" if encoder_name in list_encoders else "fast"
         delta = self.app.accelerate_encoder(encoder_name, increment, profile=profile)
 
@@ -542,11 +539,6 @@ class SettingsMode(definitions.PushItMode):
 
         if self.current_page == Pages.PERFORMANCE:
             if button_name == push2_python.constants.BUTTON_UPPER_ROW_1:
-                self.app.melodic_mode.set_root_midi_note(self.app.melodic_mode.root_midi_note + 1)
-                self.app.pads_need_update = True
-                return True
-
-            if button_name == push2_python.constants.BUTTON_UPPER_ROW_2:
                 self.app.melodic_mode.use_poly_at = not self.app.melodic_mode.use_poly_at
                 if self.app.melodic_mode.use_poly_at:
                     self.app.push.pads.set_polyphonic_aftertouch()
