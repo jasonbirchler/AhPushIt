@@ -399,7 +399,7 @@ class MIDICCMode(PushItMode):
                 push2_python.constants.ENCODER_TRACK8_ENCODER,
             ].index(encoder_name)
             if self.active_midi_control_ccs:
-                delta = increment
+                delta = self.app.accelerate_encoder(encoder_name, increment, profile="fast")
                 if delta != 0:
                     self.active_midi_control_ccs[encoder_num].update_value(delta)
         except ValueError:

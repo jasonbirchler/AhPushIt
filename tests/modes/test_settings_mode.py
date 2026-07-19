@@ -167,24 +167,14 @@ class TestSettingsMode:
         mode.on_encoder_rotated(push2_python.constants.ENCODER_TRACK3_ENCODER, -2)
         assert mode.project_list.selected_index == 1
 
-    def test_on_button_pressed_performance_increment_root(self, mock_app):
-        mode = SettingsMode(mock_app)
-        mode.current_page = Pages.PERFORMANCE
-        mock_app.melodic_mode.root_midi_note = 60
-        mock_app.melodic_mode.set_root_midi_note = MagicMock()
-        mock_app.pads_need_update = False
-        mode.on_button_pressed(push2_python.constants.BUTTON_UPPER_ROW_1)
-        mock_app.melodic_mode.set_root_midi_note.assert_called_once_with(61)
-        assert mock_app.pads_need_update is True
-
     def test_on_button_pressed_performance_poly_at_toggle(self, mock_app):
         mode = SettingsMode(mock_app)
         mode.current_page = Pages.PERFORMANCE
         mock_app.melodic_mode.use_poly_at = False
-        mode.on_button_pressed(push2_python.constants.BUTTON_UPPER_ROW_2)
+        mode.on_button_pressed(push2_python.constants.BUTTON_UPPER_ROW_1)
         assert mock_app.melodic_mode.use_poly_at is True
         # Toggle again
-        mode.on_button_pressed(push2_python.constants.BUTTON_UPPER_ROW_2)
+        mode.on_button_pressed(push2_python.constants.BUTTON_UPPER_ROW_1)
         assert mock_app.melodic_mode.use_poly_at is False
 
     def test_on_button_pressed_project_save(self, mock_app):

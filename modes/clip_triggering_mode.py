@@ -455,7 +455,8 @@ class ClipTriggeringMode(definitions.PushItMode):
             return False
 
     def on_encoder_rotated(self, encoder_name, increment):
-        delta = increment
+        # Clip selection uses the "slow" profile for precise one-item movement.
+        delta = self.app.accelerate_encoder(encoder_name, increment, profile="slow")
         if delta == 0:
             return True
 

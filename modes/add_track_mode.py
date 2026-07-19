@@ -233,7 +233,12 @@ class AddTrackMode(definitions.PushItMode):
         )
 
     def on_encoder_rotated(self, encoder_name, increment):
-        delta = increment
+        # Output-device list scroll uses the "slow" profile; other edits (track
+        # type toggle, MIDI channel) use the default "fast" profile.
+        if encoder_name == push2_python.constants.ENCODER_TRACK3_ENCODER:
+            delta = self.app.accelerate_encoder(encoder_name, increment, profile="slow")
+        else:
+            delta = self.app.accelerate_encoder(encoder_name, increment, profile="fast")
         if delta == 0:
             return True
         # Encoder 2: Track type

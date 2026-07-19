@@ -137,6 +137,11 @@ def mock_app(mock_push2_environment, mock_isobar_midi):
     app.global_timeline = isobar.Timeline()
     app.global_timeline.max_tracks = 8
 
+    # Passthrough encoder acceleration: unit tests for individual modes expect
+    # raw increments, and the acceleration logic itself is tested separately in
+    # tests/test_app.py (via the real compute_accelerated_increment function).
+    app.accelerate_encoder = lambda encoder_name, increment, profile="fast": increment
+
     return app
 
 

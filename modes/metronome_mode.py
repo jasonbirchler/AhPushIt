@@ -196,7 +196,12 @@ class MetronomeMode(definitions.PushItMode):
                   margin_left=6, center_horizontally=False)
 
     def on_encoder_rotated(self, encoder_name, increment):
-        delta = increment
+        # Device list scroll uses the "slow" profile for precise selection;
+        # numeric value edits use the default "fast" profile.
+        if encoder_name == push2_python.constants.ENCODER_TRACK2_ENCODER:
+            delta = self.app.accelerate_encoder(encoder_name, increment, profile="slow")
+        else:
+            delta = self.app.accelerate_encoder(encoder_name, increment, profile="fast")
 
         if encoder_name == push2_python.constants.ENCODER_TRACK2_ENCODER: # Output device
             self.device_idx = (self.device_idx + delta) % len(self.available_devices)
