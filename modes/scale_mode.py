@@ -406,7 +406,7 @@ class ScaleMode(definitions.PushItMode):
             return False
 
         if encoder_name in self.navigation_encoders:
-            delta = increment
+            delta = self.app.accelerate_encoder(encoder_name, increment, profile="slow")
             if delta == 0:
                 return True
 

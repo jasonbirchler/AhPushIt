@@ -673,7 +673,12 @@ class ClipEditMode(definitions.PushItMode):
         return True
 
     def on_encoder_rotated(self, encoder_name, increment):
-        delta = increment
+        # Clip selection uses the "slow" profile for precise one-item movement;
+        # clip length / step divisions are continuous value edits (fast).
+        if self.mode == self.MODE_CLIP and encoder_name == push2_python.constants.ENCODER_TRACK1_ENCODER:
+            delta = self.app.accelerate_encoder(encoder_name, increment, profile="slow")
+        else:
+            delta = self.app.accelerate_encoder(encoder_name, increment, profile="fast")
         if self.mode == self.MODE_CLIP:
             if encoder_name == push2_python.constants.ENCODER_TRACK1_ENCODER:
                 if self.available_clips:
