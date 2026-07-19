@@ -33,14 +33,14 @@ class PresetSelectionMode(definitions.PushItMode):
         self.app.buttons_need_update = True
 
     def add_favourite_preset(self, preset_number, bank_number):
-        instrument_short_name = self.app.track_selection_mode.get_current_track_instrument_short_name() 
+        instrument_short_name = self.app.track_selection_mode.get_current_track_device_short_name()
         if instrument_short_name not in self.favourtie_presets:
             self.favourtie_presets[instrument_short_name] = []
         self.favourtie_presets[instrument_short_name].append((preset_number, bank_number))
         json.dump(self.favourtie_presets, open(self.favourtie_presets_filename, 'w'))  # Save to file
 
     def remove_favourite_preset(self, preset_number, bank_number):
-        instrument_short_name = self.app.track_selection_mode.get_current_track_instrument_short_name() 
+        instrument_short_name = self.app.track_selection_mode.get_current_track_device_short_name()
         if instrument_short_name in self.favourtie_presets:
             self.favourtie_presets[instrument_short_name] = \
                 [(fp_preset_number, fp_bank_number) for fp_preset_number, fp_bank_number in self.favourtie_presets[instrument_short_name] 
@@ -48,7 +48,7 @@ class PresetSelectionMode(definitions.PushItMode):
             json.dump(self.favourtie_presets, open(self.favourtie_presets_filename, 'w'))  # Save to file
 
     def preset_num_in_favourites(self, preset_number, bank_number):
-        instrument_short_name = self.app.track_selection_mode.get_current_track_instrument_short_name() 
+        instrument_short_name = self.app.track_selection_mode.get_current_track_device_short_name()
         if instrument_short_name not in self.favourtie_presets:
             return False
         for fp_preset_number, fp_bank_number in self.favourtie_presets[instrument_short_name]:
