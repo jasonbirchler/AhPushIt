@@ -75,6 +75,10 @@ class Clip(BaseClass):
         self.wrap_events_across_clip_loop = False
         self.max_polyphony = 4
         self.queued_clip = None
+        # When True, this clip should begin recording (not just playing) once it
+        # is started via the queued-clip swap in ``stop()``. Used to cue live
+        # recording onto a clip while another clip on the same track finishes.
+        self.queued_for_recording = False
 
         # clip sequence properties - numpy arrays for polyphonic step sequencing
         self.notes = np.full((self.steps, self.max_polyphony), None, dtype=object)
@@ -86,6 +90,25 @@ class Clip(BaseClass):
         self.window_note_offset = 60  # Start at middle C
 
         self.clip_status = self.get_status()
+
+    def step_beats(self) -> float:
+        """Number of beats represented by a single step."""
+        if self.steps > 0 and self.clip_length_in_beats > 0:
+            return self.clip_length_in_beats / self.steps
+        return 0.0
+
+    def note_duration_in_steps(self, step_idx: int, voice: int) -> int:
+        """Number of step-columns a note at the given step covers based on its
+        duration. Returns at least 1."""
+        if 0 <= step_idx < self.steps and 0 <= voice < self.max_polyphony:
+            duration = self.durations[step_idx, voice]
+        else:
+            duration = 0.0
+        step_beats = self.step_beats()
+        if step_beats <= 0:
+            return 1
+        num_steps = int(round(duration / step_beats))
+        return max(1, num_steps)
 
     def pad_to_step_and_note(self, pad_i: int, pad_j: int) -> tuple:
         """Convert pad coordinates to step index and MIDI note"""
@@ -162,6 +185,9 @@ class Clip(BaseClass):
                             "step_idx": step_idx,
                             "note": note,
                             "velocity": self.amplitudes[step_idx, voice],
+                            "duration_steps": self.note_duration_in_steps(
+                                step_idx, voice
+                            ),
                         }
                     )
 
@@ -224,7 +250,13 @@ class Clip(BaseClass):
         )
 
     def is_empty(self):
-        return not np.any(self.notes is not None)
+        # self.notes is an object array of None placeholders; a clip is empty
+        # only when every slot is None. Compare element-wise so a fresh clip
+        # (all None) is correctly reported as empty.
+        if self.notes is None:
+            return True
+        return all(note is None for note in self.notes.flat)
+
 
     def play_stop(self):
         if self.track is None:
@@ -278,6 +310,14 @@ class Clip(BaseClass):
             next_clip = self.queued_clip
             self.queued_clip = None
             next_clip.play(quantize_start=False)
+            # If the queued clip was cued for live recording, begin recording now
+            # that it has started playing (loop-boundary swap).
+            if next_clip.queued_for_recording:
+                next_clip.queued_for_recording = False
+                next_clip.will_start_recording_at = -1.0
+                next_clip.recording = True
+                if self.app is not None and hasattr(self.app, "recording_target"):
+                    self.app.recording_target = next_clip
             # Ensure both clips update their status and trigger UI refresh
             self.update_status()
             next_clip.update_status()
@@ -292,6 +332,13 @@ class Clip(BaseClass):
             return
         # Toggle recording state
         self.recording = not self.recording
+        self.update_status()
+
+    def set_recording_target(self, is_target):
+        """Mark (or unmark) this clip as the live overdub record target."""
+        if self.track is None:
+            return
+        self.recording = bool(is_target)
         self.update_status()
 
     def update_status(self):

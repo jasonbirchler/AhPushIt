@@ -138,10 +138,25 @@ class TestMainControlsMode:
         mock_app.session.stop_timeline.assert_called_once()
         assert mock_app.buttons_need_update is True
 
-    def test_on_button_pressed_record_returns_none(self, mock_app):
+    def test_on_button_pressed_record_toggles_arm(self, mock_app):
         mode = MainControlsMode(mock_app)
+        mock_app.awaiting_buffer_slot = False
+        mock_app.toggle_recording_arm = MagicMock()
+        mock_app.buttons_need_update = False
         result = mode.on_button_pressed(RECORD_BUTTON)
-        assert result is None
+        assert result is True
+        mock_app.toggle_recording_arm.assert_called_once()
+        assert mock_app.buttons_need_update is True
+
+    def test_on_button_pressed_record_cancels_buffer_prompt(self, mock_app):
+        mode = MainControlsMode(mock_app)
+        mock_app.awaiting_buffer_slot = True
+        mock_app.discard_recording_buffer = MagicMock()
+        mock_app.toggle_recording_arm = MagicMock()
+        result = mode.on_button_pressed(RECORD_BUTTON)
+        assert result is True
+        mock_app.discard_recording_buffer.assert_called_once()
+        mock_app.toggle_recording_arm.assert_not_called()
 
     def test_on_button_released_preset_selection_long_press(self, mock_app):
         mode = MainControlsMode(mock_app)

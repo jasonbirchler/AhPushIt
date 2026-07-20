@@ -30,6 +30,7 @@ class MainControlsMode(definitions.PushItMode):
         self.push.buttons.set_button_color(PRESET_SELECTION_MODE_BUTTON, definitions.BLACK)
         self.push.buttons.set_button_color(METRONOME_BUTTON, definitions.BLACK)
         self.push.buttons.set_button_color(push2_python.constants.BUTTON_SCALE, definitions.BLACK)
+        self.push.buttons.set_button_color(RECORD_BUTTON, definitions.BLACK)
 
     def update_buttons(self):
         # Note button, to toggle melodic/rhythmic mode
@@ -80,6 +81,25 @@ class MainControlsMode(definitions.PushItMode):
             self.push.buttons.set_button_color(METRONOME_BUTTON, definitions.WHITE, animation=definitions.DEFAULT_ANIMATION)
         else:
             self.push.buttons.set_button_color(METRONOME_BUTTON, definitions.OFF_BTN_COLOR)
+
+        # Record button — bright red (capturing), dim red (armed, not yet
+        # capturing), white when disarmed.
+        if self.app.is_recording_armed:
+            if self.app.global_timeline.is_running:
+                # Armed + timeline running = actively capturing
+                self.push.buttons.set_button_color(
+                    RECORD_BUTTON, definitions.RED, animation=definitions.DEFAULT_ANIMATION
+                )
+            else:
+                # Armed but timeline stopped = waiting to capture
+                self.push.buttons.set_button_color(RECORD_BUTTON, definitions.RED + "_darker1")
+        elif self.app.awaiting_buffer_slot:
+            # Prompting the user to save the captured buffer
+            self.push.buttons.set_button_color(
+                RECORD_BUTTON, definitions.RED, animation=definitions.FAST_ANIMATION
+            )
+        else:
+            self.push.buttons.set_button_color(RECORD_BUTTON, definitions.WHITE)
 
     def on_button_pressed(self, button_name):
         if button_name == MELODIC_RHYTHMIC_TOGGLE_BUTTON:
@@ -150,6 +170,16 @@ class MainControlsMode(definitions.PushItMode):
             else:
                 self.app.set_mode_for_xor_group(self.app.scale_mode)
             self.app.buttons_need_update = True
+            return True
+        elif button_name == RECORD_BUTTON:
+            # Global record-arm toggle. If awaiting a buffer-save prompt, a
+            # Record press discards the captured buffer instead.
+            if self.app.awaiting_buffer_slot:
+                self.app.discard_recording_buffer()
+            else:
+                self.app.toggle_recording_arm()
+            self.app.buttons_need_update = True
+            self.app.pads_need_update = True
             return True
 
         return None
