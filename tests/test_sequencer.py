@@ -58,6 +58,7 @@ class TestSequencer:
 
         sequencer = Sequencer(mock_app)
         mock_timeline = MagicMock()
+        mock_timeline.current_time = 1.5  # 2.5 beats until next bar
         sequencer.timeline = mock_timeline
 
         clip = MagicMock()
@@ -82,6 +83,11 @@ class TestSequencer:
         assert call_kwargs["name"] == "TestClip"
         # Device fetched from clip.track, not session
         clip.track.get_output_device.assert_called_once()
+        # The clip must be delayed until the next bar boundary (delay in beats),
+        # not quantized to a fixed grid. quantize must be 0 so the delay is the
+        # exact number of beats until the next bar.
+        assert call_kwargs["quantize"] == 0.0
+        assert call_kwargs["delay"] == get_beats_until_next_bar(mock_timeline)
 
     def test_schedule_clip_skips_when_no_track(self, mock_app):
         """Test scheduling a clip without a track returns immediately."""

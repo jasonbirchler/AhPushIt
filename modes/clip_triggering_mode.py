@@ -12,6 +12,10 @@ class ClipTriggeringMode(definitions.PushItMode):
 
     selected_scene = 0
     num_scenes = 8
+    # The last clip the user interacted with (pressed or long-pressed). Used to
+    # resolve the live-record overdub target so recording follows the pad the
+    # user last touched, not an unrelated scene row.
+    selected_clip = None
 
     upper_row_buttons = [
         push2_python.constants.BUTTON_UPPER_ROW_1,
@@ -282,6 +286,27 @@ class ClipTriggeringMode(definitions.PushItMode):
                 row_animation.append(cell_animation)
             color_matrix.append(row_colors)
             animation_matrix.append(row_animation)
+
+        # When awaiting a slot to save a live recording, highlight empty slots
+        # on the buffer's track so the user knows where they can save it.
+        if self.app.awaiting_buffer_slot:
+            buffer_track = self.app.recording_buffer_track
+            target_track_idx = None
+            if buffer_track is not None:
+                try:
+                    target_track_idx = self.app.session.tracks.index(buffer_track)
+                except ValueError:
+                    target_track_idx = None
+            for c in range(0, definitions.GRID_HEIGHT):
+                for t in range(0, definitions.GRID_WIDTH):
+                    if target_track_idx is not None and t != target_track_idx:
+                        continue
+                    clip = self.app.session.get_clip_by_idx(t, c)
+                    if clip is None:
+                        # Empty slot available to save the recording into
+                        color_matrix[c][t] = definitions.RED
+                        animation_matrix[c][t] = definitions.FAST_ANIMATION
+
         self.push.pads.set_pads_color(color_matrix, animation_matrix)
 
     def on_button_pressed(self, button_name):
@@ -312,8 +337,27 @@ class ClipTriggeringMode(definitions.PushItMode):
         track_num = pad_ij[1]
         clip_num = pad_ij[0]
 
+        # If we're waiting for the user to pick a slot to save a live recording,
+        # a pad press commits the buffer to that slot (or cancels on a filled slot).
+        if self.app.awaiting_buffer_slot:
+            buffer_track = self.app.recording_buffer_track
+            if buffer_track is not None:
+                try:
+                    track_idx = self.app.session.tracks.index(buffer_track)
+                except ValueError:
+                    track_idx = track_num
+            else:
+                track_idx = track_num
+            existing = self.app.session.get_clip_by_idx(track_idx, clip_num)
+            if existing is None:
+                self.app.commit_recording_buffer_to_slot(track_idx, clip_num)
+            else:
+                self.app.add_display_notification("Slot in use — pick empty slot")
+            self.app.pads_need_update = True
+            self.app.buttons_need_update = True
+            return True
+
         action_buttons_to_check = [
-            self.app.main_controls_mode.record_button,
             self.clear_clip_button,
             self.double_clip_button,
             self.quantize_button,
@@ -334,60 +378,59 @@ class ClipTriggeringMode(definitions.PushItMode):
         if clip is None:
             return True
 
+        # Track the last clip the user touched so live-record targets follow it
+        self.selected_clip = clip
+        # If record is armed but no target clip was resolved yet (no clip was
+        # selected at arm time), adopt this clip as the live target now.
+        if self.app.is_recording_armed and self.app.recording_target is None:
+            self.app.arm_recording()
+
         # set the clip name. is there a better place to do this?
         if clip.name is None:
             clip.name = f"{track_num + 1}-{clip_num + 1}"
-        if self.app.is_button_being_pressed(
-            self.app.main_controls_mode.record_button
-        ):
-            clip.record_on_off()
-            self.app.set_button_ignore_next_action_if_not_yet_triggered(
-                self.app.main_controls_mode.record_button
-            )
+        if self.app.is_button_being_pressed(self.clear_clip_button):
+            if not clip.is_empty():
+                clip.clear()
+                self.app.add_display_notification(
+                    "Cleared clip: {0}-{1}".format(
+                        track_num + 1, clip_num + 1
+                    )
+                )
+
+        elif self.app.is_button_being_pressed(self.double_clip_button):
+            if not clip.is_empty():
+                clip.double()
+                self.app.add_display_notification(
+                    "Doubled clip: {0}-{1}".format(
+                        track_num + 1, clip_num + 1
+                    )
+                )
+
+        elif self.app.is_button_being_pressed(self.quantize_button):
+            #no-op for now
+            pass
+
         else:
-            if self.app.is_button_being_pressed(self.clear_clip_button):
-                if not clip.is_empty():
-                    clip.clear()
-                    self.app.add_display_notification(
-                        "Cleared clip: {0}-{1}".format(
-                            track_num + 1, clip_num + 1
-                        )
-                    )
-
-            elif self.app.is_button_being_pressed(self.double_clip_button):
-                if not clip.is_empty():
-                    clip.double()
-                    self.app.add_display_notification(
-                        "Doubled clip: {0}-{1}".format(
-                            track_num + 1, clip_num + 1
-                        )
-                    )
-
-            elif self.app.is_button_being_pressed(self.quantize_button):
-                #no-op for now
-                pass
-
+            # No "option" button pressed, do play/stop
+            if not clip.playing:
+                # Starting a clip - check if another clip in the track is playing
+                track = self.app.session.get_track_by_idx(track_num)
+                if track:
+                    for other_clip in track.clips:
+                        if other_clip and other_clip != clip and other_clip.playing:
+                            # Queue this clip to play after the current one finishes
+                            other_clip.queued_clip = clip
+                            self.update_pads()
+                            return True
+                # No other clip playing, start immediately
+                clip.play_stop()
             else:
-                # No "option" button pressed, do play/stop
-                if not clip.playing:
-                    # Starting a clip - check if another clip in the track is playing
-                    track = self.app.session.get_track_by_idx(track_num)
-                    if track:
-                        for other_clip in track.clips:
-                            if other_clip and other_clip != clip and other_clip.playing:
-                                # Queue this clip to play after the current one finishes
-                                other_clip.queued_clip = clip
-                                self.update_pads()
-                                return True
-                    # No other clip playing, start immediately
-                    clip.play_stop()
-                else:
-                    # Stopping a clip - clear any queued clip
-                    clip.queued_clip = None
-                    clip.play_stop()
+                # Stopping a clip - clear any queued clip
+                clip.queued_clip = None
+                clip.play_stop()
 
-                self.update_pads()
-                return True
+            self.update_pads()
+            return True
         return False
 
     def on_pad_long_pressed(self, pad_n, pad_ij, velocity):
@@ -399,7 +442,6 @@ class ClipTriggeringMode(definitions.PushItMode):
 
         # Check if any action buttons are being pressed - if so, ignore long press
         action_buttons_to_check = [
-            self.app.main_controls_mode.record_button,
             self.clear_clip_button,
             self.double_clip_button,
             self.quantize_button,
@@ -428,6 +470,9 @@ class ClipTriggeringMode(definitions.PushItMode):
                 new_clip.name = f"{track_num + 1}-{clip_num + 1}"
                 track.add_clip(new_clip, clip_num)
                 clip = new_clip
+
+            # Track the last clip the user touched so live-record targets follow it
+            self.selected_clip = clip
 
             try:
                 # Enter clip edit mode for both existing and newly created clips
