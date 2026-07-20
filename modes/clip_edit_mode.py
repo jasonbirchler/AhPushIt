@@ -204,13 +204,28 @@ class ClipEditMode(definitions.PushItMode):
         # Get notes in current window
         notes_to_render = self.clip.get_notes_for_rendering()
 
-        # Light up pads for each note
+        # Light up pads for each note, extending across the columns its
+        # duration covers. The first (onset) pad is full brightness; the
+        # following pads are dimmed so a sustained note reads as a trail
+        # rather than as multiple consecutive notes.
         for note_data in notes_to_render:
             pad_i = note_data["pad_i"]
-            pad_j = note_data["pad_j"]
+            duration_steps = note_data["duration_steps"]
 
-            if 0 <= pad_i < definitions.GRID_WIDTH and 0 <= pad_j < definitions.GRID_HEIGHT:
-                color_matrix[pad_i][pad_j] = track_color
+            if not (0 <= pad_i < definitions.GRID_WIDTH):
+                continue
+
+            for step_offset in range(duration_steps):
+                pad_j = note_data["pad_j"] + step_offset
+                if not (0 <= pad_j < definitions.GRID_HEIGHT):
+                    break
+                if step_offset == 0:
+                    color = track_color
+                elif step_offset == 1:
+                    color = track_color + "_darker1"
+                else:
+                    color = track_color + "_darker2"
+                color_matrix[pad_i][pad_j] = color
 
         # Draw playhead if clip is playing
         if self.clip.playing and self.clip.clip_length_in_beats > 0:

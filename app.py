@@ -26,6 +26,7 @@ import numpy
 import push2_python
 
 import definitions
+from clip import Clip
 from utils import show_notification
 from metronome import AhPushItMetronome
 from modes.add_track_mode import AddTrackMode
@@ -178,6 +179,13 @@ class PushItApp(object):
     midi_in_device_name: str = None
     _note_on_times: dict = {}       # {pitch: (start_time, velocity)} for duration tracking
 
+    # Global live-recording arm state
+    is_recording_armed: bool = False
+    recording_target = None            # Clip currently being overdubbed into
+    recording_buffer = None            # Temporary Clip for "no clip selected" capture
+    recording_buffer_track = None      # Track selected at buffer capture time
+    awaiting_buffer_slot: bool = False # True while prompting user to save buffer to a slot
+
     def __init__(self):
         # Settings live in userspace alongside projects to avoid git conflicts
         self.settings_dir = os.path.expanduser("~/pushit")
@@ -202,6 +210,13 @@ class PushItApp(object):
         # Initialize MIDI input state
         self.midi_in_device_name = None
         self._note_on_times = {}
+
+        # Initialize live-recording arm state
+        self.is_recording_armed = False
+        self.recording_target = None
+        self.recording_buffer = None
+        self.recording_buffer_track = None
+        self.awaiting_buffer_slot = False
 
         self.init_push()
         self.init_modes(self.settings)
@@ -486,42 +501,311 @@ class PushItApp(object):
             if output:
                 output.note_off(pitch, track.channel)
 
-        # Recording: if any clip on the selected track is recording, write the note
-        if pitch in self._note_on_times:
+        # Recording: route captured note to the current global record target
+        if pitch in self._note_on_times and self.is_recording_armed:
             start_time, velocity = self._note_on_times.pop(pitch)
             duration_secs = time.time() - start_time
             # Convert seconds to beats using current BPM
             duration_beats = duration_secs * (self.seq.bpm / 60.0)
-            self._record_note_to_clip(track, pitch, velocity, duration_beats)
+            target = self._resolve_recording_target()
+            if target is not None:
+                self._record_note_to_clip(target, pitch, velocity, duration_beats)
+        elif pitch in self._note_on_times:
+            # Not armed (or target unresolved) — drop the stored on-time
+            self._note_on_times.pop(pitch)
 
-    def _record_note_to_clip(self, track, pitch, velocity, duration_beats):
-        """Write a captured note into the first recording clip on the track."""
-        for clip in track.clips:
-            if clip is not None and clip.recording:
-                # Find the step nearest to current playhead position
-                if self.global_timeline.is_running and clip.clip_length_in_beats > 0:
-                    current_beat = self.global_timeline.current_time % clip.clip_length_in_beats
-                    step = int((current_beat / clip.clip_length_in_beats) * clip.steps)
-                    step = min(step, clip.steps - 1)
-                else:
-                    # Timeline not running — find first empty step
-                    step = 0
-                    for s in range(clip.steps):
-                        if clip.notes[s, 0] is None:
-                            step = s
-                            break
-                # Write note into first available voice at that step
-                for voice in range(clip.max_polyphony):
-                    if clip.notes[step, voice] is None:
-                        clip.notes[step, voice] = pitch
-                        clip.durations[step, voice] = min(
-                            duration_beats,
-                            clip.clip_length_in_beats / clip.steps
-                        )
-                        clip.amplitudes[step, voice] = velocity
-                        break
-                self.pads_need_update = True
+    def _resolve_recording_target(self):
+        """Return the Clip currently being recorded into.
+
+        Returns the explicitly armed clip (``recording_target``) if one is set,
+        otherwise the temporary ``recording_buffer`` (created on demand) when no
+        clip is selected. Returns None if armed but no valid target could be made.
+        """
+        if self.recording_target is not None and self.recording_target.recording:
+            return self.recording_target
+
+        # A target is armed but cued (waiting for a loop-boundary swap) and has
+        # not started recording yet. Drop notes until the swap begins recording;
+        # do NOT spill them into a new buffer.
+        if self.recording_target is not None:
+            return None
+
+        # Fall back to capturing into the buffer when no clip is selected
+        if self.recording_buffer is not None:
+            return self.recording_buffer
+
+        track = self.track_selection_mode.get_selected_track()
+        if track is None:
+            return None
+
+        # Buffer sized to 1 bar at the current BPM (fixed at capture start)
+        beats_per_bar = getattr(track, "beats_per_bar", 4) or 4
+        new_clip = Clip(parent=track)
+        new_clip.clip_length_in_beats = float(beats_per_bar)
+        self.recording_buffer = new_clip
+        self.recording_buffer_track = track
+        return new_clip
+
+    def _record_note_to_clip(self, clip, pitch, velocity, duration_beats):
+        """Write a captured note into ``clip`` at the playhead step (or first
+        empty step if the timeline is not running)."""
+        # Find the step nearest to current playhead position
+        if self.global_timeline.is_running and clip.clip_length_in_beats > 0:
+            current_beat = self.global_timeline.current_time % clip.clip_length_in_beats
+            step = int((current_beat / clip.clip_length_in_beats) * clip.steps)
+            step = min(step, clip.steps - 1)
+        else:
+            # Timeline not running — find first empty step
+            step = 0
+            for s in range(clip.steps):
+                if clip.notes[s, 0] is None:
+                    step = s
+                    break
+        # Write note into first available voice at that step
+        note_written = False
+        for voice in range(clip.max_polyphony):
+            if clip.notes[step, voice] is None:
+                clip.notes[step, voice] = pitch
+                clip.durations[step, voice] = max(
+                    0.0,
+                    min(duration_beats, clip.clip_length_in_beats)
+                )
+                clip.amplitudes[step, voice] = velocity
+                note_written = True
                 break
+
+        # If the clip is currently playing, push the new note into the running
+        # timeline sequence. Without this, live-recorded notes only appear in the
+        # numpy arrays and are not heard until the clip is rescheduled (e.g. by
+        # editing a note). schedule_clip(replace=True) rebuilds the sequence in
+        # place without restarting playback.
+        if note_written and clip.playing:
+            clip._reschedule_if_playing()
+
+        self.pads_need_update = True
+
+    def get_selected_clip(self):
+        """Return the clip to use as the overdub target, or None.
+
+        Resolution order (most recent interaction wins):
+        1. The clip currently open in clip-edit mode (explicit selection).
+        2. The last clip the user pressed/touched in clip-triggering mode
+           (``clip_triggering_mode.selected_clip``). This ensures recording
+           follows the pad the user last touched, independent of the scene-row
+           buttons.
+        3. The clip at ``clip_triggering_mode.selected_scene`` on the selected
+           track as a fallback.
+        """
+        if self.is_mode_active(self.clip_edit_mode) and self.clip_edit_mode.clip is not None:
+            return self.clip_edit_mode.clip
+
+        selected = getattr(self.clip_triggering_mode, "selected_clip", None)
+        if selected is not None:
+            return selected
+
+        track = self.track_selection_mode.get_selected_track()
+        if track is None:
+            return None
+        track_idx = self.session.tracks.index(track)
+        scene = getattr(self.clip_triggering_mode, "selected_scene", 0)
+        return self.session.get_clip_by_idx(track_idx, scene)
+
+    def arm_recording(self):
+        """Arm the global record state and resolve the capture target.
+
+        - If the timeline is not running, arming only *arms*; no capture yet.
+        - If the timeline is already running, capture begins immediately, unless
+          a *different* clip on the same track is currently playing. In that case
+          the target clip is cued to record: the playing clip finishes its loop,
+          stops, and the target clip starts recording at the loop boundary.
+        """
+        if self.is_recording_armed:
+            # Already armed. If a target was never resolved (e.g. armed with no
+            # clip selected) and one is now available, adopt it. Otherwise the
+            # existing arm state is unchanged.
+            if self.recording_target is None:
+                clip = self.get_selected_clip()
+                if clip is not None:
+                    self.recording_target = clip
+                    self._begin_recording_on_target(clip)
+            return
+
+        self.is_recording_armed = True
+
+        clip = self.get_selected_clip()
+        if clip is not None:
+            self.recording_target = clip
+            self._begin_recording_on_target(clip)
+        else:
+            # No clip selected — capture into a temporary buffer
+            self.recording_target = None
+            track = self.track_selection_mode.get_selected_track()
+            if track is not None:
+                self.recording_buffer_track = track
+            if self.global_timeline.is_running:
+                self.add_display_notification("Recording")
+            else:
+                self.add_display_notification("Record armed")
+
+        self.buttons_need_update = True
+        self.pads_need_update = True
+
+    def _begin_recording_on_target(self, clip):
+        """Start capturing into ``clip`` now, either immediately or cued at the
+        playing sibling's loop boundary (when another clip on the same track is
+        currently playing)."""
+        playing_sibling = self._get_playing_sibling_clip(clip)
+        if (
+            self.global_timeline.is_running
+            and playing_sibling is not None
+            and not clip.playing
+        ):
+            # Cue recording: swap at the playing clip's loop boundary.
+            clip.queued_for_recording = True
+            clip.will_start_recording_at = 0.0  # >= 0 => CUED_TO_RECORD status
+            clip.update_status()
+            # Chain onto any existing queued clip so it is not orphaned.
+            if playing_sibling.queued_clip is not None:
+                playing_sibling.queued_clip.queued_clip = clip
+            else:
+                playing_sibling.queued_clip = clip
+            self.add_display_notification("Recording cued")
+        else:
+            # Start recording immediately.
+            clip.set_recording_target(True)
+            if self.global_timeline.is_running:
+                self.add_display_notification("Recording")
+            else:
+                self.add_display_notification("Record armed")
+
+    def _get_playing_sibling_clip(self, clip):
+        """Return a clip on the same track that is currently playing and is not
+        ``clip`` itself, or None."""
+        track = getattr(clip, "track", None)
+        if track is None:
+            return None
+        for other in track.clips:
+            if other is not None and other is not clip and other.playing:
+                return other
+        return None
+
+    def disarm_recording(self):
+        """Stop capturing new notes. Timeline/playback keeps running.
+
+        Recorded notes remain in the target clip or buffer and will play back on
+        the next loop boundary. This does NOT stop the timeline (see plan #3).
+        """
+        if not self.is_recording_armed:
+            return
+
+        self.is_recording_armed = False
+        if self.recording_target is not None:
+            target = self.recording_target
+            # If recording was only cued (waiting for a loop-boundary swap) and
+            # has not started yet, cancel the cue instead of stopping capture.
+            if getattr(target, "queued_for_recording", False):
+                target.queued_for_recording = False
+                target.will_start_recording_at = -1.0
+                # Remove the cue from whichever sibling had it queued.
+                track = getattr(target, "track", None)
+                if track is not None:
+                    for other in track.clips:
+                        if other is not None and other.queued_clip is target:
+                            other.queued_clip = None
+                            other.update_status()
+                target.update_status()
+            else:
+                target.set_recording_target(False)
+            self.recording_target = None
+
+        self.buttons_need_update = True
+        self.pads_need_update = True
+        self.add_display_notification("Recording stopped")
+
+    def toggle_recording_arm(self):
+        """Toggle the global record-arm state.
+
+        Armed -> disarm (stops capture, keeps playback looping).
+        Disarmed -> arm (starts capture). Playback is never toggled here.
+        """
+        if self.is_recording_armed:
+            self.disarm_recording()
+        else:
+            self.arm_recording()
+
+    def on_timeline_stopped(self):
+        """Hook called from ``session.stop_timeline`` after the timeline stops.
+
+        - If a buffer was captured with no clip selected, enter the slot prompt.
+        - If armed into a clip, clear the arm state (recording in the clip stops).
+        """
+        if self.recording_buffer is not None and not self.recording_buffer.is_empty():
+            # Prompt the user to choose a slot to store the recording
+            self.awaiting_buffer_slot = True
+            self.is_recording_armed = False
+            self.add_display_notification("Save recording to slot?")
+            self.pads_need_update = True
+            return
+
+        # Discard an empty buffer silently
+        self.recording_buffer = None
+        self.recording_buffer_track = None
+
+        if self.is_recording_armed:
+            self.is_recording_armed = False
+            if self.recording_target is not None:
+                target = self.recording_target
+                # Clear any not-yet-started cued recording as well.
+                if getattr(target, "queued_for_recording", False):
+                    target.queued_for_recording = False
+                    target.will_start_recording_at = -1.0
+                    track = getattr(target, "track", None)
+                    if track is not None:
+                        for other in track.clips:
+                            if other is not None and other.queued_clip is target:
+                                other.queued_clip = None
+                    target.update_status()
+                else:
+                    target.set_recording_target(False)
+                self.recording_target = None
+            self.buttons_need_update = True
+            self.pads_need_update = True
+
+    def commit_recording_buffer_to_slot(self, track_idx, slot):
+        """Copy the captured ``recording_buffer`` into ``slot`` of the given track.
+
+        Creates a new clip, copies notes/durations/amplitudes, names it
+        ``{track+1}-{slot+1}``, and clears the buffer/prompt state.
+        """
+        track = self.session.get_track_by_idx(track_idx)
+        if track is None or self.recording_buffer is None:
+            self.awaiting_buffer_slot = False
+            return
+
+        new_clip = Clip(parent=track)
+        new_clip.clip_length_in_beats = self.recording_buffer.clip_length_in_beats
+        new_clip.notes = self.recording_buffer.notes.copy()
+        new_clip.durations = self.recording_buffer.durations.copy()
+        new_clip.amplitudes = self.recording_buffer.amplitudes.copy()
+        new_clip.name = "{0}-{1}".format(track_idx + 1, slot + 1)
+        track.add_clip(new_clip, slot)
+        new_clip.update_status()
+
+        self.recording_buffer = None
+        self.recording_buffer_track = None
+        self.awaiting_buffer_slot = False
+        self.pads_need_update = True
+        self.add_display_notification(
+            "Saved to {0}-{1}".format(track_idx + 1, slot + 1)
+        )
+
+    def discard_recording_buffer(self):
+        """Discard a captured buffer without saving it to a slot."""
+        self.recording_buffer = None
+        self.recording_buffer_track = None
+        self.awaiting_buffer_slot = False
+        self.pads_need_update = True
+        self.add_display_notification("Recording discarded")
 
     # Push2-related functions
     def add_display_notification(self, text):

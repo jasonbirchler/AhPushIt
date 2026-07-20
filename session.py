@@ -4,7 +4,7 @@ import isobar as iso
 
 import definitions
 from base_class import BaseClass
-from utils import get_beats_until_next_bar, compute_clip_total_duration
+from utils import get_beats_until_next_bar
 from clip import Clip
 from track import Track
 
@@ -351,6 +351,10 @@ class Session(BaseClass):
     def stop_timeline(self):
         """Stop the global timeline"""
         self.global_timeline.stop()
+        # Notify the app so it can handle live-recording state (buffer prompt,
+        # clearing arm state, etc.). Guard for tests / partial app setups.
+        if self.app is not None and hasattr(self.app, "on_timeline_stopped"):
+            self.app.on_timeline_stopped()
 
     def reset_timeline(self):
         """Reset the global timeline"""
