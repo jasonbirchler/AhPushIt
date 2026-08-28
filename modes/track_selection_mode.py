@@ -281,10 +281,10 @@ class TrackSelectionMode(definitions.PushItMode):
     def update_display(self, ctx, w, h):
         if self.app.session is None or self.app.session.tracks is None:
             return
-        
+
         display_w = push2_python.constants.DISPLAY_LINE_PIXELS
         part_w = display_w // 8
-        
+
         # If add_track_mode is active, only draw the track being edited (if any)
         editing_track = None
         if self.app.is_mode_active(self.app.add_track_mode):
@@ -294,9 +294,11 @@ class TrackSelectionMode(definitions.PushItMode):
         height = 20
         playback_bar_height = 5
         playback_bar_margin = 2
-        
+
         for i, track in enumerate(self.app.session.tracks):
             if track is None:
+                continue
+            if self.app.is_mode_active(self.app.add_track_mode):
                 continue
             if editing_track is not None and track is not editing_track:
                 continue

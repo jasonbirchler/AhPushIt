@@ -157,6 +157,21 @@ class AddTrackMode(definitions.PushItMode):
                 h,
                 "ADD TRACK"
             )
+
+        # Column 1: Current track name (only shown when editing a track)
+        if self.editing_track is not None:
+            track_idx = self.app.session.tracks.index(self.editing_track)
+            track_color = self.app.track_selection_mode.get_track_color(track_idx)
+            show_text(
+                ctx,
+                0,
+                30,
+                self.editing_track.device_short_name,
+                height=20,
+                font_color=definitions.BLACK,
+                background_color=track_color,
+                overflow="abbreviate",
+            )
         # Column 2: Track Type
         show_title(
             ctx,
@@ -336,7 +351,11 @@ class AddTrackMode(definitions.PushItMode):
                         f"Track created: {track.device_short_name}"
                     )
                     self.app.buttons_need_update = True
+                    self.app.pads_need_update = True
                     self.app.unset_add_track_mode()
+                    new_track_idx = self.app.session.tracks.index(track)
+                    self.app.track_selection_mode.selected_track = new_track_idx
+                    self.app.track_selection_mode.select_track_as_active(new_track_idx)
                 return True
 
         if button_name == push2_python.constants.BUTTON_UPPER_ROW_8:  # Cancel
