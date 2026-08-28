@@ -310,9 +310,11 @@ class PushItApp(object):
     def set_add_track_mode(self, settings=None):
         self.add_track_mode.initialize(settings=settings)
         self.set_mode_for_xor_group(self.add_track_mode)
+        self.buttons_need_update = True
 
     def unset_add_track_mode(self):
         self.unset_mode_for_xor_group(self.add_track_mode)
+        self.buttons_need_update = True
 
     def set_metronome_config_mode(self):
         self.metronome_mode.initialize()

@@ -220,6 +220,11 @@ class TrackSelectionMode(definitions.PushItMode):
             self.app.buttons_need_update = True
             return
 
+        if self.app.is_mode_active(self.app.add_track_mode):
+            for name in self.track_button_names:
+                self.push.buttons.set_button_color(name, definitions.BLACK)
+            return
+
         # Update track buttons with their colors
         for count, name in enumerate(self.track_button_names):
             if count < len(self.app.session.tracks) and self.app.session.tracks[count] is not None:
@@ -280,6 +285,11 @@ class TrackSelectionMode(definitions.PushItMode):
         display_w = push2_python.constants.DISPLAY_LINE_PIXELS
         part_w = display_w // 8
         
+        # If add_track_mode is active, only draw the track being edited (if any)
+        editing_track = None
+        if self.app.is_mode_active(self.app.add_track_mode):
+            editing_track = self.app.add_track_mode.editing_track
+
         # Draw track selector labels
         height = 20
         playback_bar_height = 5
@@ -287,6 +297,8 @@ class TrackSelectionMode(definitions.PushItMode):
         
         for i, track in enumerate(self.app.session.tracks):
             if track is None:
+                continue
+            if editing_track is not None and track is not editing_track:
                 continue
             track_color = self.get_track_color(i)
             if self.selected_track == i:
