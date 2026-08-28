@@ -1,3 +1,5 @@
+from typing import ClassVar
+
 import push2_python.constants
 
 import definitions
@@ -8,7 +10,7 @@ class SliceNotesMode(MelodicMode):
     xor_group = "pads"
 
     start_note = 0
-    color_groups = [
+    color_groups: ClassVar[list] = [
         definitions.GREEN,
         definitions.YELLOW,
         definitions.ORANGE,

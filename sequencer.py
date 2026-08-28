@@ -69,17 +69,16 @@ class Sequencer:
 
             # Format for isobar: tuples for chords, single values for single notes
             # Duration is always a single value (all notes in a chord have same duration)
-            if step_notes:
-                if len(step_notes) > 1:
-                    notes_list.append(tuple(step_notes))
-                    durations_list.append(
-                        step_durations[0]
-                    )  # Use first duration for all notes
-                    amplitudes_list.append(tuple(step_amplitudes))
-                else:
-                    notes_list.append(step_notes[0])
-                    durations_list.append(step_durations[0])
-                    amplitudes_list.append(step_amplitudes[0])
+            if step_notes and len(step_notes) > 1:
+                notes_list.append(tuple(step_notes))
+                durations_list.append(
+                    step_durations[0]
+                )  # Use first duration for all notes
+                amplitudes_list.append(tuple(step_amplitudes))
+            elif step_notes:
+                notes_list.append(step_notes[0])
+                durations_list.append(step_durations[0])
+                amplitudes_list.append(step_amplitudes[0])
             else:
                 notes_list.append(None)
                 durations_list.append(0.25)
@@ -124,11 +123,10 @@ class Sequencer:
             if track is None:
                 continue
             for clip in track.clips:
-                if clip and clip.playing and clip.queued_clip:
+                if clip and clip.playing and clip.queued_clip and clip.name in self.clip_loop_positions:
                     # Check if we've passed the loop point
-                    if clip.name in self.clip_loop_positions:
-                        loop_time = self.clip_loop_positions[clip.name]
-                        if current_time >= loop_time:
+                    loop_time = self.clip_loop_positions[clip.name]
+                    if current_time >= loop_time:
                             # Time to switch
                             clip.stop()
                             if self.app and hasattr(self.app, "clip_triggering_mode"):

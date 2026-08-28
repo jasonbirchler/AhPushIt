@@ -1,6 +1,7 @@
 import colorsys
 import os
 from enum import Enum
+from typing import ClassVar
 
 import push2_python
 from push2_python.constants import ANIMATION_STATIC
@@ -107,7 +108,7 @@ for name in COLORS_NAMES:
     if new_color_name not in COLORS_NAMES:
         to_add_in_color_names.append(new_color_name)
     new_color_rgb_name = f'{name}_darker1_rgb'
-    globals()[new_color_rgb_name.upper()] = list([c * 255 for c in darker_color])
+    globals()[new_color_rgb_name.upper()] = [c * 255 for c in darker_color]
 
     # Create darker 2
     color_mod = 0.05  # < 1 means make colour darker, > 1 means make colour brighter
@@ -118,7 +119,7 @@ for name in COLORS_NAMES:
     if new_color_name not in COLORS_NAMES:
         to_add_in_color_names.append(new_color_name)
     new_color_rgb_name = f'{name}_darker2_rgb'
-    globals()[new_color_rgb_name.upper()] = list([c * 255 for c in darker_color])
+    globals()[new_color_rgb_name.upper()] = [c * 255 for c in darker_color]
 
 COLORS_NAMES += to_add_in_color_names  # Update list of color names with darkified versiond of existing colors
 
@@ -152,12 +153,11 @@ class ClipStates(Enum):
     CLIP_STATUS_IS_NOT_EMPTY = "e"
 
 class PushItMode:
-    """
-    """
+    """Base class for PushIt modes."""
 
     name = ''
     xor_group = None
-    buttons_used = []
+    buttons_used: ClassVar[list] = []
 
     def __init__(self, app, settings=None):
         self.app = app

@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 Simple script to illuminate all Push2 buttons for development.
 RGB-capable buttons are lit orange; black-and-white-only buttons stay white.
@@ -45,7 +44,7 @@ def main():
     # the black-and-white-only buttons, which stay white.
     rgb_color  = "green"
     bw_color   = "white"
-    for button_number, button_info in push.buttons.button_map.items():
+    for button_info in push.buttons.button_map.values():
         color = rgb_color if button_info.get("Color") else bw_color
         push.buttons.set_button_color(button_info["Name"], color)
 
@@ -58,7 +57,7 @@ def main():
     except KeyboardInterrupt:
         print("\nTurning off buttons and exiting...")
         # Turn off all RGB buttons to black; BW buttons back to black too
-        for button_number, button_info in push.buttons.button_map.items():
+        for button_info in push.buttons.button_map.values():
             push.buttons.set_button_color(button_info["Name"], "black")
         print("Done.")
 

@@ -1,4 +1,5 @@
 import time
+from typing import ClassVar
 
 import push2_python.constants
 
@@ -9,9 +10,9 @@ class MelodicMode(definitions.PushItMode):
 
     xor_group = "pads"
 
-    notes_being_played = []
+    notes_being_played: ClassVar[list] = []
     root_midi_note = 0  # default redefined in initialize
-    scale_pattern = [
+    scale_pattern: ClassVar[list] = [
         True,
         False,
         True,
@@ -147,7 +148,7 @@ class MelodicMode(definitions.PushItMode):
 
     def note_number_to_name(self, note_number):
         semis = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]
-        note_number = int(round(note_number))
+        note_number = round(note_number)
         # Standard MIDI note 60 is C4, so formula: octave = note_number // 12 - 1
         return semis[note_number % 12] + str(note_number // 12 - 1)
 

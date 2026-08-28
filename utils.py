@@ -263,7 +263,9 @@ def clear_display(context, w, h):
     context.rectangle(0, 0, w, h)
     context.fill()
 
-def show_title(ctx, x, h, text, color=[1, 1, 1], overflow=TextOverflow.DEFAULT):
+def show_title(ctx, x, h, text, color=None, overflow=TextOverflow.DEFAULT):
+    if color is None:
+        color = [1, 1, 1]
     text = str(text)
     ctx.set_source_rgb(*color)
     ctx.select_font_face("Arial", cairo.FONT_SLANT_NORMAL, cairo.FONT_WEIGHT_NORMAL)
@@ -291,7 +293,9 @@ def show_title(ctx, x, h, text, color=[1, 1, 1], overflow=TextOverflow.DEFAULT):
     ctx.show_text(text)
 
 
-def show_value(ctx, x, h, text, color=[1, 1, 1], vertical_offset=0, overflow=TextOverflow.DEFAULT):
+def show_value(ctx, x, h, text, color=None, vertical_offset=0, overflow=TextOverflow.DEFAULT):
+    if color is None:
+        color = [1, 1, 1]
     text = str(text)
     ctx.set_source_rgb(*color)
     ctx.select_font_face("Arial", cairo.FONT_SLANT_NORMAL, cairo.FONT_WEIGHT_NORMAL)
@@ -318,7 +322,9 @@ def show_value(ctx, x, h, text, color=[1, 1, 1], vertical_offset=0, overflow=Tex
     ctx.show_text(text)
 
 
-def draw_text_at(ctx, x, y, text, font_size = 12, color=[1, 1, 1], overflow=TextOverflow.DEFAULT):
+def draw_text_at(ctx, x, y, text, font_size = 12, color=None, overflow=TextOverflow.DEFAULT):
+    if color is None:
+        color = [1, 1, 1]
     text = str(text)
     ctx.set_source_rgb(*color)
     ctx.select_font_face("Arial", cairo.FONT_SLANT_NORMAL, cairo.FONT_WEIGHT_NORMAL)
@@ -485,7 +491,7 @@ def draw_clip(ctx,
                         'rendered_end_timestamp': end_time,
                         'chance': 1.0
                     })
-    except Exception as e:
+    except (IndexError, AttributeError, TypeError) as e:
         print(f"ERROR in draw_clip loop: {e}")
         import traceback
         traceback.print_exc()

@@ -1,5 +1,6 @@
 import json
 import os
+from typing import ClassVar
 
 import push2_python
 
@@ -9,9 +10,9 @@ from utils import show_text
 
 class TrackSelectionMode(definitions.PushItMode):
 
-    devices_info = {}
+    devices_info: ClassVar[dict] = {}
 
-    track_button_names = [
+    track_button_names: ClassVar[list] = [
         push2_python.constants.BUTTON_LOWER_ROW_1,
         push2_python.constants.BUTTON_LOWER_ROW_2,
         push2_python.constants.BUTTON_LOWER_ROW_3,
@@ -113,7 +114,7 @@ class TrackSelectionMode(definitions.PushItMode):
         return device_name
 
     def get_all_distinct_device_short_names(self):
-        return list(set([t.output_device_name for t in self.app.session.tracks if t and t.output_device_name]))
+        return list({t.output_device_name for t in self.app.session.tracks if t and t.output_device_name})
 
     def get_current_track_device_info(self):
         track = self.get_selected_track()

@@ -1,3 +1,5 @@
+from typing import ClassVar
+
 import isobar as iso
 import push2_python.constants
 
@@ -19,7 +21,7 @@ KEY_TO_MIDI = {
     "Gb": 66,
 }
 
-FLAT_NAME_MAP = {
+FLAT_NAME_MAP: ClassVar[dict] = {
     "C#": "Db",
     "D#": "Eb",
     "F#": "Gb",
@@ -28,7 +30,7 @@ FLAT_NAME_MAP = {
 }
 
 
-SCALES = [
+SCALES: ClassVar[list] = [
     ("Chromatic", [True] * 12, lambda root: iso.Scale.chromatic),
     (
         "Major",
@@ -175,8 +177,8 @@ def _canonical_key_name(raw_key):
 
 class ScaleMode(definitions.PushItMode):
     xor_group = "buttons"
-    buttons_used = ["scale"]
-    navigation_encoders = [
+    buttons_used: ClassVar[list] = ["scale"]
+    navigation_encoders: ClassVar[list] = [
         push2_python.constants.ENCODER_TRACK2_ENCODER,
         push2_python.constants.ENCODER_TRACK3_ENCODER,
         push2_python.constants.ENCODER_TRACK4_ENCODER,

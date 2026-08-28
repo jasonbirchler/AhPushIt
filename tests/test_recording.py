@@ -216,7 +216,7 @@ class TestCuedRecording:
         return track, clip_a, clip_b
 
     def test_arm_cues_recording_when_sibling_playing(self, app_for_recording):
-        track, clip_a, clip_b = self._make_track_with_clips(app_for_recording)
+        _, clip_a, clip_b = self._make_track_with_clips(app_for_recording)
         app_for_recording.clip_edit_mode.clip = clip_b
         app_for_recording.global_timeline.is_running = True
 
@@ -230,7 +230,7 @@ class TestCuedRecording:
         assert clip_a.queued_clip is clip_b
 
     def test_cued_clip_starts_recording_on_sibling_loop_swap(self, app_for_recording):
-        track, clip_a, clip_b = self._make_track_with_clips(app_for_recording)
+        _, clip_a, clip_b = self._make_track_with_clips(app_for_recording)
         app_for_recording.clip_edit_mode.clip = clip_b
         app_for_recording.global_timeline.is_running = True
         app_for_recording.arm_recording()
@@ -245,7 +245,7 @@ class TestCuedRecording:
         assert app_for_recording.recording_target is clip_b
 
     def test_notes_dropped_while_cued(self, app_for_recording):
-        track, clip_a, clip_b = self._make_track_with_clips(app_for_recording)
+        _, _, clip_b = self._make_track_with_clips(app_for_recording)
         app_for_recording.clip_edit_mode.clip = clip_b
         app_for_recording.global_timeline.is_running = True
         app_for_recording.arm_recording()
@@ -255,7 +255,7 @@ class TestCuedRecording:
         assert app_for_recording.recording_buffer is None
 
     def test_disarm_cancels_cue(self, app_for_recording):
-        track, clip_a, clip_b = self._make_track_with_clips(app_for_recording)
+        _, clip_a, clip_b = self._make_track_with_clips(app_for_recording)
         app_for_recording.clip_edit_mode.clip = clip_b
         app_for_recording.global_timeline.is_running = True
         app_for_recording.arm_recording()

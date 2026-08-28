@@ -1,6 +1,7 @@
 import json
 import os
 import time
+from typing import ClassVar
 
 import push2_python
 
@@ -11,15 +12,16 @@ class PresetSelectionMode(definitions.PushItMode):
 
     xor_group = 'pads'
 
-    favourtie_presets = {}
+    favourtie_presets: ClassVar[dict] = {}
     favourtie_presets_filename = 'favourite_presets.json'
-    pad_pressing_states = {}
+    pad_pressing_states: ClassVar[dict] = {}
     pad_quick_press_time = 0.400
     current_page = 0
 
     def initialize(self, settings=None):
         if os.path.exists(self.favourtie_presets_filename):
-            self.favourtie_presets = json.load(open(self.favourtie_presets_filename))
+            with open(self.favourtie_presets_filename) as f:
+                self.favourtie_presets = json.load(f)
 
     def activate(self):
         self.current_page = 0
@@ -37,7 +39,8 @@ class PresetSelectionMode(definitions.PushItMode):
         if instrument_short_name not in self.favourtie_presets:
             self.favourtie_presets[instrument_short_name] = []
         self.favourtie_presets[instrument_short_name].append((preset_number, bank_number))
-        json.dump(self.favourtie_presets, open(self.favourtie_presets_filename, 'w'))  # Save to file
+        with open(self.favourtie_presets_filename, 'w') as f:
+            json.dump(self.favourtie_presets, f)
 
     def remove_favourite_preset(self, preset_number, bank_number):
         instrument_short_name = self.app.track_selection_mode.get_current_track_device_short_name()
@@ -45,7 +48,8 @@ class PresetSelectionMode(definitions.PushItMode):
             self.favourtie_presets[instrument_short_name] = \
                 [(fp_preset_number, fp_bank_number) for fp_preset_number, fp_bank_number in self.favourtie_presets[instrument_short_name] 
                 if preset_number != fp_preset_number or bank_number != fp_bank_number]
-            json.dump(self.favourtie_presets, open(self.favourtie_presets_filename, 'w'))  # Save to file
+            with open(self.favourtie_presets_filename, 'w') as f:
+                json.dump(self.favourtie_presets, f)
 
     def preset_num_in_favourites(self, preset_number, bank_number):
         instrument_short_name = self.app.track_selection_mode.get_current_track_device_short_name()
@@ -117,10 +121,7 @@ class PresetSelectionMode(definitions.PushItMode):
             bank_name = bank_names[bank_number - 1]
         else:
             bank_name = bank_number
-        self.app.add_display_notification("Preset selection: bank {0}, presets {1}".format(
-            bank_name,
-            '1-64' if self.get_current_page() % 2 == 0 else '65-128'
-        ))
+        self.app.add_display_notification(f"Preset selection: bank {bank_name}, presets {'1-64' if self.get_current_page() % 2 == 0 else '65-128'}")
 
 
     def deactivate(self):
@@ -185,10 +186,7 @@ class PresetSelectionMode(definitions.PushItMode):
                 bank_name = bank_names[bank_num]
             else:
                 bank_name = bank_num + 1
-            self.app.add_display_notification("Selected bank {0}, preset {1}".format(
-                bank_name,  # Show 1-indexed value
-                preset_num + 1  # Show 1-indexed value
-            ))
+            self.app.add_display_notification(f"Selected bank {bank_name}, preset {preset_num + 1}")
 
         self.app.pads_need_update = True
         return True  # Prevent other modes to get this event

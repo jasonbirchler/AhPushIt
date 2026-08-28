@@ -76,7 +76,7 @@ def main():
                             pass
                             
                     device_sections[safe_device][section][parameter_name] = control_data
-        except Exception as e:
+        except (FileNotFoundError, csv.Error, ValueError, KeyError) as e:
             print(f"Error processing {csv_file}: {e}")
 
     for device_name, data in devices.items():

@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import ClassVar, Optional
 
 import isobar as iso
 
@@ -18,7 +18,7 @@ class Session(BaseClass):
     Sessions can be saved and loaded.
     """
 
-    tracks: list[Track] = []
+    tracks: ClassVar[list[Track]] = []
 
     bpm: float = 100
     fixed_length_recording_bars: int
@@ -64,7 +64,7 @@ class Session(BaseClass):
     def get_track_by_idx(self, track_idx=None) -> Track | None:
         try:
             return self.tracks[track_idx]
-        except Exception as e:
+        except IndexError as e:
             print(f"ERROR selecting track: {e}")
         return None
 
@@ -76,8 +76,8 @@ class Session(BaseClass):
         self,
         output_device_name: str,
         channel: int,
-        input_device_name: str = None,
-        input_channel: int = None,
+        input_device_name: str | None = None,
+        input_channel: int | None = None,
     ) -> Optional["Track"]:
         """Create a new track in the first free slot.
 
@@ -121,7 +121,7 @@ class Session(BaseClass):
                 return None
 
             return track.clips[clip_idx]
-        except Exception as e:
+        except (IndexError, KeyError) as e:
             # Only print error for unexpected exceptions, not for normal index issues
             print(f'ERROR selecting clip track: {e}')
         return None
@@ -258,7 +258,7 @@ class Session(BaseClass):
                 self.input_devices[name] = device
                 self._register_midi_input_handlers(device, name)
                 print(f"Added isobar MIDI input: {name}")
-            except Exception as e:
+            except RuntimeError as e:
                 print(f"Failed to add isobar input {name}: {e}")
 
         # Create isobar output devices and add them to the output_devices dict
@@ -267,7 +267,7 @@ class Session(BaseClass):
                 device = iso.MidiOutputDevice(name)
                 self.output_devices[name] = device
                 print(f"Initialized MIDI output: {name}")
-            except Exception as e:
+            except RuntimeError as e:
                 print(f"Failed to initialize output {name}: {e}")
 
     def set_active_input_device(self, device_name: str):
@@ -320,9 +320,9 @@ class Session(BaseClass):
                         self.input_devices[name] = device
                         self._register_midi_input_handlers(device, name)
                         print(f"Added isobar MIDI input: {name}")
-                    except Exception as e:
+                    except RuntimeError as e:
                         print(f"Failed to add isobar input {name}: {e}")
-        except Exception as e:
+        except RuntimeError as e:
             print(f"Error checking for new MIDI devices: {e}")
 
     def _get_safe_input_device_names(self):

@@ -1,5 +1,7 @@
 """Mode for editing a track's clips"""
 
+from typing import ClassVar
+
 import push2_python
 
 import definitions
@@ -32,7 +34,7 @@ class ClipEditMode(definitions.PushItMode):
     Slot 2-x = allgorithm paramters
     """
     xor_group = "pads"
-    buttons_used = [
+    buttons_used: ClassVar[list] = [
         push2_python.constants.BUTTON_UPPER_ROW_1,
         push2_python.constants.BUTTON_UPPER_ROW_2,
         push2_python.constants.BUTTON_UPPER_ROW_3,
@@ -59,11 +61,11 @@ class ClipEditMode(definitions.PushItMode):
     mode = MODE_CLIP
 
     selected_clip_idx = None
-    available_clips = []
+    available_clips: ClassVar[list] = []
 
     selected_event_position = None
 
-    generator_algorithms = []
+    generator_algorithms: ClassVar[list] = []
     selected_generator_algorithm = 0
 
     default_note_duration = 0.25  # Default duration in beats (1/16 note)
@@ -88,8 +90,11 @@ class ClipEditMode(definitions.PushItMode):
     @property
     def event_data(self):
         """Get event data at selected position for editing"""
-        if self.selected_event_position is not None and self.clip is not None:
-            if 0 <= self.selected_event_position < len(self.clip.notes):
+        if (
+            self.selected_event_position is not None
+            and self.clip is not None
+            and 0 <= self.selected_event_position < len(self.clip.notes)
+        ):
                 return {
                     "position": self.selected_event_position,
                     "note": self.clip.notes[self.selected_event_position],
@@ -277,10 +282,9 @@ class ClipEditMode(definitions.PushItMode):
             part_w = w // 8
             track_color_rgb = None
 
-            if self.clip is not None:
-                track_idx = self.app.session.tracks.index(self.clip.track)
-                track_color = self.app.track_selection_mode.get_track_color(track_idx)
-                track_color_rgb = definitions.get_color_rgb_float(track_color)
+            track_idx = self.app.session.tracks.index(self.clip.track)
+            track_color = self.app.track_selection_mode.get_track_color(track_idx)
+            track_color_rgb = definitions.get_color_rgb_float(track_color)
 
             if self.mode == self.MODE_CLIP:
                 if self.selected_clip_idx is not None:

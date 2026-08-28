@@ -31,7 +31,7 @@ class ProjectManager:
         """Save current project state to JSON file"""
         project_data = {
             "version": "1.0",
-            "created": datetime.now().isoformat(),
+            "created": datetime.now(tz=datetime.now().astimezone().tzinfo).isoformat(),
             "bpm": self.app.seq.bpm,
             "scale": str(self.app.seq.scale),
             "key": str(self.app.seq.key),
@@ -168,7 +168,7 @@ class ProjectManager:
 
             return True
 
-        except Exception as e:
+        except (KeyError, ValueError, TypeError, AttributeError) as e:
             print(f"Error loading project: {e}")
             print("Restoring previous session...")
             self.app.session = tmp_session

@@ -2,6 +2,7 @@
 import json
 import math
 import os
+from typing import ClassVar
 
 import mido
 import push2_python
@@ -23,7 +24,7 @@ class MIDICCControl:
     vmax = 127
     get_color_func = None
     send_midi_func = None
-    value_labels_map = {}
+    value_labels_map: ClassVar[dict] = {}
 
     def __init__(self, cc_number, name, section_name, get_color_func, send_midi_func):
         self.cc_number = cc_number
@@ -123,7 +124,7 @@ class MIDICCMode(PushItMode):
         self.active_midi_control_ccs = self.get_midi_cc_controls_for_current_track_section_and_page()
         self.app.buttons_need_update = True
 
-    midi_cc_button_names = [
+    midi_cc_button_names: ClassVar[list] = [
         push2_python.constants.BUTTON_UPPER_ROW_1,
         push2_python.constants.BUTTON_UPPER_ROW_2,
         push2_python.constants.BUTTON_UPPER_ROW_3,
@@ -133,9 +134,9 @@ class MIDICCMode(PushItMode):
         push2_python.constants.BUTTON_UPPER_ROW_7,
         push2_python.constants.BUTTON_UPPER_ROW_8
     ]
-    instrument_midi_control_ccs = {}
-    active_midi_control_ccs = []
-    current_selected_section_and_page = {}
+    instrument_midi_control_ccs: ClassVar[dict] = {}
+    active_midi_control_ccs: ClassVar[list] = []
+    current_selected_section_and_page: ClassVar[dict] = {}
 
     def send_midi_cc(self, msg):
         """Send MIDI CC message via session"""

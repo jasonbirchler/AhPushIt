@@ -1,4 +1,5 @@
 import traceback
+from typing import ClassVar
 
 import push2_python
 
@@ -18,7 +19,7 @@ class ClipTriggeringMode(definitions.PushItMode):
     # user last touched, not an unrelated scene row.
     selected_clip = None
 
-    upper_row_buttons = [
+    upper_row_buttons: ClassVar[list] = [
         push2_python.constants.BUTTON_UPPER_ROW_1,
         push2_python.constants.BUTTON_UPPER_ROW_2,
         push2_python.constants.BUTTON_UPPER_ROW_3,
@@ -29,7 +30,7 @@ class ClipTriggeringMode(definitions.PushItMode):
         push2_python.constants.BUTTON_UPPER_ROW_8,
     ]
 
-    scene_trigger_buttons = [
+    scene_trigger_buttons: ClassVar[list] = [
         push2_python.constants.BUTTON_1_32T,
         push2_python.constants.BUTTON_1_32,
         push2_python.constants.BUTTON_1_16T,
@@ -110,14 +111,14 @@ class ClipTriggeringMode(definitions.PushItMode):
         if not self.app.is_mode_active(self.app.settings_mode) and not self.app.is_mode_active(self.app.clip_edit_mode):
             # Draw clip progress bars
             playing_clips_info = self.get_playing_clips_info()
-            for track_num, playing_clips_info in playing_clips_info.items():
+            for track_num, clip_info in playing_clips_info.items():
                 playing_clips = []
-                if not playing_clips_info.get("playing", []):
-                    if playing_clips_info.get("will_play", []):
+                if not clip_info.get("playing", []):
+                    if clip_info.get("will_play", []):
                         # If no clips currently playing or cued to stop, show info about clips cued to play
-                        playing_clips = playing_clips_info["will_play"]
+                        playing_clips = clip_info["will_play"]
                 else:
-                    playing_clips = playing_clips_info["playing"]
+                    playing_clips = clip_info["playing"]
 
                 num_clips = len(
                     playing_clips
@@ -223,7 +224,7 @@ class ClipTriggeringMode(definitions.PushItMode):
                     if track is not None:
                         # Use get_clip_by_idx which properly handles the sparse nature
                         clip = self.app.session.get_clip_by_idx(t, c)
-                except Exception:
+                except (IndexError, AttributeError, TypeError):
                     # If any error occurs, clip remains None
                     pass
 
@@ -487,11 +488,11 @@ class ClipTriggeringMode(definitions.PushItMode):
 
                 return True  # Return True to indicate success
 
-            except Exception as e:
+            except (AttributeError, ValueError) as e:
                 print(f"ERROR: Exception during mode switching: {e}")
                 traceback.print_exc()
                 return False
-        except Exception as e:
+        except (AttributeError, ValueError) as e:
             print(f"ERROR in long press handling: {e}")
             traceback.print_exc()
             return False

@@ -1,10 +1,11 @@
 import random
+from typing import ClassVar
 
 from utils import clamp
 
 
 class GeneratorAlogorithm:
-    parameters = []
+    parameters: ClassVar[dict] = []
     name = ''
 
     def __init__(self):
@@ -28,7 +29,7 @@ class GeneratorAlogorithm:
 
 class RandomGeneratorAlgorithm(GeneratorAlogorithm):
     name = 'Rnd'
-    parameters = {
+    parameters: ClassVar[dict] = {
         'length': {'display_name': 'LENGTH', 'type': float, 'min': 1.0, 'max': 32.0, 'default': 8.0,
                    'increment_scale': 1.0},
         'density': {'display_name': 'DENSITY', 'type': int, 'min': 1, 'max': 15, 'default': 5, 'increment_scale': 1},
@@ -52,7 +53,7 @@ class RandomGeneratorAlgorithm(GeneratorAlogorithm):
 
 class RandomGeneratorAlgorithmPlus(GeneratorAlogorithm):
     name = 'Rnd+'
-    parameters = {
+    parameters: ClassVar[dict] = {
         'length': {'display_name': 'LENGTH', 'type': float, 'min': 1.0, 'max': 32.0, 'default': 8.0,
                    'increment_scale': 1.0},
         'density': {'display_name': 'DENSITY', 'type': int, 'min': 1, 'max': 15, 'default': 5, 'increment_scale': 1},

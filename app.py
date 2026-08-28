@@ -20,6 +20,8 @@ except ImportError:
     pass  # engineio might not be installed
 
 
+from typing import ClassVar
+
 import cairo
 import isobar as iso
 import numpy
@@ -162,8 +164,8 @@ class PushItApp:
     current_frame_rate_measurement_second = 0
 
     # other state vars
-    active_modes = []
-    previously_active_mode_for_xor_group = {}
+    active_modes: ClassVar[list] = []
+    previously_active_mode_for_xor_group: ClassVar[dict] = {}
     pads_need_update = True
     buttons_need_update = True
 
@@ -177,7 +179,7 @@ class PushItApp:
 
     # Global MIDI input device for passthru / recording
     midi_in_device_name: str = None
-    _note_on_times: dict = {}       # {pitch: (start_time, velocity)} for duration tracking
+    _note_on_times: ClassVar[dict] = {}       # {pitch: (start_time, velocity)} for duration tracking
 
     # Global live-recording arm state
     is_recording_armed: bool = False
@@ -192,7 +194,8 @@ class PushItApp:
         self.settings_file = os.path.join(self.settings_dir, "settings.json")
 
         if os.path.exists(self.settings_file):
-            self.settings = json.load(open(self.settings_file))
+            with open(self.settings_file) as f:
+                self.settings = json.load(f)
         else:
             self.settings = {}
 
@@ -448,7 +451,8 @@ class PushItApp:
         # Ensure settings directory exists
         os.makedirs(self.settings_dir, exist_ok=True)
         # Write to file
-        json.dump(settings, open(self.settings_file, "w"))
+        with open(self.settings_file, "w") as f:
+            json.dump(settings, f)
         # Update in-memory settings to match the saved state
         self.settings = settings
 
@@ -930,8 +934,7 @@ class PushItApp:
                     clip.update_playhead_position()
 
         # If clip edit mode is active with a playing clip, update pads for playhead animation
-        if self.is_mode_active(self.clip_edit_mode):
-            if self.clip_edit_mode.clip and self.clip_edit_mode.clip.playing:
+        if self.is_mode_active(self.clip_edit_mode) and self.clip_edit_mode.clip and self.clip_edit_mode.clip.playing:
                 self.pads_need_update = True
 
     def check_for_new_midi_devices(self):
@@ -1022,8 +1025,7 @@ def on_encoder_touched(_, encoder_name):
 @push2_python.on_encoder_released()
 def on_encoder_released(_, encoder_name):
     print(f"encoder {encoder_name} released")
-    if encoder_name == push2_python.constants.ENCODER_TEMPO_ENCODER:
-        if encoder_touch_state.get(encoder_name, False):
+    if encoder_name == push2_python.constants.ENCODER_TEMPO_ENCODER and encoder_touch_state.get(encoder_name, False):
             # Show tempo notification
             tempo = app.seq.bpm
             tempo_text = f"{tempo:.1f} BPM"

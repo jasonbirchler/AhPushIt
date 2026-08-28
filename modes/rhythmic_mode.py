@@ -1,3 +1,5 @@
+from typing import ClassVar
+
 import push2_python.constants
 
 import definitions
@@ -7,7 +9,7 @@ from modes.melodic_mode import MelodicMode
 class RhythmicMode(MelodicMode):
     xor_group = "pads"
 
-    rhythmic_notes_matrix = [
+    rhythmic_notes_matrix: ClassVar[list] = [
         [64, 65, 66, 67, 96, 97, 98, 99],
         [60, 61, 62, 63, 92, 93, 94, 95],
         [56, 57, 58, 59, 88, 89, 90, 91],

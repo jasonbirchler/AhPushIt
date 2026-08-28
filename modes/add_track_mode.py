@@ -1,3 +1,5 @@
+from typing import ClassVar
+
 import push2_python
 
 import definitions
@@ -9,8 +11,8 @@ class AddTrackMode(definitions.PushItMode):
 
     # Selection state
     track_type = "melodic"
-    available_output_devices = []
-    available_input_devices = []
+    available_output_devices: ClassVar[list] = []
+    available_input_devices: ClassVar[list] = []
     output_device_idx = 0
     input_device_idx = 0
     output_channel = 1  # Display value 1-16

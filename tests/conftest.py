@@ -102,8 +102,8 @@ def mock_push2_environment():
     mock_constants.ANIMATION_PULSING_QUARTER = 1
     mock_constants.ANIMATION_PULSING_8TH = 2
     
-    with patch('push2_python.Push2', return_value=mock_push2):
-        with patch('push2_python.constants', mock_constants):
+    with patch('push2_python.Push2', return_value=mock_push2), \
+         patch('push2_python.constants', mock_constants):
             yield {
                 'push2': mock_push2,
                 'buttons': mock_buttons,
