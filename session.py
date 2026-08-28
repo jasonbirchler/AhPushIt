@@ -1,12 +1,12 @@
-from typing import Dict, List, Optional
+from typing import Optional
 
 import isobar as iso
 
 import definitions
 from base_class import BaseClass
-from utils import get_beats_until_next_bar
 from clip import Clip
 from track import Track
+from utils import get_beats_until_next_bar
 
 DEVICES_TO_IGNORE = ["Ableton Push", "RtMidi", "Through", "pisound-ctl"]
 
@@ -18,7 +18,7 @@ class Session(BaseClass):
     Sessions can be saved and loaded.
     """
 
-    tracks: List[Track] = []
+    tracks: list[Track] = []
 
     bpm: float = 100
     fixed_length_recording_bars: int
@@ -38,12 +38,12 @@ class Session(BaseClass):
         # MIDI management
         self.input_device_names = self._get_safe_input_device_names()
         self.output_device_names = self._get_safe_output_device_names()
-        self.input_devices: Dict[str, iso.MidiInputDevice] = {}
-        self.output_devices: Dict[str, iso.MidiOutputDevice] = {}
+        self.input_devices: dict[str, iso.MidiInputDevice] = {}
+        self.output_devices: dict[str, iso.MidiOutputDevice] = {}
         self._active_input_device_name: str = None
-        self.track_schedules: Dict[str, object] = {}  # track_uuid -> schedule object
-        self.track_clips: Dict[str, object] = {}  # track_uuid -> clip object
-        self.pending_actions: List[Dict] = []  # List of {beat, action, clip}
+        self.track_schedules: dict[str, object] = {}  # track_uuid -> schedule object
+        self.track_clips: dict[str, object] = {}  # track_uuid -> clip object
+        self.pending_actions: list[dict] = []  # List of {beat, action, clip}
         self.pending_scene_transition = None  # {time, clips_to_stop, clips_to_start}
 
         # Initialize with 8 empty slots (None) to allow manual track creation
@@ -61,14 +61,14 @@ class Session(BaseClass):
     ############################################################################
     # Session Management
     ############################################################################
-    def get_track_by_idx(self, track_idx=None) -> Optional[Track]:
+    def get_track_by_idx(self, track_idx=None) -> Track | None:
         try:
             return self.tracks[track_idx]
         except Exception as e:
-            print("ERROR selecting track: {}".format(e))
+            print(f"ERROR selecting track: {e}")
         return None
 
-    def get_next_free_track_index(self) -> Optional[int]:
+    def get_next_free_track_index(self) -> int | None:
         """Return the first free track slot index (0-7) or None if full."""
         return next((i for i, t in enumerate(self.tracks) if t is None), None)
 
@@ -106,7 +106,7 @@ class Session(BaseClass):
         self.tracks[i] = track
         return track
 
-    def get_clip_by_idx(self, track_idx=None, clip_idx=None) -> Optional[Clip]:
+    def get_clip_by_idx(self, track_idx=None, clip_idx=None) -> Clip | None:
         try:
             # First check if track exists
             if track_idx is None or track_idx >= len(self.tracks):
@@ -123,7 +123,7 @@ class Session(BaseClass):
             return track.clips[clip_idx]
         except Exception as e:
             # Only print error for unexpected exceptions, not for normal index issues
-            print('ERROR selecting clip track: {}'.format(e))
+            print(f'ERROR selecting clip track: {e}')
         return None
 
     def scene_play(self, scene_number):
@@ -294,7 +294,7 @@ class Session(BaseClass):
         device.add_note_on_handler(make_filtered_note_on(app))
         device.add_note_off_handler(make_filtered_note_off(app))
 
-    def get_output_device(self, device_name: str) -> Optional[iso.MidiOutputDevice]:
+    def get_output_device(self, device_name: str) -> iso.MidiOutputDevice | None:
         """Get output device by name"""
         if device_name not in self.output_device_names:
             self.update_midi_devices()
@@ -371,7 +371,6 @@ class Session(BaseClass):
         output_device = self.get_output_device(device_name)
         if output_device is None:
             print(f"No output device found: {device_name}")
-            pass
         else:
             if velocity > 0:
                 print(f"Sending note ON: {note} vel={velocity} to {device_name}")
@@ -386,7 +385,6 @@ class Session(BaseClass):
         if output_device is None:
             # no reason to send CC's if there's no device
             print(f"No output device found: {device_name}")
-            pass
         else:
             print(f"Sending CC: {cc_number} val={value} to {device_name}")
             output_device.control(control=cc_number, value=value, channel=channel)

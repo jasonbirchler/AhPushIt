@@ -3,8 +3,8 @@
 import push2_python
 
 import definitions
-from utils import clear_display, show_text, show_title, show_value, ScrollableList
 from metronome import AhPushItMetronome
+from utils import ScrollableList, clear_display, show_text, show_title, show_value
 
 
 class MetronomeMode(definitions.PushItMode):

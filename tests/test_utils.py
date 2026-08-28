@@ -1,17 +1,17 @@
 """Tests for utils.py module."""
 
 from utils import (
+    ABBREVIATION_RULES,
+    TextOverflow,
     clamp,
     clamp01,
-    TextOverflow,
-    ABBREVIATION_RULES,
-    show_title,
-    show_value,
-    draw_text_at,
-    show_text,
-    show_notification,
     draw_clip,
     draw_knob,
+    draw_text_at,
+    show_notification,
+    show_text,
+    show_title,
+    show_value,
 )
 
 

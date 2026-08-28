@@ -2,6 +2,7 @@
 """
 import math
 import time
+
 import cairo
 import push2_python
 
@@ -535,7 +536,7 @@ def draw_clip(ctx,
                 show_rectangle(ctx, x0_rel, y0_rel, width_rel, height_rel, background_color=color, alpha=alpha)
 
         if highlight_notes_beat_frame is not None:
-            y0 = y/display_h - (((highlight_notes_beat_frame[0] - min_midinote) * note_height))/display_h
+            y0 = y/display_h - ((highlight_notes_beat_frame[0] - min_midinote) * note_height)/display_h
             h = note_height / display_h * (highlight_notes_beat_frame[1] - highlight_notes_beat_frame[0])
             x0 = xoffset_percentage + highlight_notes_beat_frame[2]/displaybeatslength * width_percentage
             w = (highlight_notes_beat_frame[3] - highlight_notes_beat_frame[2])/displaybeatslength* width_percentage

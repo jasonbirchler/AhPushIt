@@ -3,6 +3,7 @@
 from unittest.mock import MagicMock
 
 import isobar as iso
+
 from sequencer import Sequencer
 from utils import get_beats_until_next_bar
 

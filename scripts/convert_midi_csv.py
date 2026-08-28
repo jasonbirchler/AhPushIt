@@ -2,11 +2,12 @@
 """
 Convert pencilresearch MIDI dataset CSVs to AhPushIt JSON format.
 """
-import os
 import csv
-import json
 import glob
+import json
+import os
 from collections import defaultdict
+
 
 def main():
     dataset_dir = "midi-dataset"

@@ -1,9 +1,9 @@
 """Primary application class for PushIt."""
 
-import sys
 import json
 import os
 import platform
+import sys
 import time
 import traceback
 
@@ -27,24 +27,24 @@ import push2_python
 
 import definitions
 from clip import Clip
-from utils import show_notification
 from metronome import AhPushItMetronome
 from modes.add_track_mode import AddTrackMode
 from modes.clip_edit_mode import ClipEditMode
 from modes.clip_triggering_mode import ClipTriggeringMode
 from modes.main_controls_mode import MainControlsMode
 from modes.melodic_mode import MelodicMode
-from modes.midi_cc_mode import MIDICCMode
 from modes.metronome_mode import MetronomeMode
+from modes.midi_cc_mode import MIDICCMode
 from modes.preset_selection_mode import PresetSelectionMode
 from modes.rhythmic_mode import RhythmicMode
+from modes.scale_mode import ScaleMode
 from modes.settings_mode import SettingsMode
 from modes.slice_notes_mode import SliceNotesMode
-from modes.scale_mode import ScaleMode
 from modes.track_selection_mode import TrackSelectionMode
-from session import Session
-from sequencer import Sequencer
 from project_manager import ProjectManager
+from sequencer import Sequencer
+from session import Session
+from utils import show_notification
 
 buttons_pressed_state = {}
 pads_pressed_state = {}  # Track pad press times for long press detection
@@ -129,7 +129,7 @@ def compute_accelerated_increment(encoder_name, increment, profile=DEFAULT_ENCOD
     return int(increment * multiplier)
 
 
-class PushItApp(object):
+class PushItApp:
     """
     The App handles initializing everything at startup.
     App manages Push interface.
@@ -789,7 +789,7 @@ class PushItApp(object):
         new_clip.notes = self.recording_buffer.notes.copy()
         new_clip.durations = self.recording_buffer.durations.copy()
         new_clip.amplitudes = self.recording_buffer.amplitudes.copy()
-        new_clip.name = "{0}-{1}".format(track_idx + 1, slot + 1)
+        new_clip.name = f"{track_idx + 1}-{slot + 1}"
         track.add_clip(new_clip, slot)
         new_clip.update_status()
 
@@ -798,7 +798,7 @@ class PushItApp(object):
         self.awaiting_buffer_slot = False
         self.pads_need_update = True
         self.add_display_notification(
-            "Saved to {0}-{1}".format(track_idx + 1, slot + 1)
+            f"Saved to {track_idx + 1}-{slot + 1}"
         )
 
     def discard_recording_buffer(self):
@@ -948,7 +948,7 @@ class PushItApp(object):
             self.actual_frame_rate = self.current_frame_rate_measurement
             self.current_frame_rate_measurement = 0
             self.current_frame_rate_measurement_second = now
-            print("{0} fps".format(self.actual_frame_rate))
+            print(f"{self.actual_frame_rate} fps")
 
     def run_loop(self):
         print("PushIt is running...")
@@ -1052,7 +1052,7 @@ def on_encoder_rotated(_, encoder_name, increment):
             if action_performed:
                 break  # If mode took action, stop event propagation
     except NameError as e:
-        print("Error:  {}".format(str(e)))
+        print(f"Error:  {e!s}")
         traceback.print_exc()
 
 
@@ -1073,7 +1073,7 @@ def on_pad_pressed(_, pad_n, pad_ij, velocity):
                 pads_pressed_state[pad_n]["handled"] = True
                 break  # If mode took action, stop event propagation
     except NameError as e:
-        print("Error:  {}".format(str(e)))
+        print(f"Error:  {e!s}")
         traceback.print_exc()
 
 
@@ -1103,7 +1103,7 @@ def on_pad_released(_, pad_n, pad_ij, velocity):
             if action_performed:
                 break
     except NameError as e:
-        print("Error:  {}".format(str(e)))
+        print(f"Error:  {e!s}")
         traceback.print_exc()
 
 
@@ -1115,7 +1115,7 @@ def on_pad_aftertouch(_, pad_n, pad_ij, velocity):
             if action_performed:
                 break  # If mode took action, stop event propagation
     except NameError as e:
-        print("Error:  {}".format(str(e)))
+        print(f"Error:  {e!s}")
         traceback.print_exc()
 
 
@@ -1128,7 +1128,7 @@ def on_button_pressed(_, name):
             if action_performed:
                 break  # If mode took action, stop event propagation
     except NameError as e:
-        print(f"Error:  {str(e)}")
+        print(f"Error:  {e!s}")
         traceback.print_exc()
 
 
@@ -1141,7 +1141,7 @@ def on_button_released(_, name):
             if action_performed:
                 break  # If mode took action, stop event propagation
     except NameError as e:
-        print("Error:  {}".format(str(e)))
+        print(f"Error:  {e!s}")
         traceback.print_exc()
 
 
@@ -1153,7 +1153,7 @@ def on_touchstrip(_, value):
             if action_performed:
                 break  # If mode took action, stop event propagation
     except NameError as e:
-        print("Error:  {}".format(str(e)))
+        print(f"Error:  {e!s}")
         traceback.print_exc()
 
 
@@ -1165,7 +1165,7 @@ def on_sustain_pedal(_, sustain_on):
             if action_performed:
                 break  # If mode took action, stop event propagation
     except NameError as e:
-        print("Error:  {}".format(str(e)))
+        print(f"Error:  {e!s}")
         traceback.print_exc()
 
 
@@ -1179,7 +1179,7 @@ def on_midi_connected(_):
     except NameError as e:
         global midi_connected_received_before_app
         midi_connected_received_before_app = True
-        print("Error:  {}".format(str(e)))
+        print(f"Error:  {e!s}")
         traceback.print_exc()
 
 

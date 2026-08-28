@@ -4,9 +4,9 @@ import os
 import sys
 from unittest.mock import MagicMock, patch
 
-import pytest
-import isobar
 import cairo
+import isobar
+import pytest
 
 # Add project root to Python path for imports
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))

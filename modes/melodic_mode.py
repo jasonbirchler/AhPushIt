@@ -1,5 +1,7 @@
 import time
+
 import push2_python.constants
+
 import definitions
 
 
@@ -97,12 +99,12 @@ class MelodicMode(definitions.PushItMode):
         pow_curve = [
             pow(e, 3 * self.poly_at_curve_bending / 100)
             for e in [
-                i / self.poly_at_max_range for i in range(0, self.poly_at_max_range)
+                i / self.poly_at_max_range for i in range(self.poly_at_max_range)
             ]
         ]
         return [
             int(127 * pow_curve[i]) if i < self.poly_at_max_range else 127
-            for i in range(0, 128)
+            for i in range(128)
         ]
 
     def add_note_being_played(self, midi_note, source):
@@ -265,9 +267,9 @@ class MelodicMode(definitions.PushItMode):
 
     def update_pads(self):
         color_matrix = []
-        for i in range(0, definitions.GRID_WIDTH):
+        for i in range(definitions.GRID_WIDTH):
             row_colors = []
-            for j in range(0, definitions.GRID_HEIGHT):
+            for j in range(definitions.GRID_HEIGHT):
                 corresponding_midi_note = self.pad_ij_to_midi_note([i, j])
                 cell_color = definitions.WHITE
                 if self.is_black_key_midi_note(corresponding_midi_note):

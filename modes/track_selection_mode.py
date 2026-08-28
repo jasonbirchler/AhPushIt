@@ -192,7 +192,7 @@ class TrackSelectionMode(definitions.PushItMode):
     def send_select_track(self, track_idx):
         # Enabled input monitoring for the selected track only
         tracks = self.app.session.tracks
-        for i in range(0, len(tracks)):
+        for i in range(len(tracks)):
             if tracks[i] is not None:
                 tracks[i].set_input_monitoring(i == track_idx)
 

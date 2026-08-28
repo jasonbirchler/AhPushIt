@@ -6,6 +6,7 @@ import push2_python
 
 import definitions
 
+
 class PresetSelectionMode(definitions.PushItMode):
 
     xor_group = 'pads'
@@ -141,9 +142,9 @@ class PresetSelectionMode(definitions.PushItMode):
     def update_pads(self):
         track_color = self.app.track_selection_mode.get_current_track_color() 
         color_matrix = []
-        for i in range(0, 8):
+        for i in range(8):
             row_colors = []
-            for j in range(0, 8):
+            for j in range(8):
                 cell_color = track_color
                 preset_num, bank_num = self.pad_ij_to_bank_and_preset_num((i, j))
                 if not self.preset_num_in_favourites(preset_num, bank_num):

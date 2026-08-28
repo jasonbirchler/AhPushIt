@@ -3,7 +3,7 @@ import random
 from utils import clamp
 
 
-class GeneratorAlogorithm(object):
+class GeneratorAlogorithm:
     parameters = []
     name = ''
 
@@ -40,7 +40,7 @@ class RandomGeneratorAlgorithm(GeneratorAlogorithm):
         else:
             new_clip_length = random.randint(5, 13)
         random_sequence = []
-        for i in range(0, abs(self.parameters['density']['value'] + random.randint(-2, 2))):
+        for i in range(abs(self.parameters['density']['value'] + random.randint(-2, 2))):
             timestamp = (new_clip_length - 0.5) * random.random()
             duration = random.random() * 1.5 + 0.01
             random_sequence.append(
@@ -66,7 +66,7 @@ class RandomGeneratorAlgorithmPlus(GeneratorAlogorithm):
         else:
             new_clip_length = random.randint(5, 13)
         random_sequence = []
-        for i in range(0, abs(self.parameters['density']['value'] + random.randint(-2, 2))):
+        for i in range(abs(self.parameters['density']['value'] + random.randint(-2, 2))):
             timestamp = (new_clip_length - 0.5) * random.random()
             duration = max(0.1, random.random() * self.parameters['max_duration']['value'])
             random_sequence.append(

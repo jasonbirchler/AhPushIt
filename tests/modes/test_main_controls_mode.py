@@ -5,16 +5,16 @@ from unittest.mock import MagicMock
 
 import push2_python.constants
 
-from modes.main_controls_mode import MainControlsMode
 # Import constants to ensure matching values
 from modes.main_controls_mode import (
+    CLIP_TRIGGERING_MODE_BUTTON,
     MELODIC_RHYTHMIC_TOGGLE_BUTTON,
+    PLAY_BUTTON,
+    PRESET_SELECTION_MODE_BUTTON,
+    RECORD_BUTTON,
     SETTINGS_BUTTON,
     TOGGLE_DISPLAY_BUTTON,
-    CLIP_TRIGGERING_MODE_BUTTON,
-    PRESET_SELECTION_MODE_BUTTON,
-    PLAY_BUTTON,
-    RECORD_BUTTON,
+    MainControlsMode,
 )
 
 

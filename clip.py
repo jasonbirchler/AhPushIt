@@ -1,9 +1,10 @@
 from typing import TYPE_CHECKING, NamedTuple
+
 import isobar as iso
 import numpy as np
 
-from base_class import BaseClass
 import definitions
+from base_class import BaseClass
 
 if TYPE_CHECKING:
     from track import Track

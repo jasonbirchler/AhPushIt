@@ -7,7 +7,9 @@ This makes it easier to read button labels.
 
 import sys
 import time
+
 import push2_python
+
 
 def main():
     print("Initializing Push2...")

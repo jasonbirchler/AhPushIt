@@ -1,6 +1,6 @@
 import isobar as iso
 
-from utils import get_beats_until_next_bar, compute_clip_total_duration
+from utils import compute_clip_total_duration, get_beats_until_next_bar
 
 
 class Sequencer:

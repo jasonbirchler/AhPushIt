@@ -1,7 +1,7 @@
 import push2_python
 
 import definitions
-from utils import show_text, show_title, show_value, ScrollableList
+from utils import ScrollableList, show_text, show_title, show_value
 
 
 class AddTrackMode(definitions.PushItMode):
@@ -281,8 +281,7 @@ class AddTrackMode(definitions.PushItMode):
             self.output_device_idx = (self.output_device_idx - 1) % len(
                 self.available_output_devices
             )
-            if self.output_device_idx < self.output_device_list_offset:
-                self.output_device_list_offset = self.output_device_idx
+            self.output_device_list_offset = min(self.output_device_list_offset, self.output_device_idx)
             self.app.pads_need_update = True
             return True
 

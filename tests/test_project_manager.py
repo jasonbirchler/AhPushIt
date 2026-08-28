@@ -6,9 +6,9 @@ from unittest.mock import MagicMock, patch
 
 import numpy as np
 
+from clip import Clip
 from project_manager import ProjectManager
 from track import Track
-from clip import Clip
 
 
 class TestProjectManager:

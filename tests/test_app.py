@@ -104,7 +104,8 @@ class TestUnsetModeForXorGroup:
 
     def test_on_encoder_rotated_tempo(self, mock_app, mock_push2_environment):
         """Test tempo encoder changes BPM globally in app.py."""
-        import push2_python.constants as constants
+        from push2_python import constants
+
         import app as app_module
 
         # Set up global app reference for the callback
@@ -199,8 +200,9 @@ class TestComputeAcceleratedIncrement:
         assert app_module.encoder_speed_multiplier["enc1"] <= fast_max
 
     def test_rapid_succession_increases_multiplier(self, mock_push2_environment):
-        import app as app_module
         import time
+
+        import app as app_module
         # First moderate event
         app_module.compute_accelerated_increment("enc1", 1, profile="fast")
         # Second event immediately after (short interval) should accelerate
@@ -209,8 +211,9 @@ class TestComputeAcceleratedIncrement:
 
     def test_slow_profile_is_less_sensitive_than_fast(self, mock_push2_environment):
         """A fast flick on a list (slow profile) accelerates far less than on a value (fast)."""
-        import app as app_module
         import time
+
+        import app as app_module
         slow_max = app_module.ENCODER_ACCEL_PROFILES["slow"]["max_multiplier"]
         fast_max = app_module.ENCODER_ACCEL_PROFILES["fast"]["max_multiplier"]
         assert slow_max < fast_max

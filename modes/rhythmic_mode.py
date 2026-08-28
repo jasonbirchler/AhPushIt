@@ -1,6 +1,6 @@
-import definitions
 import push2_python.constants
 
+import definitions
 from modes.melodic_mode import MelodicMode
 
 
@@ -30,19 +30,15 @@ class RhythmicMode(MelodicMode):
 
     def update_pads(self):
         color_matrix = []
-        for i in range(0, 8):
+        for i in range(8):
             row_colors = []
-            for j in range(0, 8):
+            for j in range(8):
                 corresponding_midi_note = self.pad_ij_to_midi_note([i, j])
                 cell_color = definitions.BLACK
                 if i >= 4 and j < 4:
                     # This is the main 4x4 grid
                     cell_color = self.app.track_selection_mode.get_current_track_color()
-                elif i >= 4 and j >= 4:
-                    cell_color = definitions.GRAY_LIGHT
-                elif i < 4 and j < 4:
-                    cell_color = definitions.GRAY_LIGHT
-                elif i < 4 and j >= 4:
+                elif i >= 4 and j >= 4 or i < 4 and j < 4 or i < 4 and j >= 4:
                     cell_color = definitions.GRAY_LIGHT
                 if self.is_midi_note_being_played(corresponding_midi_note):
                     cell_color = definitions.NOTE_ON_COLOR

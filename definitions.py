@@ -88,7 +88,7 @@ COLORS_NAMES_RGB = [
 ]
 
 def get_color_rgb(color_name):
-    return globals().get('{0}_RGB'.format(color_name.upper()), [0, 0, 0])
+    return globals().get(f'{color_name.upper()}_RGB', [0, 0, 0])
 
 def get_color_rgb_float(color_name):
     return [x/255 for x in get_color_rgb(color_name)]
@@ -151,7 +151,7 @@ class ClipStates(Enum):
     CLIP_STATUS_IS_EMPTY = "E"
     CLIP_STATUS_IS_NOT_EMPTY = "e"
 
-class PushItMode(object):
+class PushItMode:
     """
     """
 

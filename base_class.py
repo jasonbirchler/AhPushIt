@@ -1,4 +1,4 @@
-class BaseClass(object):
+class BaseClass:
 
     _parent = None
 

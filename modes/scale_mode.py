@@ -1,8 +1,8 @@
 import isobar as iso
 import push2_python.constants
+
 import definitions
 from utils import ScaleGridList, show_text
-
 
 KEY_TO_MIDI = {
     "C": 60,

@@ -1,11 +1,10 @@
-from typing import List, Literal, Optional
+from typing import Literal
 
 import isobar as iso
 
-from base_class import BaseClass
-
-from clip import Clip
 import definitions
+from base_class import BaseClass
+from clip import Clip
 
 
 class Track(BaseClass):
@@ -24,7 +23,7 @@ class Track(BaseClass):
         self.output_device_name = None
         self.type = "melodic"
         
-        self.clips: List[Clip] = [None, None, None, None, None, None, None, None]
+        self.clips: list[Clip] = [None, None, None, None, None, None, None, None]
 
         self._send_clock = False
         self._passthru_muted = False
@@ -86,7 +85,7 @@ class Track(BaseClass):
             else:
                 return f"{self.output_device_name[:definitions.MAX_DEVICE_NAME_CHARS - 3]}..."
 
-    def get_output_device(self) -> Optional[iso.MidiOutputDevice]:
+    def get_output_device(self) -> iso.MidiOutputDevice | None:
         """Get the output device"""
         return self.output_device
 

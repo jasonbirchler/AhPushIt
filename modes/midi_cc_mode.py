@@ -11,7 +11,7 @@ from definitions import PushItMode
 from utils import show_text
 
 
-class MIDICCControl(object):
+class MIDICCControl:
 
     color = definitions.GRAY_LIGHT
     color_rgb = None
@@ -181,16 +181,16 @@ class MIDICCMode(PushItMode):
         # For None (no device assigned), create default CC mappings
         if definition_name is None:
             self.instrument_midi_control_ccs[None] = []
-            for i in range(0, 128):
+            for i in range(128):
                 section_s = (i // 16) * 16
                 section_e = section_s + 15
-                control = MIDICCControl(i, 'CC {0}'.format(i), '{0} to {1}'.format(section_s, section_e), self.get_current_track_color_helper, self.send_midi_cc)
+                control = MIDICCControl(i, f'CC {i}', f'{section_s} to {section_e}', self.get_current_track_color_helper, self.send_midi_cc)
                 self.instrument_midi_control_ccs[None].append(control)
             print('Loaded default MIDI cc mappings for no device')
             return
         
         try:
-            definition_path = os.path.join(definitions.INSTRUMENT_DEFINITION_FOLDER, '{}.json'.format(definition_name))
+            definition_path = os.path.join(definitions.INSTRUMENT_DEFINITION_FOLDER, f'{definition_name}.json')
             with open(definition_path, 'r', encoding='utf-8') as f:
                 definition_data = json.load(f)
             midi_cc = definition_data.get('midi_cc', None)
@@ -214,16 +214,16 @@ class MIDICCMode(PushItMode):
                     elif isinstance(control_data, dict) and control_data.get('value_labels_map'):
                         control.value_labels_map = control_data['value_labels_map']
                     self.instrument_midi_control_ccs[definition_name].append(control)
-            print('Loaded {0} MIDI cc mappings for instrument {1}'.format(len(self.instrument_midi_control_ccs[definition_name]), definition_name))
+            print(f'Loaded {len(self.instrument_midi_control_ccs[definition_name])} MIDI cc mappings for instrument {definition_name}')
         else:
             # No definition file for instrument exists, or no midi CC were defined for that instrument
             self.instrument_midi_control_ccs[definition_name] = []
-            for i in range(0, 128):
+            for i in range(128):
                 section_s = (i // 16) * 16
                 section_e = section_s + 15
-                control = MIDICCControl(i, 'CC {0}'.format(i), '{0} to {1}'.format(section_s, section_e), self.get_current_track_color_helper, self.send_midi_cc)
+                control = MIDICCControl(i, f'CC {i}', f'{section_s} to {section_e}', self.get_current_track_color_helper, self.send_midi_cc)
                 self.instrument_midi_control_ccs[definition_name].append(control)
-            print('Loaded default MIDI cc mappings for instrument {0}'.format(definition_name))
+            print(f'Loaded default MIDI cc mappings for instrument {definition_name}')
 
     def get_all_distinct_instrument_short_names_helper(self):
         return self.app.track_selection_mode.get_all_distinct_device_short_names()
@@ -251,7 +251,7 @@ class MIDICCMode(PushItMode):
         # Ensure the current device has proper MIDI CC mappings initialized
         if current_short_name not in self.current_selected_section_and_page:
             # Initialize default mappings for this device
-            if current_short_name in self.instrument_midi_control_ccs and self.instrument_midi_control_ccs[current_short_name]:
+            if self.instrument_midi_control_ccs.get(current_short_name):
                 self.current_selected_section_and_page[current_short_name] = (self.instrument_midi_control_ccs[current_short_name][0].section, 0)
             else:
                 self.current_selected_section_and_page[current_short_name] = ('0 to 15', 0)
@@ -355,7 +355,7 @@ class MIDICCMode(PushItMode):
 
             # Draw MIDI CC controls
             if self.active_midi_control_ccs:
-                for i in range(0, min(len(self.active_midi_control_ccs), definitions.GRID_WIDTH)):
+                for i in range(min(len(self.active_midi_control_ccs), definitions.GRID_WIDTH)):
                     try:
                         self.active_midi_control_ccs[i].draw(ctx, i)
                     except IndexError:

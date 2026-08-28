@@ -1,13 +1,13 @@
 import os
 import subprocess
 import time
-from enum import IntEnum
 from datetime import datetime
+from enum import IntEnum
 
 import push2_python.constants
 
 import definitions
-from utils import draw_text_at, show_text, show_title, show_value, ScrollableList
+from utils import ScrollableList, draw_text_at, show_text, show_title, show_value
 
 IS_RUNNING_SW_UPDATE = ''
 
@@ -264,14 +264,14 @@ class SettingsMode(definitions.PushItMode):
         part_h = h
 
         # First pass: backgrounds
-        for i in range(0, 8):
+        for i in range(8):
             part_x = i * part_w
             ctx.set_source_rgb(0, 0, 0)
             ctx.rectangle(part_x - 3, 0, part_w + 6, h)
             ctx.fill()
 
         # Second pass: labels and values
-        for i in range(0, 8):
+        for i in range(8):
             part_x = i * part_w
 
             color = [1.0, 1.0, 1.0]
@@ -496,8 +496,7 @@ class SettingsMode(definitions.PushItMode):
             if encoder_name == push2_python.constants.ENCODER_TRACK1_ENCODER:
                 if delta != 0:
                     self.current_preset_save_number += delta
-                    if self.current_preset_save_number < 0:
-                        self.current_preset_save_number = 0
+                    self.current_preset_save_number = max(self.current_preset_save_number, 0)
 
             elif encoder_name == push2_python.constants.ENCODER_TRACK3_ENCODER:
                 if self.project_list.items and delta != 0:

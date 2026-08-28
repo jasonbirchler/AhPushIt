@@ -6,9 +6,14 @@ import isobar as iso
 import numpy as np
 from numpyencoder import NumpyEncoder
 
-from track import Track
 from clip import Clip
-from modes.scale_mode import _canonical_key_name, get_isobar_scale, get_scale_pattern, KEY_TO_MIDI
+from modes.scale_mode import (
+    KEY_TO_MIDI,
+    _canonical_key_name,
+    get_isobar_scale,
+    get_scale_pattern,
+)
+from track import Track
 
 
 class ProjectManager:

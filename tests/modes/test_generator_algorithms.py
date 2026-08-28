@@ -1,9 +1,14 @@
 """Tests for modes/generator_algorithms.py module."""
 
 import random
+
 import pytest
 
-from modes.generator_algorithms import GeneratorAlogorithm, RandomGeneratorAlgorithm, RandomGeneratorAlgorithmPlus
+from modes.generator_algorithms import (
+    GeneratorAlogorithm,
+    RandomGeneratorAlgorithm,
+    RandomGeneratorAlgorithmPlus,
+)
 
 
 class TestGeneratorAlgorithm:

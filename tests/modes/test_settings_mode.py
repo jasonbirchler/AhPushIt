@@ -5,7 +5,7 @@ from unittest.mock import MagicMock
 
 import push2_python.constants
 
-from modes.settings_mode import SettingsMode, Pages
+from modes.settings_mode import Pages, SettingsMode
 
 
 class TestSettingsMode:
