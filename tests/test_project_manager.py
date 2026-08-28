@@ -2,10 +2,8 @@
 
 import json
 import os
-import tempfile
 from unittest.mock import MagicMock, patch
 
-import pytest
 import numpy as np
 
 from project_manager import ProjectManager

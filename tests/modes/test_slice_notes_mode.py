@@ -1,6 +1,5 @@
 """Tests for modes/slice_notes_mode.py module."""
 
-import pytest
 from unittest.mock import MagicMock
 
 from modes.slice_notes_mode import SliceNotesMode

@@ -2,7 +2,6 @@ import json
 import os
 import time
 
-import mido
 import push2_python
 
 import definitions

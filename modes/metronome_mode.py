@@ -4,7 +4,6 @@ import push2_python
 
 import definitions
 from utils import clear_display, show_text, show_title, show_value, ScrollableList
-import isobar as iso
 from metronome import AhPushItMetronome
 
 
