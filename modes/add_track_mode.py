@@ -140,114 +140,132 @@ class AddTrackMode(definitions.PushItMode):
         self.push.buttons.set_button_color(
             push2_python.constants.BUTTON_UPPER_ROW_8, definitions.RED
         )
+        self.push.buttons.set_button_color(
+            push2_python.constants.BUTTON_LOWER_ROW_3, definitions.WHITE
+        )
 
     def update_display(self, ctx, w, h):
         part_w = w // definitions.GRID_WIDTH
 
-        # Column 1: Title / preview
-        if self.editing_track is not None:
-            show_title(
-                ctx,
-                part_w * 0 + 2,
-                h,
-                "EDIT TRACK"
-            )
-        else:
-            show_title(
-                ctx,
-                part_w * 0 + 2,
-                h,
-                "ADD TRACK"
-            )
+        for i in range(8):
+            part_x = i * part_w
 
-        # Column 1: Current track name (only shown when editing a track)
-        if self.editing_track is not None:
-            track_idx = self.app.session.tracks.index(self.editing_track)
-            track_color = self.app.track_selection_mode.get_track_color(track_idx)
-            show_text(
-                ctx,
-                0,
-                30,
-                self.editing_track.device_short_name,
-                height=20,
-                font_color=definitions.BLACK,
-                background_color=track_color,
-                overflow="abbreviate",
-            )
-        # Column 2: Track Type
-        show_title(
-            ctx,
-            part_w * 1,
-            h,
-            "TRACK TYPE"
-        )
-        show_value(
-            ctx,
-            part_w * 1,
-            h,
-            self.track_type
-        )
+            if i == 0:
+                # Column 1: Title / preview
+                if self.editing_track is not None:
+                    show_title(
+                        ctx,
+                        part_x + 2,
+                        h,
+                        "EDIT TRACK"
+                    )
+                else:
+                    show_title(
+                        ctx,
+                        part_x + 2,
+                        h,
+                        "ADD TRACK"
+                    )
 
-        # Column 3: Output device
-        show_title(
-            ctx,
-            part_w * 2,
-            h,
-            "OUT DEVICE"
-        )
+                # Column 1: Current track name (only shown when editing a track)
+                if self.editing_track is not None:
+                    track_idx = self.app.session.tracks.index(self.editing_track)
+                    track_color = self.app.track_selection_mode.get_track_color(track_idx)
+                    show_text(
+                        ctx,
+                        i,
+                        30,
+                        self.editing_track.device_short_name,
+                        height=20,
+                        font_color=definitions.BLACK,
+                        background_color=track_color,
+                        overflow="abbreviate",
+                    )
+            if i == 1:
+                # Column 2: Track Type
+                show_title(
+                    ctx,
+                    part_x,
+                    h,
+                    "TRACK TYPE"
+                )
+                show_value(
+                    ctx,
+                    part_x,
+                    h,
+                    self.track_type
+                )
 
-        if not self.output_device_list.items:
-            self.output_device_list.items = sorted(self.app.session.output_device_names)
-            if self.output_device_list.selected_index >= len(self.output_device_list.items):
-                self.output_device_list.selected_index = max(0, len(self.output_device_list.items) - 1)
-                self.output_device_list.scroll_offset = self.output_device_list.selected_index
+            if i == 2:
+                # Column 3: Output device
+                show_title(
+                    ctx,
+                    part_x,
+                    h,
+                    "OUT DEVICE"
+                )
 
-        self.output_device_list.draw(
-            ctx, h, h - 24,
-            [1.0, 1.0, 1.0], [1.0, 1.0, 1.0],
-            lambda item, is_selected: self.output_device_list.truncate_text(ctx, item),
-            "No outputs found"
-        )
+                show_text(
+                    ctx,
+                    i,
+                    h - 24,
+                    "Assign CC map"
+                )
 
-        # Section 5: Output channel
-        show_title(
-            ctx,
-            part_w * 4,
-            h,
-            "CHANNEL"
-        )
-        show_value(
-            ctx,
-            part_w * 4,
-            h,
-            f"Ch {self.output_channel}",
-        )
+                if not self.output_device_list.items:
+                    self.output_device_list.items = sorted(self.app.session.output_device_names)
+                    if self.output_device_list.selected_index >= len(self.output_device_list.items):
+                        self.output_device_list.selected_index = max(0, len(self.output_device_list.items) - 1)
+                        self.output_device_list.scroll_offset = self.output_device_list.selected_index
 
-        # Section 7: Confirm
-        show_text(
-            ctx,
-            6,
-            5,
-            "CONFIRM",
-            height=16,
-            font_color=definitions.GREEN,
-            background_color=definitions.BLACK,
-            margin_left=6,
-            center_horizontally=False,
-        )
+                self.output_device_list.draw(
+                    ctx, h, h - 24,
+                    [1.0, 1.0, 1.0], [1.0, 1.0, 1.0],
+                    lambda item, is_selected: self.output_device_list.truncate_text(ctx, item),
+                    "No outputs found"
+                )
+            if i == 4:
+                # Section 5: Output channel
+                show_title(
+                    ctx,
+                    part_x,
+                    h,
+                    "CHANNEL"
+                )
+                show_value(
+                    ctx,
+                    part_x,
+                    h,
+                    f"Ch {self.output_channel}",
+                )
 
-        # Section 8: Cancel
-        show_text(
-            ctx,
-            7,
-            5,
-            "CANCEL",
-            height=16,
-            font_color=definitions.RED,
-            background_color=definitions.BLACK,
-            margin_left=6,
-            center_horizontally=False,
-        )
+            if i == 6:
+                # Section 7: Confirm
+                show_text(
+                    ctx,
+                    i,
+                    5,
+                    "CONFIRM",
+                    height=16,
+                    font_color=definitions.GREEN,
+                    background_color=definitions.BLACK,
+                    margin_left=6,
+                    center_horizontally=False,
+                )
+
+            if i == 7:
+                # Section 8: Cancel
+                show_text(
+                    ctx,
+                    i,
+                    5,
+                    "CANCEL",
+                    height=16,
+                    font_color=definitions.RED,
+                    background_color=definitions.BLACK,
+                    margin_left=6,
+                    center_horizontally=False,
+                )
 
     def on_encoder_rotated(self, encoder_name, increment):
         # Output-device list scroll uses the "slow" profile; other edits (track
@@ -361,6 +379,9 @@ class AddTrackMode(definitions.PushItMode):
 
         if button_name == push2_python.constants.BUTTON_UPPER_ROW_8:  # Cancel
             self.app.unset_add_track_mode()
+            return True
+
+        if button_name == push2_python.constants.BUTTON_LOWER_ROW_3:
             return True
 
         return None
