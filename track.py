@@ -11,6 +11,7 @@ class Track(BaseClass):
     channel: int
     input_monitoring: bool
     output_device_name: str
+    midi_map: str | None = None
     remove_when_done: bool = False
     timeline: iso.Timeline
     type: Literal["drum", "melodic"] = "melodic"
@@ -21,6 +22,7 @@ class Track(BaseClass):
         self.channel = 0
         self.input_monitoring = False
         self.output_device_name = None
+        self.midi_map = None
         self.type = "melodic"
         
         self.clips: list[Clip] = [None, None, None, None, None, None, None, None]

@@ -190,13 +190,21 @@ class MIDICCMode(PushItMode):
             print('Loaded default MIDI cc mappings for no device')
             return
         
-        try:
-            definition_path = os.path.join(definitions.INSTRUMENT_DEFINITION_FOLDER, f'{definition_name}.json')
-            with open(definition_path, 'r', encoding='utf-8') as f:
-                definition_data = json.load(f)
-            midi_cc = definition_data.get('midi_cc', None)
-        except (FileNotFoundError, json.JSONDecodeError):
-            midi_cc = None
+        midi_cc = None
+        # Manual top-level definitions take precedence over generated ones
+        candidate_folders = (
+            definitions.INSTRUMENT_DEFINITION_FOLDER,
+            os.path.join(definitions.INSTRUMENT_DEFINITION_FOLDER, 'generated'),
+        )
+        for folder in candidate_folders:
+            definition_path = os.path.join(folder, f'{definition_name}.json')
+            try:
+                with open(definition_path, 'r', encoding='utf-8') as f:
+                    definition_data = json.load(f)
+                midi_cc = definition_data.get('midi_cc', None)
+                break
+            except (FileNotFoundError, json.JSONDecodeError):
+                continue
 
         if midi_cc is not None:
             # Create MIDI CC mappings for instruments with definitions

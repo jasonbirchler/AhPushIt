@@ -139,6 +139,7 @@ SETTINGS_FILE_PATH = os.path.join(BASE_DATA_DIR, 'controllerSettings.json')
 DEVICE_DEFINITION_FOLDER = os.path.join(BASE_DATA_DIR, 'device_definitions')
 os.makedirs(DEVICE_DEFINITION_FOLDER, exist_ok=True)
 INSTRUMENT_DEFINITION_FOLDER = 'instrument_definitions'
+MIDI_DATASET_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'midi-dataset')
 
 class ClipStates(Enum):
     CLIP_STATUS_PLAYING = "p"

@@ -28,12 +28,21 @@ class ScaleGridList:
         self.selected_index = index
         self._clamp()
 
-    def get_visible_items(self):
-        visible = list(self.items)
+    def get_window_offset(self):
+        """Return the index of the first item in the visible page
+        so that the selected item is always within the visible window."""
         max_visible = self.n_columns * self.n_rows
+        if max_visible <= 0:
+            return 0
+        return (self.selected_index // max_visible) * max_visible
+
+    def get_visible_items(self):
+        max_visible = self.n_columns * self.n_rows
+        offset = self.get_window_offset()
+        visible = list(self.items[offset:offset + max_visible])
         while len(visible) < max_visible:
             visible.append(None)
-        return visible[:max_visible]
+        return visible
 
     def get_item(self, column, row):
         col_start = column * self.n_rows

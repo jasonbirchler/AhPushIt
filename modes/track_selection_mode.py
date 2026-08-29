@@ -120,6 +120,9 @@ class TrackSelectionMode(definitions.PushItMode):
         track = self.get_selected_track()
         if track is None:
             return {}
+        if getattr(track, "midi_map", None):
+            # Explicit CC map assignment overrides auto-detected device definition
+            return self.devices_info.get(os.path.basename(track.midi_map), {})
         output_device_name = track.output_device_name
         definition_name = self.get_device_definition_name(output_device_name)
         return self.devices_info.get(definition_name, {})
@@ -128,6 +131,9 @@ class TrackSelectionMode(definitions.PushItMode):
         track = self.get_selected_track()
         if track is None:
             return None
+        if getattr(track, "midi_map", None):
+            # Explicit CC map assignment overrides auto-detected device definition
+            return os.path.basename(track.midi_map)
         full_name = track.output_device_name
         return self.get_device_definition_name(full_name)
     

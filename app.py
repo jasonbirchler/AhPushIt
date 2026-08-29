@@ -37,6 +37,7 @@ from modes.main_controls_mode import MainControlsMode
 from modes.melodic_mode import MelodicMode
 from modes.metronome_mode import MetronomeMode
 from modes.midi_cc_mode import MIDICCMode
+from modes.midi_map_selection_mode import MidiMapSelectionMode
 from modes.preset_selection_mode import PresetSelectionMode
 from modes.rhythmic_mode import RhythmicMode
 from modes.scale_mode import ScaleMode
@@ -239,6 +240,9 @@ class PushItApp:
     def init_modes(self, settings):
         self.main_controls_mode = MainControlsMode(self, settings=settings)
         self.add_track_mode = AddTrackMode(self, settings=settings)
+        # MIDI map browser shares the pads XOR group with add_track_mode but is
+        # only activated on demand (never added to active_modes here)
+        self.midi_map_selection_mode = MidiMapSelectionMode(self, settings=settings)
         self.metronome_mode = MetronomeMode(self, settings=settings)
 
         self.melodic_mode = MelodicMode(self, settings=settings)
@@ -317,6 +321,14 @@ class PushItApp:
 
     def unset_add_track_mode(self):
         self.unset_mode_for_xor_group(self.add_track_mode)
+        self.buttons_need_update = True
+
+    def set_midi_map_selection_mode(self):
+        self.set_mode_for_xor_group(self.midi_map_selection_mode)
+        self.buttons_need_update = True
+
+    def unset_midi_map_selection_mode(self):
+        self.unset_mode_for_xor_group(self.midi_map_selection_mode)
         self.buttons_need_update = True
 
     def set_metronome_config_mode(self):

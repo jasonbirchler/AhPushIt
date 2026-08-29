@@ -22,8 +22,13 @@ class TestTrack:
         assert track.channel == 0
         assert track.input_monitoring is False
         assert track.output_device_name is None
+        assert track.midi_map is None
         assert track._send_clock is False
         assert track.clips == [None] * 8  # Default 8 clips
+
+    def test_track_midi_map_class_attribute_default(self):
+        """midi_map must be a class attribute (MagicMock(spec=Track) exposes it)."""
+        assert Track.midi_map is None
 
     def test_track_add_clip(self, session):
         """Test adding a clip to a track."""

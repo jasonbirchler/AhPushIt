@@ -1,3 +1,4 @@
+import os
 from typing import ClassVar
 
 import push2_python
@@ -26,6 +27,9 @@ class AddTrackMode(definitions.PushItMode):
     # Edit mode state - if editing an existing track
     editing_track = None
 
+    # Selected MIDI CC map (dataset-relative path, e.g. "Moog/Grandmother")
+    midi_map_selection = None
+
     def initialize(self, settings=None):
         self.available_output_devices = sorted(self.app.session.output_device_names)
         # "All" + sorted input devices
@@ -40,6 +44,7 @@ class AddTrackMode(definitions.PushItMode):
         self.output_device_list_offset = 0
         self.input_device_list_offset = 0
         self.editing_track = None
+        self.midi_map_selection = None
 
         # If settings contains an editing track, use it
         if settings and 'editing_track' in settings:
@@ -88,6 +93,9 @@ class AddTrackMode(definitions.PushItMode):
 
         # Load Track Type
         self.track_type = track.type
+
+        # Load assigned MIDI CC map
+        self.midi_map_selection = getattr(track, "midi_map", None)
 
     def activate(self):
         # Refresh device lists
@@ -205,11 +213,17 @@ class AddTrackMode(definitions.PushItMode):
                     "OUT DEVICE"
                 )
 
+                cc_map_label = (
+                    os.path.basename(self.midi_map_selection)
+                    if self.midi_map_selection
+                    else "Assign CC map"
+                )
                 show_text(
                     ctx,
                     i,
                     h - 24,
-                    "Assign CC map"
+                    cc_map_label,
+                    overflow="abbreviate",
                 )
 
                 if not self.output_device_list.items:
@@ -366,6 +380,7 @@ class AddTrackMode(definitions.PushItMode):
                     input_channel=in_ch,
                 )
                 if track:
+                    track.midi_map = self.midi_map_selection
                     self.app.add_display_notification(
                         f"Track created: {track.device_short_name}"
                     )
@@ -381,7 +396,8 @@ class AddTrackMode(definitions.PushItMode):
             self.app.unset_add_track_mode()
             return True
 
-        if button_name == push2_python.constants.BUTTON_LOWER_ROW_3:
+        if button_name == push2_python.constants.BUTTON_LOWER_ROW_3: # Assign MIDI CC map
+            self.app.set_midi_map_selection_mode()
             return True
 
         return None

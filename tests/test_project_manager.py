@@ -48,6 +48,7 @@ class TestProjectManager:
         track.input_device_name = "TestInput"
         track.input_channel = 0
         track.passthru_muted = False
+        track.midi_map = "Moog/Grandmother"
         track.clips = [None] * 8  # 8 clip slots
 
         # Create a real clip for testing
@@ -92,6 +93,8 @@ class TestProjectManager:
         # First track should have clip data
         assert len(data["tracks"][0]["clip_data"]) == 1
         assert data["tracks"][0]["clip_data"][0]["name"] == "TestClip"
+        # midi_map should be serialized
+        assert data["tracks"][0]["midi_map"] == "Moog/Grandmother"
 
         assert pm.current_project_file == "test_project"
 
@@ -107,6 +110,7 @@ class TestProjectManager:
         track.input_device_name = None
         track.input_channel = -1
         track.passthru_muted = False
+        track.midi_map = None
         track.clips = [None] * 8
         mock_app.session.tracks = [track] + [None] * 7
 
@@ -146,6 +150,7 @@ class TestProjectManager:
                     "device": "Device1",
                     "input_device": "Input1",
                     "input_channel": 2,
+                    "midi_map": "Moog/Grandmother",
                     "clip_data": [
                         {
                             "index": 0,
@@ -191,6 +196,7 @@ class TestProjectManager:
         assert loaded_track.output_device_name == "Device1"
         assert loaded_track.input_device_name == "Input1"
         assert loaded_track.input_channel == 2
+        assert loaded_track.midi_map == "Moog/Grandmother"
 
         # Verify clip
         clip = loaded_track.clips[0]

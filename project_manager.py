@@ -48,6 +48,7 @@ class ProjectManager:
                     "input_device": track.input_device_name,
                     "input_channel": track.input_channel,
                     "passthru_muted": track.passthru_muted,
+                    "midi_map": track.midi_map,
                     "clip_data": [],
                 }
 
@@ -129,6 +130,7 @@ class ProjectManager:
                 # If the track has no device, add it to the list as is
                 if not track_data.get("device"):
                     empty_track = Track(parent=self.app.session)
+                    empty_track.midi_map = track_data.get("midi_map")
                     self.app.session.tracks[track_idx] = empty_track
                 # Otherwise convert JSON data to objects
                 else:
@@ -139,6 +141,7 @@ class ProjectManager:
                     track.input_device_name = track_data.get("input_device")
                     track.input_channel = track_data.get("input_channel", -1)
                     track.passthru_muted = track_data.get("passthru_muted", False)
+                    track.midi_map = track_data.get("midi_map")
 
                     for clip_data in track_data["clip_data"]:
                         clip = Clip(parent=track)
