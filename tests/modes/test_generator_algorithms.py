@@ -1,9 +1,15 @@
 """Tests for modes/generator_algorithms.py module."""
 
 import random
+from typing import ClassVar
+
 import pytest
 
-from modes.generator_algorithms import GeneratorAlogorithm, RandomGeneratorAlgorithm, RandomGeneratorAlgorithmPlus
+from modes.generator_algorithms import (
+    GeneratorAlogorithm,
+    RandomGeneratorAlgorithm,
+    RandomGeneratorAlgorithmPlus,
+)
 
 
 class TestGeneratorAlgorithm:
@@ -13,7 +19,7 @@ class TestGeneratorAlgorithm:
         """Test that base class with empty parameters doesn't crash (but subclasses should be used)."""
         # Create a minimal concrete implementation for testing base class behavior
         class TestAlgo(GeneratorAlogorithm):
-            parameters = {}
+            parameters: ClassVar[dict] = {}
             def generate_sequence(self):
                 return [], 0
         
@@ -75,7 +81,7 @@ class TestGeneratorAlgorithm:
         """Test base class generate_sequence raises NotImplementedError when called on abstract base."""
         # Create a minimal concrete class that doesn't override generate_sequence
         class TestAlgo(GeneratorAlogorithm):
-            parameters = {}
+            parameters: ClassVar[dict] = {}
         
         algo = TestAlgo()
         with pytest.raises(NotImplementedError):
@@ -128,7 +134,7 @@ class TestRandomGeneratorAlgorithm:
         algo = RandomGeneratorAlgorithm()
         algo.parameters['length']['value'] = 10.0
         random.seed(42)
-        sequence, clip_length = algo.generate_sequence()
+        _, clip_length = algo.generate_sequence()
         assert clip_length == 10.0
 
     def test_generate_sequence_uses_density_parameter(self):
@@ -215,7 +221,7 @@ class TestRandomGeneratorAlgorithmPlus:
         algo = RandomGeneratorAlgorithmPlus()
         algo.parameters['length']['value'] = -1.0
         random.seed(42)
-        sequence, clip_length = algo.generate_sequence()
+        _, clip_length = algo.generate_sequence()
         
         # Should pick random length between 5 and 13
         assert 5 <= clip_length <= 13

@@ -1,11 +1,12 @@
 """Mode for editing a track's clips"""
-from typing import Optional
+
+from typing import ClassVar
 
 import push2_python
 
 import definitions
-from utils import clamp, clear_display, show_title, show_value
 from clip import Clip
+from utils import clamp, clear_display, show_title, show_value
 
 from .generator_algorithms import RandomGeneratorAlgorithm, RandomGeneratorAlgorithmPlus
 
@@ -33,7 +34,7 @@ class ClipEditMode(definitions.PushItMode):
     Slot 2-x = allgorithm paramters
     """
     xor_group = "pads"
-    buttons_used = [
+    buttons_used: ClassVar[list] = [
         push2_python.constants.BUTTON_UPPER_ROW_1,
         push2_python.constants.BUTTON_UPPER_ROW_2,
         push2_python.constants.BUTTON_UPPER_ROW_3,
@@ -60,11 +61,11 @@ class ClipEditMode(definitions.PushItMode):
     mode = MODE_CLIP
 
     selected_clip_idx = None
-    available_clips = []
+    available_clips: ClassVar[list] = []
 
     selected_event_position = None
 
-    generator_algorithms = []
+    generator_algorithms: ClassVar[list] = []
     selected_generator_algorithm = 0
 
     default_note_duration = 0.25  # Default duration in beats (1/16 note)
@@ -80,7 +81,7 @@ class ClipEditMode(definitions.PushItMode):
         ]
 
     @property
-    def clip(self) -> Optional[Clip]:
+    def clip(self) -> Clip | None:
         if self.selected_clip_idx is not None:
             return self.selected_clip_idx
         else:
@@ -89,8 +90,11 @@ class ClipEditMode(definitions.PushItMode):
     @property
     def event_data(self):
         """Get event data at selected position for editing"""
-        if self.selected_event_position is not None and self.clip is not None:
-            if 0 <= self.selected_event_position < len(self.clip.notes):
+        if (
+            self.selected_event_position is not None
+            and self.clip is not None
+            and 0 <= self.selected_event_position < len(self.clip.notes)
+        ):
                 return {
                     "position": self.selected_event_position,
                     "note": self.clip.notes[self.selected_event_position],
@@ -278,10 +282,9 @@ class ClipEditMode(definitions.PushItMode):
             part_w = w // 8
             track_color_rgb = None
 
-            if self.clip is not None:
-                track_idx = self.app.session.tracks.index(self.clip.track)
-                track_color = self.app.track_selection_mode.get_track_color(track_idx)
-                track_color_rgb = definitions.get_color_rgb_float(track_color)
+            track_idx = self.app.session.tracks.index(self.clip.track)
+            track_color = self.app.track_selection_mode.get_track_color(track_idx)
+            track_color_rgb = definitions.get_color_rgb_float(track_color)
 
             if self.mode == self.MODE_CLIP:
                 if self.selected_clip_idx is not None:
@@ -297,7 +300,7 @@ class ClipEditMode(definitions.PushItMode):
                         ctx,
                         part_w * 1,
                         h,
-                        "{:.1f}".format(self.clip.clip_length_in_beats),
+                        f"{self.clip.clip_length_in_beats:.1f}",
                     )
 
                     # Column 3, quantization
@@ -724,10 +727,8 @@ class ClipEditMode(definitions.PushItMode):
                     return True
                 # Edit clip length
                 new_length = self.clip.clip_length_in_beats + delta
-                if new_length < 1.0:
-                    new_length = 1.0
-                if new_length > 32.0:
-                    new_length = 32.0
+                new_length = max(new_length, 1.0)
+                new_length = min(new_length, 32.0)
                 self.clip.set_length(new_length)
                 self.update_pads()
                 return True  # Don't trigger this encoder moving in any other mode
@@ -737,10 +738,8 @@ class ClipEditMode(definitions.PushItMode):
                     return True
                 # Edit step divisions
                 new_step_divisions = self.clip.step_divisions + delta
-                if new_step_divisions < 1:
-                    new_step_divisions = 1
-                if new_step_divisions > 32:
-                    new_step_divisions = 32
+                new_step_divisions = max(new_step_divisions, 1)
+                new_step_divisions = min(new_step_divisions, 32)
                 self.clip.step_divisions = new_step_divisions
                 self.update_pads()
                 return True  # Don't trigger this encoder moving in any other mode

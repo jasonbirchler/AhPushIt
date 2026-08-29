@@ -1,10 +1,11 @@
 import random
+from typing import ClassVar
 
 from utils import clamp
 
 
-class GeneratorAlogorithm(object):
-    parameters = []
+class GeneratorAlogorithm:
+    parameters: ClassVar[dict] = []
     name = ''
 
     def __init__(self):
@@ -28,7 +29,7 @@ class GeneratorAlogorithm(object):
 
 class RandomGeneratorAlgorithm(GeneratorAlogorithm):
     name = 'Rnd'
-    parameters = {
+    parameters: ClassVar[dict] = {
         'length': {'display_name': 'LENGTH', 'type': float, 'min': 1.0, 'max': 32.0, 'default': 8.0,
                    'increment_scale': 1.0},
         'density': {'display_name': 'DENSITY', 'type': int, 'min': 1, 'max': 15, 'default': 5, 'increment_scale': 1},
@@ -40,7 +41,7 @@ class RandomGeneratorAlgorithm(GeneratorAlogorithm):
         else:
             new_clip_length = random.randint(5, 13)
         random_sequence = []
-        for i in range(0, abs(self.parameters['density']['value'] + random.randint(-2, 2))):
+        for i in range(abs(self.parameters['density']['value'] + random.randint(-2, 2))):
             timestamp = (new_clip_length - 0.5) * random.random()
             duration = random.random() * 1.5 + 0.01
             random_sequence.append(
@@ -52,7 +53,7 @@ class RandomGeneratorAlgorithm(GeneratorAlogorithm):
 
 class RandomGeneratorAlgorithmPlus(GeneratorAlogorithm):
     name = 'Rnd+'
-    parameters = {
+    parameters: ClassVar[dict] = {
         'length': {'display_name': 'LENGTH', 'type': float, 'min': 1.0, 'max': 32.0, 'default': 8.0,
                    'increment_scale': 1.0},
         'density': {'display_name': 'DENSITY', 'type': int, 'min': 1, 'max': 15, 'default': 5, 'increment_scale': 1},
@@ -66,7 +67,7 @@ class RandomGeneratorAlgorithmPlus(GeneratorAlogorithm):
         else:
             new_clip_length = random.randint(5, 13)
         random_sequence = []
-        for i in range(0, abs(self.parameters['density']['value'] + random.randint(-2, 2))):
+        for i in range(abs(self.parameters['density']['value'] + random.randint(-2, 2))):
             timestamp = (new_clip_length - 0.5) * random.random()
             duration = max(0.1, random.random() * self.parameters['max_duration']['value'])
             random_sequence.append(

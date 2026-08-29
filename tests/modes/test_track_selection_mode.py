@@ -2,8 +2,8 @@
 
 from unittest.mock import MagicMock
 
-from modes.track_selection_mode import TrackSelectionMode
 import definitions
+from modes.track_selection_mode import TrackSelectionMode
 
 
 class TestTrackSelectionMode:

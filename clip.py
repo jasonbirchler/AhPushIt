@@ -1,9 +1,10 @@
 from typing import TYPE_CHECKING, NamedTuple
+
 import isobar as iso
 import numpy as np
 
-from base_class import BaseClass
 import definitions
+from base_class import BaseClass
 
 if TYPE_CHECKING:
     from track import Track
@@ -107,7 +108,7 @@ class Clip(BaseClass):
         step_beats = self.step_beats()
         if step_beats <= 0:
             return 1
-        num_steps = int(round(duration / step_beats))
+        num_steps = round(duration / step_beats)
         return max(1, num_steps)
 
     def pad_to_step_and_note(self, pad_i: int, pad_j: int) -> tuple:
@@ -201,7 +202,7 @@ class Clip(BaseClass):
         """
         mask = np.not_equal(self.notes, None)
         all_notes = self.notes[mask]
-        if len(all_notes) == 0:
+        if not all_notes:
             return None, None
         return int(np.min(all_notes)), int(np.max(all_notes))
 
@@ -213,9 +214,9 @@ class Clip(BaseClass):
         """
         mask = np.not_equal(self.notes, None)
         all_notes = self.notes[mask]
-        if len(all_notes) == 0:
+        if not all_notes:
             return []
-        return sorted(set(int(n) for n in all_notes))
+        return sorted({int(n) for n in all_notes})
 
     def get_status(self) -> ClipStatus:
         if self.will_start_recording_at >= 0.0:
@@ -465,9 +466,8 @@ class Clip(BaseClass):
 
     def _reschedule_if_playing(self):
         """Helper method to trigger reschedule if clip is playing"""
-        if self.playing:
-            if self.app and hasattr(self.app, "seq"):
-                self.app.seq.schedule_clip(self)
+        if self.playing and self.app and hasattr(self.app, "seq"):
+            self.app.seq.schedule_clip(self)
 
     def update_playhead_position(self):
         """Update the playhead position based on timeline time.

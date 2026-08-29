@@ -1,0 +1,13 @@
+# Ruff lint configuration.
+#
+# Rule selection intentionally follows ruff's defaults — do not add a
+# `select` here. Keep the ruff version pinned in .github/workflows/ci.yml
+# and installed locally, e.g.:
+#
+#   pip install ruff==0.16.5
+#
+# Verify parity locally with:
+#   ruff check .            # expect: Found 236 errors
+#   ruff check --fix .      # same command CI runs
+
+target-version = "py312"

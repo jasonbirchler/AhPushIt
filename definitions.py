@@ -1,6 +1,7 @@
 import colorsys
 import os
 from enum import Enum
+from typing import ClassVar
 
 import push2_python
 from push2_python.constants import ANIMATION_STATIC
@@ -88,7 +89,7 @@ COLORS_NAMES_RGB = [
 ]
 
 def get_color_rgb(color_name):
-    return globals().get('{0}_RGB'.format(color_name.upper()), [0, 0, 0])
+    return globals().get(f'{color_name.upper()}_RGB', [0, 0, 0])
 
 def get_color_rgb_float(color_name):
     return [x/255 for x in get_color_rgb(color_name)]
@@ -107,7 +108,7 @@ for name in COLORS_NAMES:
     if new_color_name not in COLORS_NAMES:
         to_add_in_color_names.append(new_color_name)
     new_color_rgb_name = f'{name}_darker1_rgb'
-    globals()[new_color_rgb_name.upper()] = list([c * 255 for c in darker_color])
+    globals()[new_color_rgb_name.upper()] = [c * 255 for c in darker_color]
 
     # Create darker 2
     color_mod = 0.05  # < 1 means make colour darker, > 1 means make colour brighter
@@ -118,7 +119,7 @@ for name in COLORS_NAMES:
     if new_color_name not in COLORS_NAMES:
         to_add_in_color_names.append(new_color_name)
     new_color_rgb_name = f'{name}_darker2_rgb'
-    globals()[new_color_rgb_name.upper()] = list([c * 255 for c in darker_color])
+    globals()[new_color_rgb_name.upper()] = [c * 255 for c in darker_color]
 
 COLORS_NAMES += to_add_in_color_names  # Update list of color names with darkified versiond of existing colors
 
@@ -138,6 +139,7 @@ SETTINGS_FILE_PATH = os.path.join(BASE_DATA_DIR, 'controllerSettings.json')
 DEVICE_DEFINITION_FOLDER = os.path.join(BASE_DATA_DIR, 'device_definitions')
 os.makedirs(DEVICE_DEFINITION_FOLDER, exist_ok=True)
 INSTRUMENT_DEFINITION_FOLDER = 'instrument_definitions'
+MIDI_DATASET_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'midi-dataset')
 
 class ClipStates(Enum):
     CLIP_STATUS_PLAYING = "p"
@@ -151,13 +153,12 @@ class ClipStates(Enum):
     CLIP_STATUS_IS_EMPTY = "E"
     CLIP_STATUS_IS_NOT_EMPTY = "e"
 
-class PushItMode(object):
-    """
-    """
+class PushItMode:
+    """Base class for PushIt modes."""
 
     name = ''
     xor_group = None
-    buttons_used = []
+    buttons_used: ClassVar[list] = []
 
     def __init__(self, app, settings=None):
         self.app = app

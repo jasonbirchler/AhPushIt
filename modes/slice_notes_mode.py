@@ -1,6 +1,8 @@
-import definitions
+from typing import ClassVar
+
 import push2_python.constants
 
+import definitions
 from modes.melodic_mode import MelodicMode
 
 
@@ -8,7 +10,7 @@ class SliceNotesMode(MelodicMode):
     xor_group = "pads"
 
     start_note = 0
-    color_groups = [
+    color_groups: ClassVar[list] = [
         definitions.GREEN,
         definitions.YELLOW,
         definitions.ORANGE,
@@ -27,9 +29,9 @@ class SliceNotesMode(MelodicMode):
 
     def update_pads(self):
         color_matrix = []
-        for i in range(0, 8):
+        for i in range(8):
             row_colors = []
-            for j in range(0, 8):
+            for j in range(8):
                 corresponding_midi_note = self.pad_ij_to_midi_note([i, j])
                 midi_16_note_groups_idx = corresponding_midi_note // 16
                 #cell_color = self.color_groups[midi_16_note_groups_idx]
@@ -48,24 +50,16 @@ class SliceNotesMode(MelodicMode):
 
         if button_name == push2_python.constants.BUTTON_OCTAVE_UP:
             self.start_note += 16
-            if self.start_note > 128 - 16 * 4:
-                self.start_note = 128 - 16 * 4
+            self.start_note = min(self.start_note, 128 - 16 * 4)
             self.app.pads_need_update = True
-            self.app.add_display_notification("MIDI notes range: {0} to {1}".format(
-                self.pad_ij_to_midi_note((7, 0)),
-                self.pad_ij_to_midi_note((0, 7)),
-            ))
+            self.app.add_display_notification(f"MIDI notes range: {self.pad_ij_to_midi_note((7, 0))} to {self.pad_ij_to_midi_note((0, 7))}")
             return True
 
         elif button_name == push2_python.constants.BUTTON_OCTAVE_DOWN:
             self.start_note -= 16
-            if self.start_note < 0:
-                self.start_note = 0
+            self.start_note = max(self.start_note, 0)
             self.app.pads_need_update = True
-            self.app.add_display_notification("MIDI notes range: {0} to {1}".format(
-                self.pad_ij_to_midi_note((7, 0)),
-                self.pad_ij_to_midi_note((0, 7)),
-            ))
+            self.app.add_display_notification(f"MIDI notes range: {self.pad_ij_to_midi_note((7, 0))} to {self.pad_ij_to_midi_note((0, 7))}")
             return True
 
         else:

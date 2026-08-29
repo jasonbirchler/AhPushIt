@@ -1,5 +1,6 @@
 import json
 import os
+from typing import ClassVar
 
 import push2_python
 
@@ -9,9 +10,9 @@ from utils import show_text
 
 class TrackSelectionMode(definitions.PushItMode):
 
-    devices_info = {}
+    devices_info: ClassVar[dict] = {}
 
-    track_button_names = [
+    track_button_names: ClassVar[list] = [
         push2_python.constants.BUTTON_LOWER_ROW_1,
         push2_python.constants.BUTTON_LOWER_ROW_2,
         push2_python.constants.BUTTON_LOWER_ROW_3,
@@ -41,22 +42,36 @@ class TrackSelectionMode(definitions.PushItMode):
     def load_hardware_devices_info(self):
         """
         This method loads hardware device (aka instrument) definitions from definition files.
-        These contain some information about the device which is useful to show a proper UI (
-        for example, a list of midi CC parameter mappings).
+        These contain some information about the device which is useful to show a proper UI.
+        Manual definitions take precedence over generated ones.
         """
         print('Loading hardware device definitions...')
-        try:
-            for filename in os.listdir(definitions.INSTRUMENT_DEFINITION_FOLDER):
+        self.devices_info = {}
+        
+        # 1. Load generated definitions first
+        generated_folder = os.path.join(definitions.INSTRUMENT_DEFINITION_FOLDER, 'generated')
+        if os.path.exists(generated_folder):
+            for filename in os.listdir(generated_folder):
                 if filename.endswith('.json'):
                     device_short_name = filename.replace('.json', '')
-                    json_file_path = os.path.join(definitions.INSTRUMENT_DEFINITION_FOLDER, filename)
+                    json_file_path = os.path.join(generated_folder, filename)
+                    try:
+                        with open(json_file_path, 'r', encoding='utf-8') as file:
+                            self.devices_info[device_short_name] = json.load(file)
+                    except (FileNotFoundError, json.JSONDecodeError) as e:
+                        print(f'Error loading generated {device_short_name}: {e}')
+
+        # 2. Load manual definitions (overrides generated)
+        for filename in os.listdir(definitions.INSTRUMENT_DEFINITION_FOLDER):
+            if filename.endswith('.json'):
+                device_short_name = filename.replace('.json', '')
+                json_file_path = os.path.join(definitions.INSTRUMENT_DEFINITION_FOLDER, filename)
+                try:
                     with open(json_file_path, 'r', encoding='utf-8') as file:
                         self.devices_info[device_short_name] = json.load(file)
                     print(f'- {device_short_name}')
-        except FileNotFoundError:
-            # No definitions file present
-            print(f'No definition file found for {device_short_name}')
-            pass
+                except (FileNotFoundError, json.JSONDecodeError) as e:
+                    print(f'Error loading {device_short_name}: {e}')
 
     def get_settings_to_save(self):
         return {}
@@ -69,27 +84,45 @@ class TrackSelectionMode(definitions.PushItMode):
         """
         if device_name is None:
             return None
-        
+
+        # Only work with string device names
+        if not isinstance(device_name, str):
+            return None
+
         # Check for exact match first
         if device_name in self.devices_info:
             return device_name
         
-        # Check if any definition name is contained in the device name
-        for def_name in self.devices_info.keys():
-            # Case-insensitive match: check if definition name is in the device name
+        # Check if any definition name or instrument name is contained in the device name,
+        # or if the device name is contained in the instrument name.
+        for def_name, info in self.devices_info.items():
+            instrument_name = info.get('instrument_name', '').upper()
+            
+            # Check if definition name is in device name
             if def_name.upper() in device_name.upper():
+                return def_name
+            
+            # Check if instrument name is in device name (e.g., "KORG NTS-1" in "KORG NTS-1 digital kit")
+            if instrument_name and instrument_name in device_name.upper():
+                return def_name
+                
+            # Check if device name is in instrument name (e.g., "NTS-1" in "KORG NTS-1")
+            if device_name.upper() in instrument_name:
                 return def_name
         
         # No match found, return original name
         return device_name
 
     def get_all_distinct_device_short_names(self):
-        return list(set([t.output_device_name for t in self.app.session.tracks if t and t.output_device_name]))
+        return list({t.output_device_name for t in self.app.session.tracks if t and t.output_device_name})
 
     def get_current_track_device_info(self):
         track = self.get_selected_track()
         if track is None:
             return {}
+        if getattr(track, "midi_map", None):
+            # Explicit CC map assignment overrides auto-detected device definition
+            return self.devices_info.get(os.path.basename(track.midi_map), {})
         output_device_name = track.output_device_name
         definition_name = self.get_device_definition_name(output_device_name)
         return self.devices_info.get(definition_name, {})
@@ -98,6 +131,9 @@ class TrackSelectionMode(definitions.PushItMode):
         track = self.get_selected_track()
         if track is None:
             return None
+        if getattr(track, "midi_map", None):
+            # Explicit CC map assignment overrides auto-detected device definition
+            return os.path.basename(track.midi_map)
         full_name = track.output_device_name
         return self.get_device_definition_name(full_name)
     
@@ -163,7 +199,7 @@ class TrackSelectionMode(definitions.PushItMode):
     def send_select_track(self, track_idx):
         # Enabled input monitoring for the selected track only
         tracks = self.app.session.tracks
-        for i in range(0, len(tracks)):
+        for i in range(len(tracks)):
             if tracks[i] is not None:
                 tracks[i].set_input_monitoring(i == track_idx)
 
@@ -189,6 +225,11 @@ class TrackSelectionMode(definitions.PushItMode):
     def update_buttons(self):
         if self.app.session is None:
             self.app.buttons_need_update = True
+            return
+
+        if self.app.is_mode_active(self.app.add_track_mode):
+            for name in self.track_button_names:
+                self.push.buttons.set_button_color(name, definitions.BLACK)
             return
 
         # Update track buttons with their colors
@@ -247,17 +288,26 @@ class TrackSelectionMode(definitions.PushItMode):
     def update_display(self, ctx, w, h):
         if self.app.session is None or self.app.session.tracks is None:
             return
-        
+
         display_w = push2_python.constants.DISPLAY_LINE_PIXELS
         part_w = display_w // 8
-        
+
+        # If add_track_mode is active, only draw the track being edited (if any)
+        editing_track = None
+        if self.app.is_mode_active(self.app.add_track_mode):
+            editing_track = self.app.add_track_mode.editing_track
+
         # Draw track selector labels
         height = 20
         playback_bar_height = 5
         playback_bar_margin = 2
-        
+
         for i, track in enumerate(self.app.session.tracks):
             if track is None:
+                continue
+            if self.app.is_mode_active(self.app.add_track_mode):
+                continue
+            if editing_track is not None and track is not editing_track:
                 continue
             track_color = self.get_track_color(i)
             if self.selected_track == i:

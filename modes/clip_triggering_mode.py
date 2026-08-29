@@ -1,10 +1,12 @@
-import definitions
-import push2_python
 import traceback
+from typing import ClassVar
 
-from definitions import ClipStates
-from utils import show_text, draw_clip
+import push2_python
+
+import definitions
 from clip import Clip, ClipStatus
+from definitions import ClipStates
+from utils import draw_clip, show_text
 
 
 class ClipTriggeringMode(definitions.PushItMode):
@@ -17,7 +19,7 @@ class ClipTriggeringMode(definitions.PushItMode):
     # user last touched, not an unrelated scene row.
     selected_clip = None
 
-    upper_row_buttons = [
+    upper_row_buttons: ClassVar[list] = [
         push2_python.constants.BUTTON_UPPER_ROW_1,
         push2_python.constants.BUTTON_UPPER_ROW_2,
         push2_python.constants.BUTTON_UPPER_ROW_3,
@@ -28,7 +30,7 @@ class ClipTriggeringMode(definitions.PushItMode):
         push2_python.constants.BUTTON_UPPER_ROW_8,
     ]
 
-    scene_trigger_buttons = [
+    scene_trigger_buttons: ClassVar[list] = [
         push2_python.constants.BUTTON_1_32T,
         push2_python.constants.BUTTON_1_32,
         push2_python.constants.BUTTON_1_16T,
@@ -57,13 +59,13 @@ class ClipTriggeringMode(definitions.PushItMode):
         Each clip tuple contains following information: (clip_num, clip_length, playhead_position)
         """
         playing_clips_info = {}
-        for track_num in range(0, len(self.app.session.tracks)):
+        for track_num in range(len(self.app.session.tracks)):
             current_track_playing_clips_info = []
             current_track_will_play_clips_info = []
             track = self.app.session.get_track_by_idx(track_num)
             if track is None:
                 continue
-            for clip_num in range(0, len(track.clips)):
+            for clip_num in range(len(track.clips)):
                 clip = self.app.session.get_clip_by_idx(track_num, clip_num)
                 if clip is None:
                     clip_state = ClipStatus(
@@ -109,14 +111,14 @@ class ClipTriggeringMode(definitions.PushItMode):
         if not self.app.is_mode_active(self.app.settings_mode) and not self.app.is_mode_active(self.app.clip_edit_mode):
             # Draw clip progress bars
             playing_clips_info = self.get_playing_clips_info()
-            for track_num, playing_clips_info in playing_clips_info.items():
+            for track_num, clip_info in playing_clips_info.items():
                 playing_clips = []
-                if not playing_clips_info.get("playing", []):
-                    if playing_clips_info.get("will_play", []):
+                if not clip_info.get("playing", []):
+                    if clip_info.get("will_play", []):
                         # If no clips currently playing or cued to stop, show info about clips cued to play
-                        playing_clips = playing_clips_info["will_play"]
+                        playing_clips = clip_info["will_play"]
                 else:
-                    playing_clips = playing_clips_info["playing"]
+                    playing_clips = clip_info["playing"]
 
                 num_clips = len(
                     playing_clips
@@ -137,9 +139,9 @@ class ClipTriggeringMode(definitions.PushItMode):
                     else:
                         position_percentage = 0.0
                     if clip_length > 0.0:
-                        text = "{:.1f}\n({})".format(playhead_position, clip_length)
+                        text = f"{playhead_position:.1f}\n({clip_length})"
                     else:
-                        text = "{:.1f}".format(playhead_position)
+                        text = f"{playhead_position:.1f}"
                     show_text(
                         ctx,
                         track_num,
@@ -158,7 +160,7 @@ class ClipTriggeringMode(definitions.PushItMode):
                         ctx,
                         track_num,
                         y,
-                        "{}-{}".format(track_num + 1, clip_num + 1),
+                        f"{track_num + 1}-{clip_num + 1}",
                         height=height,
                         font_color=font_color,
                         background_color=None,
@@ -211,10 +213,10 @@ class ClipTriggeringMode(definitions.PushItMode):
     def update_pads(self):
         color_matrix = []
         animation_matrix = []
-        for c in range(0, definitions.GRID_HEIGHT): # c represents the clip
+        for c in range(definitions.GRID_HEIGHT): # c represents the clip
             row_colors = []
             row_animation = []
-            for t in range(0, definitions.GRID_WIDTH): # t represents the track
+            for t in range(definitions.GRID_WIDTH): # t represents the track
                 # Get clip more safely - check if track and clip exist first
                 clip = None
                 try:
@@ -222,7 +224,7 @@ class ClipTriggeringMode(definitions.PushItMode):
                     if track is not None:
                         # Use get_clip_by_idx which properly handles the sparse nature
                         clip = self.app.session.get_clip_by_idx(t, c)
-                except Exception:
+                except (IndexError, AttributeError, TypeError):
                     # If any error occurs, clip remains None
                     pass
 
@@ -297,8 +299,8 @@ class ClipTriggeringMode(definitions.PushItMode):
                     target_track_idx = self.app.session.tracks.index(buffer_track)
                 except ValueError:
                     target_track_idx = None
-            for c in range(0, definitions.GRID_HEIGHT):
-                for t in range(0, definitions.GRID_WIDTH):
+            for c in range(definitions.GRID_HEIGHT):
+                for t in range(definitions.GRID_WIDTH):
                     if target_track_idx is not None and t != target_track_idx:
                         continue
                     clip = self.app.session.get_clip_by_idx(t, c)
@@ -392,18 +394,14 @@ class ClipTriggeringMode(definitions.PushItMode):
             if not clip.is_empty():
                 clip.clear()
                 self.app.add_display_notification(
-                    "Cleared clip: {0}-{1}".format(
-                        track_num + 1, clip_num + 1
-                    )
+                    f"Cleared clip: {track_num + 1}-{clip_num + 1}"
                 )
 
         elif self.app.is_button_being_pressed(self.double_clip_button):
             if not clip.is_empty():
                 clip.double()
                 self.app.add_display_notification(
-                    "Doubled clip: {0}-{1}".format(
-                        track_num + 1, clip_num + 1
-                    )
+                    f"Doubled clip: {track_num + 1}-{clip_num + 1}"
                 )
 
         elif self.app.is_button_being_pressed(self.quantize_button):
@@ -490,11 +488,11 @@ class ClipTriggeringMode(definitions.PushItMode):
 
                 return True  # Return True to indicate success
 
-            except Exception as e:
+            except (AttributeError, ValueError) as e:
                 print(f"ERROR: Exception during mode switching: {e}")
                 traceback.print_exc()
                 return False
-        except Exception as e:
+        except (AttributeError, ValueError) as e:
             print(f"ERROR in long press handling: {e}")
             traceback.print_exc()
             return False
@@ -534,8 +532,7 @@ class ClipTriggeringMode(definitions.PushItMode):
                 clip_num = playing_clips[0][0]
                 clip_length = playing_clips[0][1]
                 new_length = clip_length + delta
-                if new_length < 1.0:
-                    new_length = 1.0
+                new_length = max(new_length, 1.0)
 
                 clip = self.app.session.get_clip_by_idx(track_num, clip_num)
                 if clip is not None and not clip.is_empty():

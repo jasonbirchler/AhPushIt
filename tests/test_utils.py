@@ -1,18 +1,65 @@
 """Tests for utils.py module."""
 
 from utils import (
+    ABBREVIATION_RULES,
+    ScaleGridList,
+    TextOverflow,
     clamp,
     clamp01,
-    TextOverflow,
-    ABBREVIATION_RULES,
-    show_title,
-    show_value,
-    draw_text_at,
-    show_text,
-    show_notification,
     draw_clip,
     draw_knob,
+    draw_text_at,
+    show_notification,
+    show_text,
+    show_title,
+    show_value,
 )
+
+
+class TestScaleGridList:
+    """Test ScaleGridList windowing behavior."""
+
+    def test_small_list_fits_single_window(self):
+        items = [f"item{i}" for i in range(22)]
+        grid = ScaleGridList(items, n_columns=6, n_rows=4)
+        assert grid.get_window_offset() == 0
+        visible = grid.get_visible_items()
+        assert len(visible) == 24
+        assert visible[:22] == items
+        # Padded with None
+        assert visible[22] is None and visible[23] is None
+
+    def test_scroll_moves_selection(self):
+        items = [f"item{i}" for i in range(10)]
+        grid = ScaleGridList(items, n_columns=6, n_rows=4)
+        assert grid.selected_index == 0
+        grid.scroll(3)
+        assert grid.selected_index == 3
+        grid.scroll(-100)
+        assert grid.selected_index == 0  # clamped
+
+    def test_window_offset_pages_for_large_list(self):
+        items = [f"item{i}" for i in range(60)]
+        grid = ScaleGridList(items, n_columns=6, n_rows=4)
+        max_visible = 24
+        # Selecting an item on the second page shifts the window
+        grid.set_index(30)
+        assert grid.get_window_offset() == 24
+        visible = grid.get_visible_items()
+        assert visible[0] == "item24"
+        assert len(visible) == max_visible
+        # Selected item is within the visible window
+        assert "item30" in visible
+
+    def test_get_item(self):
+        items = [f"item{i}" for i in range(10)]
+        grid = ScaleGridList(items, n_columns=6, n_rows=4)
+        # col 0, row 2 -> index 2
+        assert grid.get_item(0, 2) == "item2"
+        # col 1, row 0 -> index 4 (n_rows=4 per column)
+        assert grid.get_item(1, 0) == "item4"
+        # Out of range returns None
+        assert grid.get_item(5, 3) is None
 
 
 class TestClampFunctions:

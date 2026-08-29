@@ -1,7 +1,10 @@
+import os
+from typing import ClassVar
+
 import push2_python
 
 import definitions
-from utils import show_text, show_title, show_value, ScrollableList
+from utils import ScrollableList, show_text, show_title, show_value
 
 
 class AddTrackMode(definitions.PushItMode):
@@ -9,8 +12,8 @@ class AddTrackMode(definitions.PushItMode):
 
     # Selection state
     track_type = "melodic"
-    available_output_devices = []
-    available_input_devices = []
+    available_output_devices: ClassVar[list] = []
+    available_input_devices: ClassVar[list] = []
     output_device_idx = 0
     input_device_idx = 0
     output_channel = 1  # Display value 1-16
@@ -23,6 +26,9 @@ class AddTrackMode(definitions.PushItMode):
 
     # Edit mode state - if editing an existing track
     editing_track = None
+
+    # Selected MIDI CC map (dataset-relative path, e.g. "Moog/Grandmother")
+    midi_map_selection = None
 
     def initialize(self, settings=None):
         self.available_output_devices = sorted(self.app.session.output_device_names)
@@ -38,6 +44,7 @@ class AddTrackMode(definitions.PushItMode):
         self.output_device_list_offset = 0
         self.input_device_list_offset = 0
         self.editing_track = None
+        self.midi_map_selection = None
 
         # If settings contains an editing track, use it
         if settings and 'editing_track' in settings:
@@ -86,6 +93,9 @@ class AddTrackMode(definitions.PushItMode):
 
         # Load Track Type
         self.track_type = track.type
+
+        # Load assigned MIDI CC map
+        self.midi_map_selection = getattr(track, "midi_map", None)
 
     def activate(self):
         # Refresh device lists
@@ -138,99 +148,138 @@ class AddTrackMode(definitions.PushItMode):
         self.push.buttons.set_button_color(
             push2_python.constants.BUTTON_UPPER_ROW_8, definitions.RED
         )
+        self.push.buttons.set_button_color(
+            push2_python.constants.BUTTON_LOWER_ROW_3, definitions.WHITE
+        )
 
     def update_display(self, ctx, w, h):
         part_w = w // definitions.GRID_WIDTH
 
-        # Column 1: Title / preview
-        if self.editing_track is not None:
-            show_title(
-                ctx,
-                part_w * 0 + 2,
-                h,
-                "EDIT TRACK"
-            )
-        else:
-            show_title(
-                ctx,
-                part_w * 0 + 2,
-                h,
-                "ADD TRACK"
-            )
-        # Column 2: Track Type
-        show_title(
-            ctx,
-            part_w * 1,
-            h,
-            "TRACK TYPE"
-        )
-        show_value(
-            ctx,
-            part_w * 1,
-            h,
-            self.track_type
-        )
+        for i in range(8):
+            part_x = i * part_w
 
-        # Column 3: Output device
-        show_title(
-            ctx,
-            part_w * 2,
-            h,
-            "OUT DEVICE"
-        )
+            if i == 0:
+                # Column 1: Title / preview
+                if self.editing_track is not None:
+                    show_title(
+                        ctx,
+                        part_x + 2,
+                        h,
+                        "EDIT TRACK"
+                    )
+                else:
+                    show_title(
+                        ctx,
+                        part_x + 2,
+                        h,
+                        "ADD TRACK"
+                    )
 
-        if not self.output_device_list.items:
-            self.output_device_list.items = sorted(self.app.session.output_device_names)
-            if self.output_device_list.selected_index >= len(self.output_device_list.items):
-                self.output_device_list.selected_index = max(0, len(self.output_device_list.items) - 1)
-                self.output_device_list.scroll_offset = self.output_device_list.selected_index
+                # Column 1: Current track name (only shown when editing a track)
+                if self.editing_track is not None:
+                    track_idx = self.app.session.tracks.index(self.editing_track)
+                    track_color = self.app.track_selection_mode.get_track_color(track_idx)
+                    show_text(
+                        ctx,
+                        i,
+                        30,
+                        self.editing_track.device_short_name,
+                        height=20,
+                        font_color=definitions.BLACK,
+                        background_color=track_color,
+                        overflow="abbreviate",
+                    )
+            if i == 1:
+                # Column 2: Track Type
+                show_title(
+                    ctx,
+                    part_x,
+                    h,
+                    "TRACK TYPE"
+                )
+                show_value(
+                    ctx,
+                    part_x,
+                    h,
+                    self.track_type
+                )
 
-        self.output_device_list.draw(
-            ctx, h, h - 24,
-            [1.0, 1.0, 1.0], [1.0, 1.0, 1.0],
-            lambda item, is_selected: self.output_device_list.truncate_text(ctx, item),
-            "No outputs found"
-        )
+            if i == 2:
+                # Column 3: Output device
+                show_title(
+                    ctx,
+                    part_x,
+                    h,
+                    "OUT DEVICE"
+                )
 
-        # Section 5: Output channel
-        show_title(
-            ctx,
-            part_w * 4,
-            h,
-            "CHANNEL"
-        )
-        show_value(
-            ctx,
-            part_w * 4,
-            h,
-            f"Ch {self.output_channel}",
-        )
+                cc_map_label = (
+                    os.path.basename(self.midi_map_selection)
+                    if self.midi_map_selection
+                    else "Assign CC map"
+                )
+                show_text(
+                    ctx,
+                    i,
+                    h - 24,
+                    cc_map_label,
+                    overflow="abbreviate",
+                )
 
-        # Section 7: Confirm
-        show_text(
-            ctx,
-            6,
-            5,
-            "CONFIRM",
-            height=16,
-            font_color=definitions.GREEN,
-            background_color=definitions.BLACK,
-            margin_left=6,
-            center_horizontally=False,
-        )
+                if not self.output_device_list.items:
+                    self.output_device_list.items = sorted(self.app.session.output_device_names)
+                    if self.output_device_list.selected_index >= len(self.output_device_list.items):
+                        self.output_device_list.selected_index = max(0, len(self.output_device_list.items) - 1)
+                        self.output_device_list.scroll_offset = self.output_device_list.selected_index
 
-        # Section 8: Cancel
-        show_text(
-            ctx,
-            7,
-            5,
-            "CANCEL",
-            height=16,
-            font_color=definitions.RED,
-            background_color=definitions.BLACK,
-            margin_left=6,
-            center_horizontally=False,
-        )
+                self.output_device_list.draw(
+                    ctx, h, h - 24,
+                    [1.0, 1.0, 1.0], [1.0, 1.0, 1.0],
+                    lambda item, is_selected: self.output_device_list.truncate_text(ctx, item),
+                    "No outputs found"
+                )
+            if i == 4:
+                # Section 5: Output channel
+                show_title(
+                    ctx,
+                    part_x,
+                    h,
+                    "CHANNEL"
+                )
+                show_value(
+                    ctx,
+                    part_x,
+                    h,
+                    f"Ch {self.output_channel}",
+                )
+
+            if i == 6:
+                # Section 7: Confirm
+                show_text(
+                    ctx,
+                    i,
+                    5,
+                    "CONFIRM",
+                    height=16,
+                    font_color=definitions.GREEN,
+                    background_color=definitions.BLACK,
+                    margin_left=6,
+                    center_horizontally=False,
+                )
+
+            if i == 7:
+                # Section 8: Cancel
+                show_text(
+                    ctx,
+                    i,
+                    5,
+                    "CANCEL",
+                    height=16,
+                    font_color=definitions.RED,
+                    background_color=definitions.BLACK,
+                    margin_left=6,
+                    center_horizontally=False,
+                )
 
     def on_encoder_rotated(self, encoder_name, increment):
         # Output-device list scroll uses the "slow" profile; other edits (track
@@ -266,8 +315,7 @@ class AddTrackMode(definitions.PushItMode):
             self.output_device_idx = (self.output_device_idx - 1) % len(
                 self.available_output_devices
             )
-            if self.output_device_idx < self.output_device_list_offset:
-                self.output_device_list_offset = self.output_device_idx
+            self.output_device_list_offset = min(self.output_device_list_offset, self.output_device_idx)
             self.app.pads_need_update = True
             return True
 
@@ -332,15 +380,24 @@ class AddTrackMode(definitions.PushItMode):
                     input_channel=in_ch,
                 )
                 if track:
+                    track.midi_map = self.midi_map_selection
                     self.app.add_display_notification(
                         f"Track created: {track.device_short_name}"
                     )
                     self.app.buttons_need_update = True
+                    self.app.pads_need_update = True
                     self.app.unset_add_track_mode()
+                    new_track_idx = self.app.session.tracks.index(track)
+                    self.app.track_selection_mode.selected_track = new_track_idx
+                    self.app.track_selection_mode.select_track_as_active(new_track_idx)
                 return True
 
         if button_name == push2_python.constants.BUTTON_UPPER_ROW_8:  # Cancel
             self.app.unset_add_track_mode()
+            return True
+
+        if button_name == push2_python.constants.BUTTON_LOWER_ROW_3: # Assign MIDI CC map
+            self.app.set_midi_map_selection_mode()
             return True
 
         return None

@@ -1,10 +1,9 @@
 """Tests for modes/rhythmic_mode.py module."""
 
-import pytest
 from unittest.mock import MagicMock
 
-from modes.rhythmic_mode import RhythmicMode
 import definitions
+from modes.rhythmic_mode import RhythmicMode
 
 
 class TestRhythmicMode:

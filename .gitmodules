@@ -1,0 +1,3 @@
+[submodule "midi-dataset"]
+	path = midi-dataset
+	url = https://github.com/pencilresearch/midi.git

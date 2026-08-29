@@ -3,8 +3,9 @@
 from unittest.mock import MagicMock
 
 import isobar as iso
+
 from sequencer import Sequencer
-from utils import get_beats_until_next_bar, compute_clip_total_duration
+from utils import get_beats_until_next_bar
 
 
 class TestSequencer:

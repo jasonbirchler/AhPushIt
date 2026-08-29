@@ -1,9 +1,9 @@
 """Primary application class for PushIt."""
 
-import sys
 import json
 import os
 import platform
+import sys
 import time
 import traceback
 
@@ -20,6 +20,8 @@ except ImportError:
     pass  # engineio might not be installed
 
 
+from typing import ClassVar
+
 import cairo
 import isobar as iso
 import numpy
@@ -27,24 +29,25 @@ import push2_python
 
 import definitions
 from clip import Clip
-from utils import show_notification
 from metronome import AhPushItMetronome
 from modes.add_track_mode import AddTrackMode
 from modes.clip_edit_mode import ClipEditMode
 from modes.clip_triggering_mode import ClipTriggeringMode
 from modes.main_controls_mode import MainControlsMode
 from modes.melodic_mode import MelodicMode
-from modes.midi_cc_mode import MIDICCMode
 from modes.metronome_mode import MetronomeMode
+from modes.midi_cc_mode import MIDICCMode
+from modes.midi_map_selection_mode import MidiMapSelectionMode
 from modes.preset_selection_mode import PresetSelectionMode
 from modes.rhythmic_mode import RhythmicMode
+from modes.scale_mode import ScaleMode
 from modes.settings_mode import SettingsMode
 from modes.slice_notes_mode import SliceNotesMode
-from modes.scale_mode import ScaleMode
 from modes.track_selection_mode import TrackSelectionMode
-from session import Session
-from sequencer import Sequencer
 from project_manager import ProjectManager
+from sequencer import Sequencer
+from session import Session
+from utils import show_notification
 
 buttons_pressed_state = {}
 pads_pressed_state = {}  # Track pad press times for long press detection
@@ -129,7 +132,7 @@ def compute_accelerated_increment(encoder_name, increment, profile=DEFAULT_ENCOD
     return int(increment * multiplier)
 
 
-class PushItApp(object):
+class PushItApp:
     """
     The App handles initializing everything at startup.
     App manages Push interface.
@@ -162,8 +165,8 @@ class PushItApp(object):
     current_frame_rate_measurement_second = 0
 
     # other state vars
-    active_modes = []
-    previously_active_mode_for_xor_group = {}
+    active_modes: ClassVar[list] = []
+    previously_active_mode_for_xor_group: ClassVar[dict] = {}
     pads_need_update = True
     buttons_need_update = True
 
@@ -177,7 +180,7 @@ class PushItApp(object):
 
     # Global MIDI input device for passthru / recording
     midi_in_device_name: str = None
-    _note_on_times: dict = {}       # {pitch: (start_time, velocity)} for duration tracking
+    _note_on_times: ClassVar[dict] = {}       # {pitch: (start_time, velocity)} for duration tracking
 
     # Global live-recording arm state
     is_recording_armed: bool = False
@@ -192,7 +195,8 @@ class PushItApp(object):
         self.settings_file = os.path.join(self.settings_dir, "settings.json")
 
         if os.path.exists(self.settings_file):
-            self.settings = json.load(open(self.settings_file))
+            with open(self.settings_file) as f:
+                self.settings = json.load(f)
         else:
             self.settings = {}
 
@@ -236,6 +240,9 @@ class PushItApp(object):
     def init_modes(self, settings):
         self.main_controls_mode = MainControlsMode(self, settings=settings)
         self.add_track_mode = AddTrackMode(self, settings=settings)
+        # MIDI map browser shares the pads XOR group with add_track_mode but is
+        # only activated on demand (never added to active_modes here)
+        self.midi_map_selection_mode = MidiMapSelectionMode(self, settings=settings)
         self.metronome_mode = MetronomeMode(self, settings=settings)
 
         self.melodic_mode = MelodicMode(self, settings=settings)
@@ -310,9 +317,19 @@ class PushItApp(object):
     def set_add_track_mode(self, settings=None):
         self.add_track_mode.initialize(settings=settings)
         self.set_mode_for_xor_group(self.add_track_mode)
+        self.buttons_need_update = True
 
     def unset_add_track_mode(self):
         self.unset_mode_for_xor_group(self.add_track_mode)
+        self.buttons_need_update = True
+
+    def set_midi_map_selection_mode(self):
+        self.set_mode_for_xor_group(self.midi_map_selection_mode)
+        self.buttons_need_update = True
+
+    def unset_midi_map_selection_mode(self):
+        self.unset_mode_for_xor_group(self.midi_map_selection_mode)
+        self.buttons_need_update = True
 
     def set_metronome_config_mode(self):
         self.metronome_mode.initialize()
@@ -446,7 +463,8 @@ class PushItApp(object):
         # Ensure settings directory exists
         os.makedirs(self.settings_dir, exist_ok=True)
         # Write to file
-        json.dump(settings, open(self.settings_file, "w"))
+        with open(self.settings_file, "w") as f:
+            json.dump(settings, f)
         # Update in-memory settings to match the saved state
         self.settings = settings
 
@@ -787,7 +805,7 @@ class PushItApp(object):
         new_clip.notes = self.recording_buffer.notes.copy()
         new_clip.durations = self.recording_buffer.durations.copy()
         new_clip.amplitudes = self.recording_buffer.amplitudes.copy()
-        new_clip.name = "{0}-{1}".format(track_idx + 1, slot + 1)
+        new_clip.name = f"{track_idx + 1}-{slot + 1}"
         track.add_clip(new_clip, slot)
         new_clip.update_status()
 
@@ -796,7 +814,7 @@ class PushItApp(object):
         self.awaiting_buffer_slot = False
         self.pads_need_update = True
         self.add_display_notification(
-            "Saved to {0}-{1}".format(track_idx + 1, slot + 1)
+            f"Saved to {track_idx + 1}-{slot + 1}"
         )
 
     def discard_recording_buffer(self):
@@ -928,8 +946,7 @@ class PushItApp(object):
                     clip.update_playhead_position()
 
         # If clip edit mode is active with a playing clip, update pads for playhead animation
-        if self.is_mode_active(self.clip_edit_mode):
-            if self.clip_edit_mode.clip and self.clip_edit_mode.clip.playing:
+        if self.is_mode_active(self.clip_edit_mode) and self.clip_edit_mode.clip and self.clip_edit_mode.clip.playing:
                 self.pads_need_update = True
 
     def check_for_new_midi_devices(self):
@@ -946,7 +963,7 @@ class PushItApp(object):
             self.actual_frame_rate = self.current_frame_rate_measurement
             self.current_frame_rate_measurement = 0
             self.current_frame_rate_measurement_second = now
-            print("{0} fps".format(self.actual_frame_rate))
+            print(f"{self.actual_frame_rate} fps")
 
     def run_loop(self):
         print("PushIt is running...")
@@ -1020,8 +1037,7 @@ def on_encoder_touched(_, encoder_name):
 @push2_python.on_encoder_released()
 def on_encoder_released(_, encoder_name):
     print(f"encoder {encoder_name} released")
-    if encoder_name == push2_python.constants.ENCODER_TEMPO_ENCODER:
-        if encoder_touch_state.get(encoder_name, False):
+    if encoder_name == push2_python.constants.ENCODER_TEMPO_ENCODER and encoder_touch_state.get(encoder_name, False):
             # Show tempo notification
             tempo = app.seq.bpm
             tempo_text = f"{tempo:.1f} BPM"
@@ -1050,7 +1066,7 @@ def on_encoder_rotated(_, encoder_name, increment):
             if action_performed:
                 break  # If mode took action, stop event propagation
     except NameError as e:
-        print("Error:  {}".format(str(e)))
+        print(f"Error:  {e!s}")
         traceback.print_exc()
 
 
@@ -1071,7 +1087,7 @@ def on_pad_pressed(_, pad_n, pad_ij, velocity):
                 pads_pressed_state[pad_n]["handled"] = True
                 break  # If mode took action, stop event propagation
     except NameError as e:
-        print("Error:  {}".format(str(e)))
+        print(f"Error:  {e!s}")
         traceback.print_exc()
 
 
@@ -1101,7 +1117,7 @@ def on_pad_released(_, pad_n, pad_ij, velocity):
             if action_performed:
                 break
     except NameError as e:
-        print("Error:  {}".format(str(e)))
+        print(f"Error:  {e!s}")
         traceback.print_exc()
 
 
@@ -1113,7 +1129,7 @@ def on_pad_aftertouch(_, pad_n, pad_ij, velocity):
             if action_performed:
                 break  # If mode took action, stop event propagation
     except NameError as e:
-        print("Error:  {}".format(str(e)))
+        print(f"Error:  {e!s}")
         traceback.print_exc()
 
 
@@ -1126,7 +1142,7 @@ def on_button_pressed(_, name):
             if action_performed:
                 break  # If mode took action, stop event propagation
     except NameError as e:
-        print(f"Error:  {str(e)}")
+        print(f"Error:  {e!s}")
         traceback.print_exc()
 
 
@@ -1139,7 +1155,7 @@ def on_button_released(_, name):
             if action_performed:
                 break  # If mode took action, stop event propagation
     except NameError as e:
-        print("Error:  {}".format(str(e)))
+        print(f"Error:  {e!s}")
         traceback.print_exc()
 
 
@@ -1151,7 +1167,7 @@ def on_touchstrip(_, value):
             if action_performed:
                 break  # If mode took action, stop event propagation
     except NameError as e:
-        print("Error:  {}".format(str(e)))
+        print(f"Error:  {e!s}")
         traceback.print_exc()
 
 
@@ -1163,7 +1179,7 @@ def on_sustain_pedal(_, sustain_on):
             if action_performed:
                 break  # If mode took action, stop event propagation
     except NameError as e:
-        print("Error:  {}".format(str(e)))
+        print(f"Error:  {e!s}")
         traceback.print_exc()
 
 
@@ -1177,7 +1193,7 @@ def on_midi_connected(_):
     except NameError as e:
         global midi_connected_received_before_app
         midi_connected_received_before_app = True
-        print("Error:  {}".format(str(e)))
+        print(f"Error:  {e!s}")
         traceback.print_exc()
 
 

@@ -1,17 +1,18 @@
 """Class for managing metronome settings."""
 
+from typing import ClassVar
+
 import push2_python
 
 import definitions
-from utils import clear_display, show_text, show_title, show_value, ScrollableList
-import isobar as iso
 from metronome import AhPushItMetronome
+from utils import ScrollableList, clear_display, show_text, show_title, show_value
 
 
 class MetronomeMode(definitions.PushItMode):
     xor_group = "pads"
 
-    available_devices = []
+    available_devices: ClassVar[list] = []
     device_idx = 0
     accent_note_selected = True
     accent_velocity_selected = True
@@ -206,8 +207,7 @@ class MetronomeMode(definitions.PushItMode):
         if encoder_name == push2_python.constants.ENCODER_TRACK2_ENCODER: # Output device
             self.device_idx = (self.device_idx + delta) % len(self.available_devices)
 
-            if self.metro_device_list.items and delta != 0:
-                    if self.metro_device_list.select_index(delta):
+            if self.metro_device_list.items and delta != 0 and self.metro_device_list.select_index(delta):
                         visible_items = self.metro_device_list.get_visible_count(push2_python.constants.DISPLAY_N_LINES)
                         self.metro_device_list.adjust_scroll_offset(visible_items)
 

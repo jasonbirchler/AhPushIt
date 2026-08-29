@@ -6,9 +6,14 @@ import isobar as iso
 import numpy as np
 from numpyencoder import NumpyEncoder
 
-from track import Track
 from clip import Clip
-from modes.scale_mode import _canonical_key_name, get_isobar_scale, get_scale_pattern, KEY_TO_MIDI
+from modes.scale_mode import (
+    KEY_TO_MIDI,
+    _canonical_key_name,
+    get_isobar_scale,
+    get_scale_pattern,
+)
+from track import Track
 
 
 class ProjectManager:
@@ -26,7 +31,7 @@ class ProjectManager:
         """Save current project state to JSON file"""
         project_data = {
             "version": "1.0",
-            "created": datetime.now().isoformat(),
+            "created": datetime.now(tz=datetime.now().astimezone().tzinfo).isoformat(),
             "bpm": self.app.seq.bpm,
             "scale": str(self.app.seq.scale),
             "key": str(self.app.seq.key),
@@ -43,6 +48,7 @@ class ProjectManager:
                     "input_device": track.input_device_name,
                     "input_channel": track.input_channel,
                     "passthru_muted": track.passthru_muted,
+                    "midi_map": track.midi_map,
                     "clip_data": [],
                 }
 
@@ -124,6 +130,7 @@ class ProjectManager:
                 # If the track has no device, add it to the list as is
                 if not track_data.get("device"):
                     empty_track = Track(parent=self.app.session)
+                    empty_track.midi_map = track_data.get("midi_map")
                     self.app.session.tracks[track_idx] = empty_track
                 # Otherwise convert JSON data to objects
                 else:
@@ -134,6 +141,7 @@ class ProjectManager:
                     track.input_device_name = track_data.get("input_device")
                     track.input_channel = track_data.get("input_channel", -1)
                     track.passthru_muted = track_data.get("passthru_muted", False)
+                    track.midi_map = track_data.get("midi_map")
 
                     for clip_data in track_data["clip_data"]:
                         clip = Clip(parent=track)
@@ -163,7 +171,7 @@ class ProjectManager:
 
             return True
 
-        except Exception as e:
+        except (KeyError, ValueError, TypeError, AttributeError) as e:
             print(f"Error loading project: {e}")
             print("Restoring previous session...")
             self.app.session = tmp_session

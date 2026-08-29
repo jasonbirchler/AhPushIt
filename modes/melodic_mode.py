@@ -1,5 +1,8 @@
 import time
+from typing import ClassVar
+
 import push2_python.constants
+
 import definitions
 
 
@@ -7,9 +10,9 @@ class MelodicMode(definitions.PushItMode):
 
     xor_group = "pads"
 
-    notes_being_played = []
+    notes_being_played: ClassVar[list] = []
     root_midi_note = 0  # default redefined in initialize
-    scale_pattern = [
+    scale_pattern: ClassVar[list] = [
         True,
         False,
         True,
@@ -97,12 +100,12 @@ class MelodicMode(definitions.PushItMode):
         pow_curve = [
             pow(e, 3 * self.poly_at_curve_bending / 100)
             for e in [
-                i / self.poly_at_max_range for i in range(0, self.poly_at_max_range)
+                i / self.poly_at_max_range for i in range(self.poly_at_max_range)
             ]
         ]
         return [
             int(127 * pow_curve[i]) if i < self.poly_at_max_range else 127
-            for i in range(0, 128)
+            for i in range(128)
         ]
 
     def add_note_being_played(self, midi_note, source):
@@ -145,7 +148,7 @@ class MelodicMode(definitions.PushItMode):
 
     def note_number_to_name(self, note_number):
         semis = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]
-        note_number = int(round(note_number))
+        note_number = round(note_number)
         # Standard MIDI note 60 is C4, so formula: octave = note_number // 12 - 1
         return semis[note_number % 12] + str(note_number // 12 - 1)
 
@@ -265,9 +268,9 @@ class MelodicMode(definitions.PushItMode):
 
     def update_pads(self):
         color_matrix = []
-        for i in range(0, definitions.GRID_WIDTH):
+        for i in range(definitions.GRID_WIDTH):
             row_colors = []
-            for j in range(0, definitions.GRID_HEIGHT):
+            for j in range(definitions.GRID_HEIGHT):
                 corresponding_midi_note = self.pad_ij_to_midi_note([i, j])
                 cell_color = definitions.WHITE
                 if self.is_black_key_midi_note(corresponding_midi_note):

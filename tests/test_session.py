@@ -3,8 +3,9 @@
 from unittest.mock import MagicMock
 
 import isobar as iso
-from session import Session
+
 import definitions
+from session import Session
 
 
 class TestSession:

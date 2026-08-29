@@ -1,12 +1,15 @@
+import json
 import os
+import subprocess
 import time
-from enum import IntEnum
 from datetime import datetime
+from enum import IntEnum
+from typing import ClassVar
 
 import push2_python.constants
 
 import definitions
-from utils import draw_text_at, show_text, show_title, show_value, ScrollableList
+from utils import ScrollableList, draw_text_at, show_text, show_title, show_value
 
 IS_RUNNING_SW_UPDATE = ''
 
@@ -23,7 +26,7 @@ class Pages(IntEnum):
 class SettingsMode(definitions.PushItMode):
 
     xor_group = 'buttons'
-    buttons_used = ['setup']
+    buttons_used: ClassVar[list] = ['setup']
 
     # Performance page
     # - Root note
@@ -43,22 +46,21 @@ class SettingsMode(definitions.PushItMode):
     # - Save session
     # - Load session
 
-    current_page = 0
-    n_pages = len(Pages)
-    encoders_state = {}
+    current_page: int = 0
+    n_pages: int = len(Pages)
+    encoders_state: ClassVar[dict] = {}
     setup_button_pressing_time = None
 
-    current_preset_save_number = 0
-    current_preset_load_number = 0
+    current_preset_save_number: int = 0
+    current_preset_load_number: int = 0
 
-    waiting_for_confirmation = False
+    waiting_for_confirmation: bool = False
     project_to_confirm = None
 
-    encoder_accumulators = {}  # encoder_name: accumulated_value
+    encoder_accumulators: ClassVar[dict] = {}
 
-    # Store original device assignments when entering settings mode
-    original_device_assignments = {}  # track_idx: {'device_name': str, 'channel': int}
-    modified_tracks = set()  # track_idx: tracks that have been explicitly modified by user
+    original_device_assignments: ClassVar[dict] = {}
+    modified_tracks: ClassVar[set] = set()
 
     def move_to_next_page(self):
         self.app.buttons_need_update = True
@@ -213,8 +215,8 @@ class SettingsMode(definitions.PushItMode):
             self.push.buttons.set_button_color( # Empty
                 push2_python.constants.BUTTON_UPPER_ROW_4, definitions.BLACK
             )
-            self.push.buttons.set_button_color( # Empty
-                push2_python.constants.BUTTON_UPPER_ROW_5, definitions.BLACK
+            self.push.buttons.set_button_color( # Update MIDI Definitions
+                push2_python.constants.BUTTON_UPPER_ROW_5, definitions.CYAN
             )
             self.push.buttons.set_button_color( # Reset MIDI
                 push2_python.constants.BUTTON_UPPER_ROW_6,
@@ -263,14 +265,14 @@ class SettingsMode(definitions.PushItMode):
         part_h = h
 
         # First pass: backgrounds
-        for i in range(0, 8):
+        for i in range(8):
             part_x = i * part_w
             ctx.set_source_rgb(0, 0, 0)
             ctx.rectangle(part_x - 3, 0, part_w + 6, h)
             ctx.fill()
 
         # Second pass: labels and values
-        for i in range(0, 8):
+        for i in range(8):
             part_x = i * part_w
 
             color = [1.0, 1.0, 1.0]
@@ -359,6 +361,9 @@ class SettingsMode(definitions.PushItMode):
                     )
                 elif i == 2:  # Save settings
                     show_title(ctx, part_x, h, 'SAVE SETTINGS')
+                elif i == 4:  # Update MIDI Definitions
+                    show_title(ctx, part_x, h, 'UPDATE MIDI')
+                    show_value(ctx, part_x, h, 'DEFS', color)
                 elif i == 5:  # Re-send MIDI connection established to Push
                     show_title(
                         ctx,
@@ -454,14 +459,12 @@ class SettingsMode(definitions.PushItMode):
                 self.app.pads_need_update = True  # Using async update method because we don't really need immediate response here
 
             elif encoder_name == push2_python.constants.ENCODER_TRACK2_ENCODER:
-                if delta >= 1:  # Threshold crossed in positive direction
-                    if not self.app.melodic_mode.use_poly_at:
-                        self.app.melodic_mode.use_poly_at = True
-                        self.app.push.pads.set_polyphonic_aftertouch()
-                elif delta <= -1:  # Threshold crossed in negative direction
-                    if self.app.melodic_mode.use_poly_at:
-                        self.app.melodic_mode.use_poly_at = False
-                        self.app.push.pads.set_channel_aftertouch()
+                if delta >= 1 and not self.app.melodic_mode.use_poly_at:
+                    self.app.melodic_mode.use_poly_at = True
+                    self.app.push.pads.set_polyphonic_aftertouch()
+                elif delta <= -1 and self.app.melodic_mode.use_poly_at:
+                    self.app.melodic_mode.use_poly_at = False
+                    self.app.push.pads.set_channel_aftertouch()
 
             elif encoder_name == push2_python.constants.ENCODER_TRACK3_ENCODER:
                 if delta != 0:
@@ -483,26 +486,21 @@ class SettingsMode(definitions.PushItMode):
             if encoder_name == push2_python.constants.ENCODER_TRACK2_ENCODER:
                 if not self.midi_in_list.items:
                     self.midi_in_list.items = self.app.session._get_safe_input_device_names()
-                if self.midi_in_list.items and delta != 0:
-                    if self.midi_in_list.select_index(delta):
-                        visible_items = self.midi_in_list.get_visible_count(push2_python.constants.DISPLAY_N_LINES)
-                        self.midi_in_list.adjust_scroll_offset(visible_items)
+                if self.midi_in_list.items and delta != 0 and self.midi_in_list.select_index(delta):
+                    visible_items = self.midi_in_list.get_visible_count(push2_python.constants.DISPLAY_N_LINES)
+                    self.midi_in_list.adjust_scroll_offset(visible_items)
 
         elif self.current_page == Pages.PROJECT:
             if encoder_name == push2_python.constants.ENCODER_TRACK1_ENCODER:
                 if delta != 0:
                     self.current_preset_save_number += delta
-                    if self.current_preset_save_number < 0:
-                        self.current_preset_save_number = 0
+                    self.current_preset_save_number = max(self.current_preset_save_number, 0)
 
-            elif encoder_name == push2_python.constants.ENCODER_TRACK3_ENCODER:
-                if self.project_list.items and delta != 0:
-                    if self.project_list.select_index(delta):
-                        visible_items = self.project_list.get_visible_count(push2_python.constants.DISPLAY_N_LINES)
-                        self.project_list.adjust_scroll_offset(visible_items)
-
-                        self.waiting_for_confirmation = False
-                        self.project_to_confirm = None
+            elif encoder_name == push2_python.constants.ENCODER_TRACK3_ENCODER and self.project_list.items and delta != 0 and self.project_list.select_index(delta):
+                visible_items = self.project_list.get_visible_count(push2_python.constants.DISPLAY_N_LINES)
+                self.project_list.adjust_scroll_offset(visible_items)
+                self.waiting_for_confirmation = False
+                self.project_to_confirm = None
 
         # Always return True because encoder should not be used in any other mode
         # if this is active first
@@ -562,6 +560,28 @@ class SettingsMode(definitions.PushItMode):
                 self.app.save_current_settings_to_file()
                 self.app.add_display_notification("Settings saved")
                 return True
+            if button_name == push2_python.constants.BUTTON_UPPER_ROW_5:
+                try:
+                    # Update submodule and conversion scripts
+                    subprocess.run(
+                        ['git', 'submodule', 'update', '--remote', 'midi-dataset'],
+                        capture_output=True, text=True, cwd=os.getcwd(), check=False
+                    )
+                    subprocess.run(
+                        ['python3', 'scripts/convert_midi_csv.py'],
+                        capture_output=True, text=True, cwd=os.getcwd(), check=False
+                    )
+                    
+                    # Load all hardware definitions
+                    self.app.track_selection_mode.load_hardware_devices_info()
+                    
+                    # Reload all MIDI CC mappings
+                    self.app.midi_cc_mode.reload_all_instrument_midi_control_ccs()
+                    
+                    self.app.add_display_notification("MIDI defs updated!")
+                except (FileNotFoundError, json.JSONDecodeError) as e:
+                    self.app.add_display_notification(f"Update failed: {str(e)[:35]}")
+                return True
             if button_name == push2_python.constants.BUTTON_UPPER_ROW_6:
                 self.app.on_midi_push_connection_established()
                 return True
@@ -581,7 +601,7 @@ class SettingsMode(definitions.PushItMode):
 
         elif self.current_page == Pages.PROJECT:
             if button_name == push2_python.constants.BUTTON_UPPER_ROW_1:
-                filename = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+                filename = datetime.now(tz=datetime.now().astimezone().tzinfo).strftime("%Y-%m-%d_%H-%M-%S")
                 self.app.pm.save_project(filename)
                 self.app.add_display_notification(f"Saved session as: {filename}")
 
