@@ -106,6 +106,51 @@ class Session(BaseClass):
         self.tracks[i] = track
         return track
 
+    def delete_track(self, track_idx: int | None) -> None:
+        """Delete a track and all of its data (clips, etc.) at the given index.
+
+        Any clips currently playing on the track are stopped (and unscheduled
+        from the timeline) before the track slot is cleared. Session-level
+        scene-transition state that references the removed clips is also
+        cleaned up. App-level references (e.g. live-recording targets) are the
+        caller's responsibility.
+
+        Args:
+            track_idx: Index of the track slot to remove (0-7).
+        """
+        if track_idx is None or not (0 <= track_idx < len(self.tracks)):
+            return
+
+        track = self.tracks[track_idx]
+        if track is None:
+            return
+
+        # Stop (and unschedule) every clip on this track before removing it.
+        track_clips = [clip for clip in track.clips if clip is not None]
+        for clip in track_clips:
+            clip.stop()
+
+        # Drop any pending scene transition that references clips of this track.
+        if self.pending_scene_transition is not None:
+            removed = set(track_clips)
+            self.pending_scene_transition["clips_to_stop"] = [
+                clip
+                for clip in self.pending_scene_transition["clips_to_stop"]
+                if clip not in removed
+            ]
+            self.pending_scene_transition["clips_to_start"] = [
+                clip
+                for clip in self.pending_scene_transition["clips_to_start"]
+                if clip not in removed
+            ]
+            if (
+                not self.pending_scene_transition["clips_to_stop"]
+                and not self.pending_scene_transition["clips_to_start"]
+            ):
+                self.pending_scene_transition = None
+
+        self.tracks[track_idx] = None
+
     def get_clip_by_idx(self, track_idx=None, clip_idx=None) -> Clip | None:
         try:
             # First check if track exists

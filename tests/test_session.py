@@ -116,6 +116,77 @@ class TestSession:
         track = session.create_track(output_device_name="Test", channel=0)
         assert track._parent is session
 
+    def test_delete_track(self, mock_app):
+        """Test deleting a track clears its slot."""
+        mock_app.global_timeline = iso.Timeline()
+        session = Session(mock_app)
+
+        track = session.create_track(output_device_name="Test", channel=0)
+        assert session.tracks[0] is track
+
+        session.delete_track(0)
+        assert session.tracks[0] is None
+        assert len(session.tracks) == 8  # slots are fixed
+
+    def test_delete_track_stops_playing_clips(self, mock_app):
+        """Test deleting a track stops its playing clips."""
+        mock_app.global_timeline = iso.Timeline()
+        session = Session(mock_app)
+
+        from clip import Clip
+        track = session.create_track(output_device_name="Test", channel=0)
+        clip = Clip(parent=track)
+        clip.playing = True
+        track.add_clip(clip, position=0)
+
+        session.delete_track(0)
+        assert session.tracks[0] is None
+        assert clip.playing is False
+
+    def test_delete_track_clears_pending_scene_transition(self, mock_app):
+        """Test deleting a track drops its clips from a pending scene transition."""
+        mock_app.global_timeline = iso.Timeline()
+        session = Session(mock_app)
+
+        from clip import Clip
+        track = session.create_track(output_device_name="Test", channel=0)
+        other = session.create_track(output_device_name="Other", channel=1)
+        clip = Clip(parent=track)
+        track.add_clip(clip, position=0)
+        other_clip = Clip(parent=other)
+        other.add_clip(other_clip, position=0)
+        session.pending_scene_transition = {
+            "time": 10,
+            "clips_to_stop": [clip],
+            "clips_to_start": [clip, other_clip],
+        }
+
+        session.delete_track(0)
+        assert session.pending_scene_transition["clips_to_stop"] == []
+        assert session.pending_scene_transition["clips_to_start"] == [other_clip]
+
+        session.delete_track(1)
+        assert session.pending_scene_transition is None
+
+    def test_delete_track_invalid_index(self, mock_app):
+        """Test deleting with invalid indices is a no-op."""
+        mock_app.global_timeline = iso.Timeline()
+        session = Session(mock_app)
+
+        session.create_track(output_device_name="Test", channel=0)
+        session.delete_track(None)
+        session.delete_track(-1)
+        session.delete_track(99)
+        assert session.tracks[0] is not None
+
+    def test_delete_track_none_slot(self, mock_app):
+        """Test deleting an empty slot is a no-op."""
+        mock_app.global_timeline = iso.Timeline()
+        session = Session(mock_app)
+
+        session.delete_track(3)
+        assert all(t is None for t in session.tracks)
+
     def test_get_clip_by_idx(self, mock_app):
         """Test getting clip by track and clip index."""
         mock_app.global_timeline = iso.Timeline()

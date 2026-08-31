@@ -24,10 +24,11 @@ class TrackSelectionMode(definitions.PushItMode):
     ]
 
     # xor_group = None  # Track selection should always be active, not subject to XOR with pads modes
-    buttons_used = track_button_names
+    buttons_used = track_button_names + [push2_python.constants.BUTTON_DELETE]
 
     ADD_TRACK_BUTTON = push2_python.constants.BUTTON_ADD_TRACK
     DEVICE_BUTTON = push2_python.constants.BUTTON_DEVICE
+    DELETE_BUTTON = push2_python.constants.BUTTON_DELETE
 
     def get_selected_track(self):
         return self.app.session.get_track_by_idx(self.selected_track)
@@ -37,6 +38,10 @@ class TrackSelectionMode(definitions.PushItMode):
             self.selected_track = settings.get('selected_track', 0)
         else:
             self.selected_track = 0
+        # Track index awaiting delete confirmation (None = no pending delete).
+        # Set when the user holds DELETE and presses a track button; the actual
+        # deletion happens on the next DELETE press.
+        self.pending_delete_track_idx = None
         self.load_hardware_devices_info()
 
     def load_hardware_devices_info(self):
@@ -243,6 +248,28 @@ class TrackSelectionMode(definitions.PushItMode):
                 color = definitions.BLACK
             self.push.buttons.set_button_color(name, color)
 
+        # Highlight the track awaiting delete confirmation in red
+        if self.pending_delete_track_idx is not None and 0 <= self.pending_delete_track_idx < len(self.track_button_names):
+            self.push.buttons.set_button_color(
+                self.track_button_names[self.pending_delete_track_idx],
+                definitions.RED,
+                animation=definitions.DEFAULT_ANIMATION,
+            )
+
+        # DELETE button lights up while held to hint at track deletion.
+        # Blinks when a deletion is pending (awaiting confirmation), solid once confirmed.
+        delete_animation = (
+            definitions.DEFAULT_ANIMATION
+            if self.pending_delete_track_idx is not None
+            else definitions.ANIMATION_STATIC
+        )
+        self.set_button_color_if_pressed(
+            self.DELETE_BUTTON,
+            color=definitions.RED,
+            off_color=definitions.OFF_BTN_COLOR,
+            animation=delete_animation,
+        )
+
         # Update ADD_TRACK button
         occupied = sum(1 for t in self.app.session.tracks if t is not None)
         if occupied < 8:
@@ -363,6 +390,11 @@ class TrackSelectionMode(definitions.PushItMode):
             )
 
     def on_button_pressed(self, button_name, long_press=False):
+        if button_name == self.DELETE_BUTTON:
+            # Second DELETE press confirms the pending track deletion
+            if self.pending_delete_track_idx is not None:
+                self.confirm_delete_track()
+            return True
         if button_name == self.ADD_TRACK_BUTTON:
             self.app.set_add_track_mode()
             return True
@@ -377,6 +409,18 @@ class TrackSelectionMode(definitions.PushItMode):
             track_idx = self.track_button_names.index(button_name)
             track = self.app.session.get_track_by_idx(track_idx)
             if track is not None:
+                delete_held = self.app.is_button_being_pressed(self.DELETE_BUTTON)
+                if delete_held:
+                    # Holding DELETE + a track button stages the deletion and
+                    # asks the user to confirm by pressing DELETE again.
+                    self.pending_delete_track_idx = track_idx
+                    self.app.buttons_need_update = True
+                    self.app.add_display_notification(
+                        f"Are you sure you want to delete {track.device_short_name}? Press Delete again to confirm"
+                    )
+                    return True
+                # Any other track interaction cancels a pending deletion
+                self.pending_delete_track_idx = None
                 shift_held = self.app.is_button_being_pressed(push2_python.constants.BUTTON_SHIFT)
                 if shift_held:
                     # Toggle passthru mute for this track
@@ -388,3 +432,81 @@ class TrackSelectionMode(definitions.PushItMode):
                 else:
                     self.select_track_as_active(self.track_button_names.index(button_name))
                 return True
+
+    def confirm_delete_track(self):
+        """Delete the track staged via DELETE + track button and clean up state."""
+        track_idx = self.pending_delete_track_idx
+        self.pending_delete_track_idx = None
+        if track_idx is None:
+            return
+        track = self.app.session.get_track_by_idx(track_idx)
+        if track is None:
+            return
+        track_name = track.device_short_name
+        self._delete_track_and_cleanup(track_idx)
+        self.app.buttons_need_update = True
+        self.app.pads_need_update = True
+        self.app.add_display_notification(f"Deleted track: {track_name}")
+
+    def _delete_track_and_cleanup(self, track_idx):
+        """Remove the track at track_idx, cleaning up references to its data."""
+        track = self.app.session.get_track_by_idx(track_idx)
+        if track is None:
+            return
+
+        # Leave clip edit mode if the clip being edited belongs to this track
+        clip_edit_mode = getattr(self.app, "clip_edit_mode", None)
+        if clip_edit_mode is not None and self.app.is_mode_active(clip_edit_mode):
+            edit_clip = clip_edit_mode.clip
+            if edit_clip is not None and getattr(edit_clip, "track", None) is track:
+                self.app.unset_clip_edit_mode()
+
+        # Clear the last-touched clip reference if it belonged to this track
+        clip_triggering_mode = getattr(self.app, "clip_triggering_mode", None)
+        if clip_triggering_mode is not None:
+            selected_clip = getattr(clip_triggering_mode, "selected_clip", None)
+            if selected_clip is not None and getattr(selected_clip, "track", None) is track:
+                clip_triggering_mode.selected_clip = None
+
+        # Clean up app-level live-recording state pointing at this track
+        recording_target = getattr(self.app, "recording_target", None)
+        if recording_target is not None and getattr(
+            recording_target, "track", None
+        ) is track:
+            self.app.recording_target = None
+        recording_buffer = getattr(self.app, "recording_buffer", None)
+        if recording_buffer is not None and getattr(
+            recording_buffer, "track", None
+        ) is track:
+            self.app.recording_buffer = None
+            self.app.recording_buffer_track = None
+            self.app.awaiting_buffer_slot = False
+        if getattr(self.app, "recording_buffer_track", None) is track:
+            self.app.recording_buffer_track = None
+
+        # Send note-offs for any notes still being played on this track's output
+        self.clean_notes_currently_being_played()
+
+        self.app.session.delete_track(track_idx)
+
+        # Fix the selection if the deleted track was the selected one
+        if self.selected_track == track_idx:
+            self._select_track_after_delete(track_idx)
+
+    def _select_track_after_delete(self, deleted_idx):
+        """Pick a valid track to select after deleting the currently selected one."""
+        tracks = self.app.session.tracks
+        # Search forward from the deleted slot, then backward
+        for i in range(deleted_idx, len(tracks)):
+            if tracks[i] is not None:
+                self.select_track_as_active(i)
+                return
+        for i in range(deleted_idx - 1, -1, -1):
+            if tracks[i] is not None:
+                self.select_track_as_active(i)
+                return
+        # No tracks left — deselect (disables input monitoring on all tracks)
+        self.selected_track = 0
+        self.send_select_track(0)
+        self.app.buttons_need_update = True
+        self.app.pads_need_update = True

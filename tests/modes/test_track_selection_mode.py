@@ -23,8 +23,11 @@ class TestTrackSelectionMode:
     def test_buttons_used(self):
         """Test buttons_used includes track buttons."""
         # The mode should define buttons_used as its track_button_names list
-        assert TrackSelectionMode.buttons_used == TrackSelectionMode.track_button_names
-        assert len(TrackSelectionMode.buttons_used) == 8
+        # plus the DELETE button (used to delete tracks).
+        assert TrackSelectionMode.buttons_used == (
+            TrackSelectionMode.track_button_names + [TrackSelectionMode.DELETE_BUTTON]
+        )
+        assert len(TrackSelectionMode.buttons_used) == 9
 
     def test_initialize_with_settings(self, mock_app):
         """Test initialize with settings."""
@@ -118,3 +121,107 @@ class TestTrackSelectionMode:
         mode = TrackSelectionMode(mock_app)
         result = mode.on_button_pressed('unknown')
         assert result is None
+
+    def test_delete_plus_track_button_stages_deletion(self, mock_app):
+        """Holding DELETE and pressing a track button stages the deletion and shows a confirmation notification."""
+        mode = TrackSelectionMode(mock_app)
+        mock_track = MagicMock()
+        mock_track.device_short_name = "Test Synth"
+        mock_app.session = MagicMock()
+        mock_app.session.tracks = [mock_track]
+        mock_app.session.get_track_by_idx = MagicMock(return_value=mock_track)
+        # DELETE is held down
+        mock_app.is_button_being_pressed = MagicMock(return_value=True)
+
+        button = TrackSelectionMode.track_button_names[0]
+        result = mode.on_button_pressed(button)
+        assert result is True
+        assert mode.pending_delete_track_idx == 0
+        mock_app.add_display_notification.assert_called_once_with(
+            "Are you sure you want to delete Test Synth? Press Delete again to confirm"
+        )
+
+    def test_delete_press_without_pending_does_nothing(self, mock_app):
+        """A bare DELETE press with no staged deletion should not delete anything."""
+        mode = TrackSelectionMode(mock_app)
+        mock_app.session = MagicMock()
+        mock_app.session.tracks = []
+        result = mode.on_button_pressed(TrackSelectionMode.DELETE_BUTTON)
+        assert result is True
+        assert mode.pending_delete_track_idx is None
+        mock_app.session.delete_track.assert_not_called()
+
+    def test_track_button_without_delete_cancels_pending(self, mock_app):
+        """Pressing a track button without DELETE cancels any pending deletion."""
+        mode = TrackSelectionMode(mock_app)
+        mock_track = MagicMock()
+        mock_app.session = MagicMock()
+        mock_app.session.tracks = [mock_track]
+        mock_app.session.get_track_by_idx = MagicMock(return_value=mock_track)
+        mock_app.is_button_being_pressed = MagicMock(return_value=False)
+        mode.pending_delete_track_idx = 0
+
+        button = TrackSelectionMode.track_button_names[0]
+        result = mode.on_button_pressed(button)
+        assert result is True
+        assert mode.pending_delete_track_idx is None
+
+    def test_delete_track_flow_with_real_session(self, mock_app, session):
+        """Full flow: DELETE + track button, then DELETE again actually deletes the track."""
+        mock_app.session = session
+        mock_app.is_mode_active = MagicMock(return_value=False)
+        mock_app.buttons_need_update = False
+        mock_app.pads_need_update = False
+
+        mode = TrackSelectionMode(mock_app)
+        track = session.create_track(output_device_name="Test Synth", channel=0)
+        assert session.tracks[0] is track
+
+        # Stage deletion by holding DELETE and pressing the first track button
+        mock_app.is_button_being_pressed = MagicMock(return_value=True)
+        mode.on_button_pressed(TrackSelectionMode.track_button_names[0])
+        assert mode.pending_delete_track_idx == 0
+        assert session.tracks[0] is track  # Not deleted yet
+
+        # Release DELETE and press it again to confirm
+        mock_app.is_button_being_pressed = MagicMock(return_value=False)
+        result = mode.on_button_pressed(TrackSelectionMode.DELETE_BUTTON)
+        assert result is True
+        assert session.tracks[0] is None
+        assert mode.pending_delete_track_idx is None
+
+    def test_delete_selected_track_reselects_another(self, mock_app, session):
+        """Deleting the currently selected track selects the next available one."""
+        mock_app.session = session
+        mock_app.is_mode_active = MagicMock(return_value=False)
+        mock_app.buttons_need_update = False
+        mock_app.pads_need_update = False
+
+        mode = TrackSelectionMode(mock_app)
+        session.create_track(output_device_name="Track A", channel=0)
+        track_b = session.create_track(output_device_name="Track B", channel=1)
+        mode.selected_track = 0
+        mode.pending_delete_track_idx = 0
+
+        mode.confirm_delete_track()
+
+        assert session.tracks[0] is None
+        assert mode.selected_track == 1
+        assert session.tracks[1] is track_b
+
+    def test_delete_last_track_deselects(self, mock_app, session):
+        """Deleting the only remaining track deselects without error."""
+        mock_app.session = session
+        mock_app.is_mode_active = MagicMock(return_value=False)
+        mock_app.buttons_need_update = False
+        mock_app.pads_need_update = False
+
+        mode = TrackSelectionMode(mock_app)
+        session.create_track(output_device_name="Only Track", channel=0)
+        mode.selected_track = 0
+        mode.pending_delete_track_idx = 0
+
+        mode.confirm_delete_track()
+
+        assert all(t is None for t in session.tracks)
+        assert mode.selected_track == 0
