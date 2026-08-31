@@ -622,9 +622,17 @@ class SettingsMode(definitions.PushItMode):
                     else:
                         # Second press: load the project
                         if self.app.pm.load_project(self.project_to_confirm):
-                            self.app.add_display_notification(
-                                f"Loaded project: {self.project_to_confirm}"
+                            missing_devices = getattr(
+                                self.app.pm, "last_missing_devices", None
                             )
+                            if isinstance(missing_devices, list) and missing_devices:
+                                self.app.add_display_notification(
+                                    "Loaded; missing: " + ", ".join(missing_devices)
+                                )
+                            else:
+                                self.app.add_display_notification(
+                                    f"Loaded project: {self.project_to_confirm}"
+                                )
 
                             # Save settings so last_project is updated to the newly loaded project
                             self.app.save_current_settings_to_file()
