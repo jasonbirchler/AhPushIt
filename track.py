@@ -50,7 +50,9 @@ class Track(BaseClass):
         if position is None:
             self.clips.append(clip)
         else:
-            self.clips.insert(position, clip)
+            # Replace the clip at the given slot index instead of inserting,
+            # so the track keeps its fixed set of clip slots (initialized as 8 Nones).
+            self.clips[position] = clip
 
     def set_input_monitoring(self, enabled):
         self.input_monitoring = enabled
