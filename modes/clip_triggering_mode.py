@@ -186,6 +186,9 @@ class ClipTriggeringMode(definitions.PushItMode):
     def deactivate(self):
         for button_name in self.upper_row_buttons:
             self.push.buttons.set_button_color(button_name, definitions.BLACK)
+        self.push.buttons.set_button_color(
+            push2_python.constants.BUTTON_DELETE, definitions.BLACK
+        )
 
     def new_track_selected(self):
         self.app.pads_need_update = True
@@ -209,6 +212,7 @@ class ClipTriggeringMode(definitions.PushItMode):
             self.quantize_button, animation=definitions.DEFAULT_ANIMATION
         )
         self.set_button_color(self.duplicate_button)
+        self.set_button_color(self.clear_clip_button)
 
     def update_pads(self):
         color_matrix = []
@@ -359,20 +363,6 @@ class ClipTriggeringMode(definitions.PushItMode):
             self.app.buttons_need_update = True
             return True
 
-        action_buttons_to_check = [
-            self.clear_clip_button,
-            self.double_clip_button,
-            self.quantize_button,
-        ]
-        action_button_being_pressed = any(
-            self.app.is_button_being_pressed(button_name)
-            for button_name in action_buttons_to_check
-        )
-
-        if action_button_being_pressed:
-            # If any action button is being pressed, ignore the pad press
-            return True
-
         # get the clip
         clip = self.app.session.get_clip_by_idx(track_num, clip_num)
         # if there's no clip in that slot, nothing to do
@@ -392,10 +382,16 @@ class ClipTriggeringMode(definitions.PushItMode):
             clip.name = f"{track_num + 1}-{clip_num + 1}"
         if self.app.is_button_being_pressed(self.clear_clip_button):
             if not clip.is_empty():
-                clip.clear()
+                clip.stop()
+                track = self.app.session.get_track_by_idx(track_num)
+                if track:
+                    track.clips[clip_num] = None
                 self.app.add_display_notification(
-                    f"Cleared clip: {track_num + 1}-{clip_num + 1}"
+                    f"Deleted clip: {track_num + 1}-{clip_num + 1}"
                 )
+                self.selected_clip = None
+            self.update_pads()
+            return True
 
         elif self.app.is_button_being_pressed(self.double_clip_button):
             if not clip.is_empty():
