@@ -63,6 +63,11 @@ class ProjectManager:
                                     "clip_length_in_beats": clip.clip_length_in_beats,
                                     "step_divisions": clip.step_divisions,
                                     "beats_per_bar": clip.beats_per_bar,
+                                    "loop": (
+                                    clip.loop
+                                    if isinstance(getattr(clip, "loop", None), bool)
+                                    else True
+                                ),
                                     "notes": clip.notes,
                                     "durations": clip.durations,
                                     "amplitudes": clip.amplitudes,
@@ -149,6 +154,7 @@ class ProjectManager:
                         clip.clip_length_in_beats = clip_data["clip_length_in_beats"]
                         clip.step_divisions = clip_data["step_divisions"]
                         clip.beats_per_bar = clip_data["beats_per_bar"]
+                        clip.loop = clip_data.get("loop", True)
                         clip.notes = np.array(clip_data["notes"], dtype=object)
                         clip.durations = np.array(
                             clip_data["durations"], dtype=np.float32

@@ -328,6 +328,15 @@ class ClipEditMode(definitions.PushItMode):
                         "ON" if self.should_follow_playhead else "OFF",
                     )
 
+                    # Column 4, loop mode
+                    show_title(ctx, part_w * 4, h, "LOOP")
+                    show_value(
+                        ctx,
+                        part_w * 4,
+                        h,
+                        "ON" if self.clip.loop else "ONESHOT",
+                    )
+
                     # Column 8, window position
                     show_title(ctx, part_w * 7, h, "Window Offset:")
                     show_value(
@@ -405,7 +414,8 @@ class ClipEditMode(definitions.PushItMode):
     def update_buttons(self):
         if self.mode == self.MODE_CLIP:
             self.push.buttons.set_button_color(
-                push2_python.constants.BUTTON_SHIFT, definitions.WHITE
+                push2_python.constants.BUTTON_UPPER_ROW_5,
+                definitions.WHITE if self.clip.loop else definitions.ORANGE,
             )
             self.push.buttons.set_button_color(
                 push2_python.constants.BUTTON_UPPER_ROW_2, definitions.BLACK
@@ -642,6 +652,9 @@ class ClipEditMode(definitions.PushItMode):
                 return True
             if button_name == push2_python.constants.BUTTON_UPPER_ROW_4:
                 self.should_follow_playhead = not self.should_follow_playhead
+                return True
+            if button_name == push2_python.constants.BUTTON_UPPER_ROW_5:
+                self.clip.toggle_loop()
                 return True
 
         elif self.mode == self.MODE_GENERATOR:

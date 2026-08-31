@@ -1,5 +1,7 @@
 """Tests for clip.py module (if it exists)."""
 
+from unittest.mock import MagicMock
+
 import pytest
 
 # Check if clip.py exists
@@ -76,3 +78,38 @@ class TestClip:
         rendered = clip.get_notes_for_rendering()
         assert len(rendered) == 1
         assert rendered[0]["duration_steps"] == 2
+
+    def test_clip_loops_by_default(self, track):
+        clip = Clip(parent=track)
+        assert clip.loop is True
+
+    def test_toggle_loop(self, track):
+        clip = Clip(parent=track)
+        clip.toggle_loop()
+        assert clip.loop is False
+        clip.toggle_loop()
+        assert clip.loop is True
+
+    def test_one_shot_stops_when_timeline_track_removed(self, track):
+        clip = Clip(parent=track)
+        clip.name = "TestClip"
+        clip.loop = False
+        clip.playing = True
+        # Simulate isobar removing the finished one-shot track
+        clip.app.global_timeline.tracks = []
+        clip.update_playhead_position()
+        assert clip.playing is False
+
+    def test_one_shot_keeps_playing_while_track_exists(self, track):
+        clip = Clip(parent=track)
+        clip.name = "TestClip"
+        clip.loop = False
+        clip.playing = True
+        clip._playback_start_time = 0.0
+        clip.app.global_timeline.current_time = 0.5
+        mock_track = MagicMock()
+        mock_track.name = "TestClip"
+        clip.app.global_timeline.tracks = [mock_track]
+        clip.update_playhead_position()
+        assert clip.playing is True
+        assert clip.playhead_position_in_beats == 0.5

@@ -37,6 +37,7 @@ class Clip(BaseClass):
     will_start_recording_at: float
     will_stop_recording_at: float
     wrap_events_across_clip_loop: bool
+    loop: bool = True
 
     @property
     def track(self) -> "Track":
@@ -75,6 +76,7 @@ class Clip(BaseClass):
         self.bpm_multiplier = 1.0
         self.wrap_events_across_clip_loop = False
         self.max_polyphony = 4
+        self.loop = True
         self.queued_clip = None
         # When True, this clip should begin recording (not just playing) once it
         # is started via the queued-clip swap in ``stop()``. Used to cue live
@@ -322,10 +324,15 @@ class Clip(BaseClass):
             # Ensure both clips update their status and trigger UI refresh
             self.update_status()
             next_clip.update_status()
-            if self.app and self.app.is_mode_active("clip_triggering_mode"):
-                self.app.clip_triggering_mode.update_pads()
 
         self.update_status()
+        if self.app:
+            # Ensure pads and buttons reflect the stopped state, especially for
+            # one-shot clips that stop themselves without a direct user action.
+            self.app.pads_need_update = True
+            self.app.buttons_need_update = True
+            if self.app.is_mode_active("clip_triggering_mode"):
+                self.app.clip_triggering_mode.update_pads()
 
     def record_on_off(self):
         """Toggle recording state and update status."""
@@ -346,6 +353,12 @@ class Clip(BaseClass):
         """Update the clip status based on current state.
         Call this after modifying state variables."""
         self.clip_status = self.get_status()
+
+    def toggle_loop(self):
+        """Toggle between loop (default) and one-shot playback."""
+        self.loop = not self.loop
+        if self.playing:
+            self._reschedule_if_playing()
 
     def clear(self):
         self.notes = np.full((self.steps, self.max_polyphony), None, dtype=object)
@@ -474,13 +487,28 @@ class Clip(BaseClass):
         Should be called periodically from the main loop.
         """
         if self.playing and self.app and hasattr(self.app, "global_timeline"):
+            if not self.loop:
+                # One-shot clips are removed from the timeline by isobar once
+                # their sequence finishes (remove_when_done). Detect that and
+                # stop the clip so its UI state reflects reality.
+                track_exists = any(
+                    track.name == self.name
+                    for track in self.app.global_timeline.tracks
+                )
+                if not track_exists:
+                    self.stop()
+                    return
+
             current_time = self.app.global_timeline.current_time
             elapsed_beats = current_time - self._playback_start_time
-            # If we haven't reached the scheduled start time yet, playhead is at 0
-            # Use max(0, ...) to handle negative elapsed (pre-start) correctly
             if self.clip_length_in_beats > 0:
-                self.playhead_position_in_beats = (
-                    max(0.0, elapsed_beats) % self.clip_length_in_beats
-                )
+                if self.loop:
+                    self.playhead_position_in_beats = (
+                        max(0.0, elapsed_beats) % self.clip_length_in_beats
+                    )
+                elif elapsed_beats >= self.clip_length_in_beats:
+                    self.stop()
+                else:
+                    self.playhead_position_in_beats = max(0.0, elapsed_beats)
             else:
                 self.playhead_position_in_beats = 0.0

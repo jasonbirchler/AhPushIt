@@ -938,15 +938,20 @@ class PushItApp:
         """Update playhead positions for all playing clips."""
         if self.session is None:
             return
+        stopped_clips = set()
         for track in self.session.tracks:
             if track is None:
                 continue
             for clip in track.clips:
                 if clip is not None and clip.playing:
                     clip.update_playhead_position()
+                    if not clip.playing:
+                        stopped_clips.add(clip)
 
-        # If clip edit mode is active with a playing clip, update pads for playhead animation
-        if self.is_mode_active(self.clip_edit_mode) and self.clip_edit_mode.clip and self.clip_edit_mode.clip.playing:
+        # If clip edit mode is active with a playing clip, update pads for playhead animation.
+        # Also update if the clip just stopped (one-shot) to clear the playhead.
+        if self.is_mode_active(self.clip_edit_mode) and self.clip_edit_mode.clip:
+            if self.clip_edit_mode.clip.playing or self.clip_edit_mode.clip in stopped_clips:
                 self.pads_need_update = True
 
     def check_for_new_midi_devices(self):
