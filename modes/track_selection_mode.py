@@ -29,6 +29,8 @@ class TrackSelectionMode(definitions.PushItMode):
     ADD_TRACK_BUTTON = push2_python.constants.BUTTON_ADD_TRACK
     DEVICE_BUTTON = push2_python.constants.BUTTON_DEVICE
     DELETE_BUTTON = push2_python.constants.BUTTON_DELETE
+    MUTE_BUTTON = push2_python.constants.BUTTON_MUTE
+    SOLO_BUTTON = push2_python.constants.BUTTON_SOLO
 
     def get_selected_track(self):
         return self.app.session.get_track_by_idx(self.selected_track)
@@ -242,11 +244,19 @@ class TrackSelectionMode(definitions.PushItMode):
             if count < len(self.app.session.tracks) and self.app.session.tracks[count] is not None:
                 track = self.app.session.tracks[count]
                 color = self.get_track_color(count)
-                if track.passthru_muted:
-                    color = color + '_darker1'
+                animation = None
+                if track.soloed:
+                    # Soloed tracks blink; this also overrides any mute/passthru dim.
+                    animation = definitions.DEFAULT_ANIMATION
+                elif track.is_muted_effective() or track.passthru_muted:
+                    color = color + '_darker2'
             else:
                 color = definitions.BLACK
-            self.push.buttons.set_button_color(name, color)
+                animation = None
+            if animation is not None:
+                self.push.buttons.set_button_color(name, color, animation=animation)
+            else:
+                self.push.buttons.set_button_color(name, color)
 
         # Highlight the track awaiting delete confirmation in red
         if self.pending_delete_track_idx is not None and 0 <= self.pending_delete_track_idx < len(self.track_button_names):
@@ -268,6 +278,28 @@ class TrackSelectionMode(definitions.PushItMode):
             color=definitions.RED,
             off_color=definitions.OFF_BTN_COLOR,
             animation=delete_animation,
+        )
+
+        # Mute/Solo modifier buttons light up while held so the user knows
+        # the modifier is armed and the next track-button press will toggle.
+        # Only animate (blink) when a track is actually muted or soloed, so the
+        # buttons aren't blinking for no reason on a fresh session.
+        any_muted = any(
+            t is not None and t.is_muted_effective()
+            for t in self.app.session.tracks
+        )
+        any_soloed = self.app.session.any_track_soloed()
+        self.set_button_color_if_pressed(
+            self.MUTE_BUTTON,
+            color=definitions.WHITE,
+            off_color=definitions.OFF_BTN_COLOR,
+            animation=definitions.DEFAULT_ANIMATION if any_muted else definitions.ANIMATION_STATIC,
+        )
+        self.set_button_color_if_pressed(
+            self.SOLO_BUTTON,
+            color=definitions.WHITE,
+            off_color=definitions.OFF_BTN_COLOR,
+            animation=definitions.DEFAULT_ANIMATION if any_soloed else definitions.ANIMATION_STATIC,
         )
 
         # Update ADD_TRACK button
@@ -421,8 +453,18 @@ class TrackSelectionMode(definitions.PushItMode):
                     return True
                 # Any other track interaction cancels a pending deletion
                 self.pending_delete_track_idx = None
+                mute_held = self.app.is_button_being_pressed(self.MUTE_BUTTON)
+                solo_held = self.app.is_button_being_pressed(self.SOLO_BUTTON)
                 shift_held = self.app.is_button_being_pressed(push2_python.constants.BUTTON_SHIFT)
-                if shift_held:
+                if mute_held:
+                    # Hold Mute + track toggles the track's output mute.
+                    track.muted = not track.muted
+                    self.app.buttons_need_update = True
+                elif solo_held:
+                    # Hold Solo + track toggles the track's solo flag.
+                    track.soloed = not track.soloed
+                    self.app.buttons_need_update = True
+                elif shift_held:
                     # Toggle passthru mute for this track
                     track.passthru_muted = not track.passthru_muted
                     self.app.buttons_need_update = True

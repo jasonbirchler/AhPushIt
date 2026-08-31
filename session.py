@@ -68,6 +68,10 @@ class Session(BaseClass):
             print(f"ERROR selecting track: {e}")
         return None
 
+    def any_track_soloed(self) -> bool:
+        """Return True if any non-empty track slot has its solo flag set."""
+        return any(t is not None and t.soloed for t in self.tracks)
+
     def get_next_free_track_index(self) -> int | None:
         """Return the first free track slot index (0-7) or None if full."""
         return next((i for i, t in enumerate(self.tracks) if t is None), None)
