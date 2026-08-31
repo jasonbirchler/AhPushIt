@@ -950,9 +950,8 @@ class PushItApp:
 
         # If clip edit mode is active with a playing clip, update pads for playhead animation.
         # Also update if the clip just stopped (one-shot) to clear the playhead.
-        if self.is_mode_active(self.clip_edit_mode) and self.clip_edit_mode.clip:
-            if self.clip_edit_mode.clip.playing or self.clip_edit_mode.clip in stopped_clips:
-                self.pads_need_update = True
+        if self.is_mode_active(self.clip_edit_mode) and self.clip_edit_mode.clip and (self.clip_edit_mode.clip.playing or self.clip_edit_mode.clip in stopped_clips):
+            self.pads_need_update = True
 
     def check_for_new_midi_devices(self):
         """Check for newly connected MIDI devices"""
