@@ -101,17 +101,26 @@ class Sequencer:
         next_loop_time = actual_start_time + total_duration
         self.clip_loop_positions[clip.name] = next_loop_time
 
+        loop = getattr(clip, "loop", True)
+        if loop:
+            note_pattern = iso.PSequence(notes_list)
+            duration_pattern = iso.PSequence(durations_list)
+            amplitude_pattern = iso.PSequence(amplitudes_list)
+        else:
+            note_pattern = iso.PSequence(notes_list, repeats=1)
+            duration_pattern = iso.PSequence(durations_list, repeats=1)
+            amplitude_pattern = iso.PSequence(amplitudes_list, repeats=1)
         self.timeline.schedule(
             {
-                "note": iso.PSequence(notes_list),
-                "duration": iso.PSequence(durations_list),
-                "amplitude": iso.PSequence(amplitudes_list),
+                "note": note_pattern,
+                "duration": duration_pattern,
+                "amplitude": amplitude_pattern,
             },
             name=clip.name,
             quantize=0.0,
             delay=quantize_offset,
             output_device=device,
-            remove_when_done=False,
+            remove_when_done=not loop,
             replace=True,
         )
 
