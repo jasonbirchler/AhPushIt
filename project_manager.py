@@ -21,6 +21,7 @@ class ProjectManager:
         self.app = app
         self.projects_dir = os.path.expanduser("~/pushit/projects")
         self.current_project_file = None  # Track currently loaded project
+        self.last_missing_devices = []
         self._ensure_projects_dir()
 
     def _ensure_projects_dir(self):
@@ -94,6 +95,7 @@ class ProjectManager:
     def load_project(self, filename):
         """Load project from JSON file"""
         self.current_project_file = filename
+        self.last_missing_devices = []
         tmp_session, tmp_seq = None, None
         filepath = os.path.join(self.projects_dir, f"{filename}.json")
         if not os.path.exists(filepath):
@@ -141,7 +143,11 @@ class ProjectManager:
                 else:
                     track = Track(parent=self.app.session)
                     track.output_device_name = track_data["device"]
-                    track.set_output_device_by_name(track_data["device"])
+                    try:
+                        track.set_output_device_by_name(track_data["device"])
+                    except iso.exceptions.DeviceNotFoundException:
+                        self.last_missing_devices.append(track_data["device"])
+                        track.output_device = None
                     track.channel = track_data.get("channel", 0)
                     track.input_device_name = track_data.get("input_device")
                     track.input_channel = track_data.get("input_channel", -1)
@@ -165,6 +171,11 @@ class ProjectManager:
                         track.clips[clip_data["index"]] = clip
 
                     self.app.session.tracks[track_idx] = track
+
+            if self.last_missing_devices:
+                self.app.add_display_notification(
+                    "Missing devices: " + ", ".join(self.last_missing_devices)
+                )
 
             self.current_project_file = filename
             print(f"Project loaded: {filepath}")

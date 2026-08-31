@@ -4,6 +4,7 @@ import json
 import os
 from unittest.mock import MagicMock, patch
 
+import isobar as iso
 import numpy as np
 
 from clip import Clip
@@ -202,6 +203,75 @@ class TestProjectManager:
         clip = loaded_track.clips[0]
         assert clip.name == "LoadedClip"
         assert clip.clip_length_in_beats == 8.0
+
+    def test_load_project_missing_device(self, mock_app, tmp_path):
+        """Loading a project with an unavailable MIDI device should not crash.
+
+        The track is still loaded (device name preserved) but its output device
+        is set to None so no notes are routed to a wrong device. The missing
+        device name is recorded and shown to the user.
+        """
+        projects_dir = tmp_path / "projects"
+        projects_dir.mkdir()
+        project_file = projects_dir / "missing_device.json"
+
+        project_data = {
+            "version": "1.0",
+            "bpm": 120,
+            "scale": "Pentatonic",
+            "key": "C",
+            "tracks": [
+                {
+                    "index": 0,
+                    "device": "NTS-1 digital kit SOUND",
+                    "input_device": None,
+                    "input_channel": -1,
+                    "clip_data": [
+                        {
+                            "index": 0,
+                            "name": "MissingClip",
+                            "clip_length_in_beats": 4.0,
+                            "step_divisions": 4,
+                            "beats_per_bar": 4,
+                            "loop": True,
+                            "notes": [60],
+                            "durations": [0.5],
+                            "amplitudes": [100],
+                        }
+                    ],
+                }
+            ] + [{"index": i} for i in range(1, 8)],
+        }
+
+        with open(project_file, 'w') as f:
+            json.dump(project_data, f)
+
+        pm = ProjectManager(mock_app)
+        pm.projects_dir = str(projects_dir)
+
+        mock_app.midi_cc_mode = MagicMock()
+        mock_app.session.tracks = [None] * 8
+
+        def raise_missing(device_name):
+            raise iso.exceptions.DeviceNotFoundException(
+                f"Could not find MIDI device with name starting with: {device_name}"
+            )
+
+        with patch.object(Track, 'set_output_device_by_name', side_effect=raise_missing):
+            result = pm.load_project("missing_device")
+
+        assert result is True
+        assert pm.last_missing_devices == ["NTS-1 digital kit SOUND"]
+
+        loaded_track = mock_app.session.tracks[0]
+        assert loaded_track is not None
+        assert loaded_track.output_device_name == "NTS-1 digital kit SOUND"
+        assert loaded_track.output_device is None
+
+        mock_app.add_display_notification.assert_any_call(
+            "Missing devices: NTS-1 digital kit SOUND"
+        )
+        assert loaded_track.clips[0].name == "MissingClip"
 
     def test_load_project_file_not_found(self, mock_app, tmp_path):
         """Test loading nonexistent project returns False."""
