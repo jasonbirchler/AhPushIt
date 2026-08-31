@@ -254,7 +254,7 @@ class TestProjectManager:
 
         def raise_missing(device_name):
             raise iso.exceptions.DeviceNotFoundException(
-                "Could not find MIDI device with name starting with: %s" % device_name
+                f"Could not find MIDI device with name starting with: {device_name}"
             )
 
         with patch.object(Track, 'set_output_device_by_name', side_effect=raise_missing):
