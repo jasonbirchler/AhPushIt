@@ -29,7 +29,10 @@ class Track(BaseClass):
 
         self._send_clock = False
         self._passthru_muted = False
-        self._output_device = iso.MidiOutputDevice(self.output_device_name, send_clock=self.send_clock)
+        self._muted = False
+        self._soloed = False
+        real_device = iso.MidiOutputDevice(self.output_device_name, send_clock=self.send_clock)
+        self._output_device = MuteAwareMidiOutputDevice(real_device, self)
         self._device_short_name = None
         self._reload_track_info = False
 
@@ -63,7 +66,8 @@ class Track(BaseClass):
     def set_output_device_by_name(self, device_name) -> None:
         # Update the track's output hardware device name
         self.output_device_name = device_name
-        self.output_device = iso.MidiOutputDevice(device_name=device_name, send_clock=True)
+        real_device = iso.MidiOutputDevice(device_name=device_name, send_clock=True)
+        self.output_device = MuteAwareMidiOutputDevice(real_device, self)
         # Invalidate the cached short name so it gets regenerated with the new device name
         self._device_short_name = None
         self.reload_track_info = True
@@ -89,13 +93,13 @@ class Track(BaseClass):
             else:
                 return f"{self.output_device_name[:definitions.MAX_DEVICE_NAME_CHARS - 3]}..."
 
-    def get_output_device(self) -> iso.MidiOutputDevice | None:
+    def get_output_device(self) -> 'MuteAwareMidiOutputDevice | None':
         """Get the output device"""
         return self.output_device
 
     def set_output_device(self, device: iso.MidiOutputDevice) -> None:
-        """Set the output device"""
-        self.output_device = device
+        """Set the output device (wrapped in a MuteAwareMidiOutputDevice)."""
+        self._output_device = MuteAwareMidiOutputDevice(device, self) if device is not None else None
         self.output_device_name = device.name if device else None
         self._generate_short_name()
 
@@ -150,4 +154,70 @@ class Track(BaseClass):
     def passthru_muted(self, value: bool) -> None:
         """Set whether passthru is muted"""
         self._passthru_muted = value
+
+    @property
+    def muted(self) -> bool:
+        """Get whether the track's output is muted."""
+        return self._muted
+
+    @muted.setter
+    def muted(self, value: bool) -> None:
+        """Set whether the track's output is muted."""
+        self._muted = bool(value)
+
+    @property
+    def soloed(self) -> bool:
+        """Get whether the track is soloed."""
+        return self._soloed
+
+    @soloed.setter
+    def soloed(self, value: bool) -> None:
+        """Set whether the track is soloed."""
+        self._soloed = bool(value)
+
+    def is_muted_effective(self) -> bool:
+        """Return True if the track's output should currently be silent.
+
+        When any track is soloed, only soloed tracks are audible; every other
+        track is effectively muted. Otherwise, this track's own ``muted`` flag
+        determines muting.
+        """
+        session = self.app.session if self.app is not None else None
+        if session is not None and session.any_track_soloed():
+            return not self._soloed
+        return self._muted
+
+
+class MuteAwareMidiOutputDevice:
+    """A wrapper around ``iso.MidiOutputDevice`` that gates notes on mute state.
+
+    Reuses the real device's already-open MIDI port (``self.midi``), name, and
+    clock flag rather than opening a second port. Only ``note_on`` and
+    ``note_off`` are intercepted; every other method (control, pitch_bend,
+    tick, start, stop, all_notes_off, ...) is forwarded to the real device.
+    """
+
+    def __init__(self, real_device, track):
+        self._real = real_device
+        self.track = track
+        self.midi = real_device.midi
+        self.name = real_device.name
+        self.send_clock = real_device.send_clock
+
+    def note_on(self, note=60, velocity=64, channel=0):
+        if self.track.is_muted_effective():
+            return
+        self._real.note_on(note, velocity, channel)
+
+    def note_off(self, note=60, channel=0):
+        if self.track.is_muted_effective():
+            return
+        self._real.note_off(note, channel)
+
+    def __getattr__(self, name):
+        # Forward any other MIDI call (control, pitch_bend, tick, ...) to the
+        # real device. Skips attributes that exist on this object itself.
+        if name in {"_real", "track", "midi", "name", "send_clock"}:
+            raise AttributeError(name)
+        return getattr(self._real, name)
 
