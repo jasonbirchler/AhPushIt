@@ -202,7 +202,7 @@ class Clip(BaseClass):
         """
         mask = np.not_equal(self.notes, None)
         all_notes = self.notes[mask]
-        if not all_notes:
+        if all_notes.size == 0:
             return None, None
         return int(np.min(all_notes)), int(np.max(all_notes))
 
@@ -214,7 +214,7 @@ class Clip(BaseClass):
         """
         mask = np.not_equal(self.notes, None)
         all_notes = self.notes[mask]
-        if not all_notes:
+        if all_notes.size == 0:
             return []
         return sorted({int(n) for n in all_notes})
 

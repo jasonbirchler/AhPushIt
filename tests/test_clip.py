@@ -38,6 +38,16 @@ class TestClip:
         # Default clip might be empty
         # Actual implementation depends on Clip class
 
+    def test_get_note_range_empty_clip(self, track):
+        """Empty clip returns (None, None) instead of raising on numpy truthiness."""
+        clip = Clip(parent=track)
+        assert clip.get_note_range() == (None, None)
+
+    def test_get_unique_notes_empty_clip(self, track):
+        """Empty clip returns an empty list instead of raising."""
+        clip = Clip(parent=track)
+        assert clip.get_unique_notes() == []
+
     def test_step_beats(self, track):
         clip = Clip(parent=track)
         clip.clip_length_in_beats = 4.0
