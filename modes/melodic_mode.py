@@ -7,7 +7,6 @@ import definitions
 
 
 class MelodicMode(definitions.PushItMode):
-
     xor_group = "pads"
 
     notes_being_played: ClassVar[list] = []
@@ -40,7 +39,6 @@ class MelodicMode(definitions.PushItMode):
     modulation_wheel_mode = False
 
     def initialize(self, settings=None):
-        # Reset instance-specific mutable state
         self.notes_being_played = []
         if settings is not None:
             self.use_poly_at = settings.get("use_poly_at", True)
@@ -99,9 +97,7 @@ class MelodicMode(definitions.PushItMode):
     def get_poly_at_curve(self):
         pow_curve = [
             pow(e, 3 * self.poly_at_curve_bending / 100)
-            for e in [
-                i / self.poly_at_max_range for i in range(self.poly_at_max_range)
-            ]
+            for e in [i / self.poly_at_max_range for i in range(self.poly_at_max_range)]
         ]
         return [
             int(127 * pow_curve[i]) if i < self.poly_at_max_range else 127
@@ -126,7 +122,9 @@ class MelodicMode(definitions.PushItMode):
             return self.root_midi_note + ((7 - pad_ij[0]) * 5 + pad_ij[1])
         scale_degrees = self.get_scale_degrees()
         num_degrees = len(scale_degrees)
-        pos = (definitions.GRID_WIDTH - 1 - pad_ij[0]) * definitions.GRID_HEIGHT + pad_ij[1]
+        pos = (
+            definitions.GRID_WIDTH - 1 - pad_ij[0]
+        ) * definitions.GRID_HEIGHT + pad_ij[1]
         octave = pos // num_degrees
         degree = pos % num_degrees
         midi_note = self.root_midi_note + scale_degrees[degree] + 12 * octave
@@ -310,13 +308,11 @@ class MelodicMode(definitions.PushItMode):
             velocity_to_send = velocity if not self.fixed_velocity_mode else 127
 
             # Send via MIDI manager to selected track's output device
-            if hasattr(self.app, 'session'):
+            if hasattr(self.app, "session"):
                 track = self.app.track_selection_mode.get_selected_track()
                 if track:
                     self.app.session.send_note(
-                        track.output_device_name,
-                        midi_note,
-                        velocity_to_send
+                        track.output_device_name, midi_note, velocity_to_send
                     )
 
             # Directly calling update pads method
@@ -336,17 +332,17 @@ class MelodicMode(definitions.PushItMode):
             ):
                 # see comment in "on_pad_pressed" above
                 self.remove_note_being_played(midi_note, "push")
-            
+
             # Send via MIDI manager to selected track's output device
-            if hasattr(self.app, 'session'):
+            if hasattr(self.app, "session"):
                 track = self.app.track_selection_mode.get_selected_track()
                 if track:
                     self.app.session.send_note(
                         track.output_device_name,
                         midi_note,
-                        0  # velocity 0 = note off
+                        0,  # velocity 0 = note off
                     )
-            
+
             # Directly calling update pads method because we want user to feel feedback as quick as possible
             self.update_pads()
             return True
@@ -356,7 +352,12 @@ class MelodicMode(definitions.PushItMode):
         return True
 
     def on_touchstrip(self, value):
-        # TODO: implement handler that sends touchstrip to correct device
+        if self.modulation_wheel_mode:
+            return True
+        track = self.app.track_selection_mode.get_selected_track()
+        if track is None or not track.output_device_name:
+            return True
+        self.app.session.send_pitch_bend(track.output_device_name, value, 0)
         return True
 
     def on_sustain_pedal(self, sustain_on):

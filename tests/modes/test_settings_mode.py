@@ -17,10 +17,10 @@ class TestSettingsMode:
         assert mode.app is mock_app
 
     def test_xor_group(self):
-        assert SettingsMode.xor_group == 'buttons'
+        assert SettingsMode.xor_group == "buttons"
 
     def test_buttons_used(self):
-        assert 'setup' in SettingsMode.buttons_used
+        assert "setup" in SettingsMode.buttons_used
 
     def test_initialize_with_settings(self, mock_app):
         """Test initialize applies settings."""
@@ -46,7 +46,7 @@ class TestSettingsMode:
 
     def test_on_button_pressed_other(self, mock_app):
         mode = SettingsMode(mock_app)
-        result = mode.on_button_pressed('other_button')
+        result = mode.on_button_pressed("other_button")
         assert result is None
 
     # Additional tests for coverage
@@ -67,31 +67,35 @@ class TestSettingsMode:
         settings = mode.get_settings_to_save()
         assert settings == {"auto_open_last_project": True}
 
-    def test_on_encoder_rotated_performance_track1_root(self, mock_app):
-        # Setup encoder list to include track1 encoder
-        mock_app.push.encoders.available_names = [push2_python.constants.ENCODER_TRACK1_ENCODER]
+    def test_on_encoder_rotated_performance_track1_poly_at_toggle(self, mock_app):
+        mock_app.push.encoders.available_names = [
+            push2_python.constants.ENCODER_TRACK1_ENCODER
+        ]
+        mode = SettingsMode(mock_app)
+        mode.current_page = Pages.PERFORMANCE
+        mock_app.melodic_mode.use_poly_at = False
+        mode.on_encoder_rotated(push2_python.constants.ENCODER_TRACK1_ENCODER, 3)
+        assert mock_app.melodic_mode.use_poly_at is True
+        mode.on_encoder_rotated(push2_python.constants.ENCODER_TRACK1_ENCODER, -3)
+        assert mock_app.melodic_mode.use_poly_at is False
+
+    def test_on_encoder_rotated_performance_track7_root_note(self, mock_app):
+        mock_app.push.encoders.available_names = [
+            push2_python.constants.ENCODER_TRACK7_ENCODER
+        ]
         mode = SettingsMode(mock_app)
         mode.current_page = Pages.PERFORMANCE
         mock_app.melodic_mode.root_midi_note = 60
         mock_app.melodic_mode.set_root_midi_note = MagicMock()
         mock_app.pads_need_update = False
-        mode.on_encoder_rotated(push2_python.constants.ENCODER_TRACK1_ENCODER, 2)
+        mode.on_encoder_rotated(push2_python.constants.ENCODER_TRACK7_ENCODER, 2)
         mock_app.melodic_mode.set_root_midi_note.assert_called_once_with(62)
         assert mock_app.pads_need_update is True
 
-    def test_on_encoder_rotated_performance_track2_poly_at_toggle(self, mock_app):
-        mock_app.push.encoders.available_names = [push2_python.constants.ENCODER_TRACK2_ENCODER]
-        mode = SettingsMode(mock_app)
-        mode.current_page = Pages.PERFORMANCE
-        mock_app.melodic_mode.use_poly_at = False
-        mode.on_encoder_rotated(push2_python.constants.ENCODER_TRACK2_ENCODER, 3)
-        assert mock_app.melodic_mode.use_poly_at is True
-        # Toggle back
-        mode.on_encoder_rotated(push2_python.constants.ENCODER_TRACK2_ENCODER, -3)
-        assert mock_app.melodic_mode.use_poly_at is False
-
     def test_on_encoder_rotated_performance_track3_ch_at_start(self, mock_app):
-        mock_app.push.encoders.available_names = [push2_python.constants.ENCODER_TRACK3_ENCODER]
+        mock_app.push.encoders.available_names = [
+            push2_python.constants.ENCODER_TRACK3_ENCODER
+        ]
         mode = SettingsMode(mock_app)
         mode.current_page = Pages.PERFORMANCE
         mock_app.melodic_mode.channel_at_range_start = 400
@@ -100,7 +104,9 @@ class TestSettingsMode:
         mock_app.melodic_mode.set_channel_at_range_start.assert_called_once_with(405)
 
     def test_on_encoder_rotated_performance_track4_ch_at_end(self, mock_app):
-        mock_app.push.encoders.available_names = [push2_python.constants.ENCODER_TRACK4_ENCODER]
+        mock_app.push.encoders.available_names = [
+            push2_python.constants.ENCODER_TRACK4_ENCODER
+        ]
         mode = SettingsMode(mock_app)
         mode.current_page = Pages.PERFORMANCE
         mock_app.melodic_mode.channel_at_range_end = 800
@@ -109,7 +115,9 @@ class TestSettingsMode:
         mock_app.melodic_mode.set_channel_at_range_end.assert_called_once_with(795)
 
     def test_on_encoder_rotated_performance_track5_poly_at_range(self, mock_app):
-        mock_app.push.encoders.available_names = [push2_python.constants.ENCODER_TRACK5_ENCODER]
+        mock_app.push.encoders.available_names = [
+            push2_python.constants.ENCODER_TRACK5_ENCODER
+        ]
         mode = SettingsMode(mock_app)
         mode.current_page = Pages.PERFORMANCE
         mock_app.melodic_mode.poly_at_max_range = 40
@@ -118,7 +126,9 @@ class TestSettingsMode:
         mock_app.melodic_mode.set_poly_at_max_range.assert_called_once_with(43)
 
     def test_on_encoder_rotated_performance_track6_poly_at_curve(self, mock_app):
-        mock_app.push.encoders.available_names = [push2_python.constants.ENCODER_TRACK6_ENCODER]
+        mock_app.push.encoders.available_names = [
+            push2_python.constants.ENCODER_TRACK6_ENCODER
+        ]
         mode = SettingsMode(mock_app)
         mode.current_page = Pages.PERFORMANCE
         mock_app.melodic_mode.poly_at_curve_bending = 50
@@ -127,7 +137,9 @@ class TestSettingsMode:
         mock_app.melodic_mode.set_poly_at_curve_bending.assert_called_once_with(48)
 
     def test_on_encoder_rotated_project_preset_save_number(self, mock_app):
-        mock_app.push.encoders.available_names = [push2_python.constants.ENCODER_TRACK1_ENCODER]
+        mock_app.push.encoders.available_names = [
+            push2_python.constants.ENCODER_TRACK1_ENCODER
+        ]
         mode = SettingsMode(mock_app)
         mode.current_page = Pages.PROJECT
         mode.current_preset_save_number = 0
@@ -137,7 +149,9 @@ class TestSettingsMode:
         assert mode.current_preset_save_number == 0  # clamped
 
     def test_on_encoder_rotated_project_navigation(self, mock_app):
-        mock_app.push.encoders.available_names = [push2_python.constants.ENCODER_TRACK3_ENCODER]
+        mock_app.push.encoders.available_names = [
+            push2_python.constants.ENCODER_TRACK3_ENCODER
+        ]
         mode = SettingsMode(mock_app)
         mode.current_page = Pages.PROJECT
         mode.project_list.items = ["projA", "projB", "projC"]
@@ -154,7 +168,9 @@ class TestSettingsMode:
 
     def test_on_encoder_rotated_project_large_delta_scrolls_multiple(self, mock_app):
         """Large (accelerated) encoder deltas should scroll multiple items."""
-        mock_app.push.encoders.available_names = [push2_python.constants.ENCODER_TRACK3_ENCODER]
+        mock_app.push.encoders.available_names = [
+            push2_python.constants.ENCODER_TRACK3_ENCODER
+        ]
         mode = SettingsMode(mock_app)
         mode.current_page = Pages.PROJECT
         mode.project_list.items = ["projA", "projB", "projC", "projD", "projE", "projF"]
@@ -203,7 +219,9 @@ class TestSettingsMode:
         assert result is True
         assert mode.waiting_for_confirmation is True
         assert mode.project_to_confirm == "proj1"
-        mock_app.add_display_notification.assert_called_with("Press again to load: proj1")
+        mock_app.add_display_notification.assert_called_with(
+            "Press again to load: proj1"
+        )
         # Second press
         result = mode.on_button_pressed(push2_python.constants.BUTTON_UPPER_ROW_3)
         assert result is True
@@ -230,7 +248,7 @@ class TestSettingsMode:
         result = mode.on_button_pressed(push2_python.constants.BUTTON_UPPER_ROW_1)
         assert result is True
         assert mode.auto_open_last_project is True
-        assert mock_app.settings['auto_open_last_project'] is True
+        assert mock_app.settings["auto_open_last_project"] is True
         mock_app.save_current_settings_to_file.assert_called_once()
 
     def test_on_button_pressed_session_reset_midi(self, mock_app):

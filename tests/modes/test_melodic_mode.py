@@ -1,5 +1,7 @@
 """Tests for melodic_mode.py module."""
 
+from unittest.mock import MagicMock
+
 from modes.melodic_mode import MelodicMode
 
 
@@ -15,7 +17,7 @@ class TestMelodicMode:
 
     def test_melodic_mode_xor_group(self):
         """Test MelodicMode has correct xor_group."""
-        assert MelodicMode.xor_group == 'pads'
+        assert MelodicMode.xor_group == "pads"
 
     def test_default_attributes(self, mock_app):
         """Test default attribute values."""
@@ -32,15 +34,15 @@ class TestMelodicMode:
     def test_initialize_with_settings(self, mock_app):
         """Test initialize method applies settings."""
         settings = {
-            'use_poly_at': True,
-            'root_midi_note': 60,
-            'channel_at_range_start': 500,
-            'channel_at_range_end': 1000,
-            'poly_at_max_range': 60,
-            'poly_at_curve_bending': 70,  # Fixed: use correct key name
+            "use_poly_at": True,
+            "root_midi_note": 60,
+            "channel_at_range_start": 500,
+            "channel_at_range_end": 1000,
+            "poly_at_max_range": 60,
+            "poly_at_curve_bending": 70,  # Fixed: use correct key name
         }
         mode = MelodicMode(mock_app, settings=settings)
-        
+
         assert mode.use_poly_at is True
         assert mode.root_midi_note == 60
         assert mode.channel_at_range_start == 500
@@ -63,26 +65,26 @@ class TestMelodicMode:
         mode.channel_at_range_end = 1000
         mode.poly_at_max_range = 60
         mode.poly_at_curve_bending = 70
-        
+
         settings = mode.get_settings_to_save()
-        
-        assert settings['root_midi_note'] == 72
-        assert settings['use_poly_at'] is True
-        assert settings['channel_at_range_start'] == 500
-        assert settings['channel_at_range_end'] == 1000
-        assert settings['poly_at_max_range'] == 60
-        assert settings['poly_at_curve_bending'] == 70
+
+        assert settings["root_midi_note"] == 72
+        assert settings["use_poly_at"] is True
+        assert settings["channel_at_range_start"] == 500
+        assert settings["channel_at_range_end"] == 1000
+        assert settings["poly_at_max_range"] == 60
+        assert settings["poly_at_curve_bending"] == 70
 
     def test_set_root_midi_note_bounds(self, mock_app):
         """Test root MIDI note stays within valid range."""
         mode = MelodicMode(mock_app)
-        
+
         mode.set_root_midi_note(60)
         assert mode.root_midi_note == 60
-        
+
         mode.set_root_midi_note(-10)
         assert mode.root_midi_note == 0
-        
+
         mode.set_root_midi_note(200)
         assert mode.root_midi_note == 127
 
@@ -90,7 +92,7 @@ class TestMelodicMode:
         """Test converting pad coordinates to MIDI note."""
         mode = MelodicMode(mock_app)
         mode.root_midi_note = 60  # C4
-        
+
         # Pad (7,0) should be root note (bottom-left)
         assert mode.pad_ij_to_midi_note((7, 0)) == 60
         # Pad (0,0) is highest note in leftmost column: root + 35
@@ -105,10 +107,20 @@ class TestMelodicMode:
         mode = MelodicMode(mock_app)
         mode.root_midi_note = 60
         mode.scale_pattern = [
-            True, False, True, False, True, True, False, True,
-            False, True, False, True
+            True,
+            False,
+            True,
+            False,
+            True,
+            True,
+            False,
+            True,
+            False,
+            True,
+            False,
+            True,
         ]
-        
+
         # Root note should be root octave
         assert mode.is_midi_note_root_octave(60) is True
         # Root + 12 (octave up) should also be root octave
@@ -127,15 +139,15 @@ class TestMelodicMode:
             True,  # D
             False,  # D#
             True,  # E
-            True,   # F
+            True,  # F
             False,  # F#
-            True,   # G
+            True,  # G
             False,  # G#
-            True,   # A
+            True,  # A
             False,  # A#
-            True,   # B
+            True,  # B
         ]
-        
+
         # C (60) should be white key (True means in scale/white for root octave check)
         # Actually is_black_key_midi_note returns not self.scale_pattern[relative]
         # Black keys are those NOT in the scale pattern
@@ -156,31 +168,31 @@ class TestMelodicMode:
     def test_is_midi_note_being_played(self, mock_app):
         """Test tracking notes being played."""
         mode = MelodicMode(mock_app)
-        
+
         assert mode.is_midi_note_being_played(60) is False
-        
-        mode.add_note_being_played(60, 'push')
+
+        mode.add_note_being_played(60, "push")
         assert mode.is_midi_note_being_played(60) is True
-        
-        mode.remove_note_being_played(60, 'push')
+
+        mode.remove_note_being_played(60, "push")
         assert mode.is_midi_note_being_played(60) is False
 
     def test_add_remove_all_notes_being_played(self, mock_app):
         """Test add and remove all notes being played."""
         mode = MelodicMode(mock_app)
-        
-        mode.add_note_being_played(60, 'push')
-        mode.add_note_being_played(64, 'push')
-        mode.add_note_being_played(67, 'push')
+
+        mode.add_note_being_played(60, "push")
+        mode.add_note_being_played(64, "push")
+        mode.add_note_being_played(67, "push")
         assert len(mode.notes_being_played) == 3
-        
+
         mode.remove_all_notes_being_played()
         assert len(mode.notes_being_played) == 0
 
     def test_note_number_to_name(self, mock_app):
         """Test converting MIDI note number to note name."""
         mode = MelodicMode(mock_app)
-        
+
         # MIDI note 60 = C4 (middle C)
         assert mode.note_number_to_name(60) == "C4"
         # MIDI note 61 = C#4
@@ -195,9 +207,9 @@ class TestMelodicMode:
         mode = MelodicMode(mock_app)
         mode.poly_at_max_range = 40
         mode.poly_at_curve_bending = 50
-        
+
         curve = mode.get_poly_at_curve()
-        
+
         assert isinstance(curve, list)
         assert len(curve) == 128
         # Values should be between 0 and 127
@@ -205,55 +217,55 @@ class TestMelodicMode:
             assert 0 <= val <= 127
         # Curve should be monotonically increasing
         for i in range(1, len(curve)):
-            assert curve[i] >= curve[i-1]
+            assert curve[i] >= curve[i - 1]
 
     def test_setters_with_constraints(self, mock_app):
         """Test setter methods enforce constraints."""
         mode = MelodicMode(mock_app)
-        
+
         # Test channel_at_range_start
         mode.channel_at_range_end = 1000  # Set end first
         mode.set_channel_at_range_start(100)  # Below min
         assert mode.channel_at_range_start == 401
-        
+
         mode.set_channel_at_range_start(600)  # Valid
         assert mode.channel_at_range_start == 600
-        
+
         mode.set_channel_at_range_start(900)  # Valid, less than end
         assert mode.channel_at_range_start == 900
-        
+
         # Test channel_at_range_end
         mode.channel_at_range_start = 500
         mode.set_channel_at_range_end(400)  # Below start
         assert mode.channel_at_range_end == 501  # start + 1
-        
+
         mode.set_channel_at_range_end(1500)  # This is actually valid, should stay 1500
         assert mode.channel_at_range_end == 1500
-        
+
         # Test upper bound
         mode.set_channel_at_range_end(2500)  # Above max
         assert mode.channel_at_range_end == 2000
-        
+
         mode.set_channel_at_range_end(800)  # Valid
         assert mode.channel_at_range_end == 800
-        
+
         # Test poly_at_max_range
         mode.set_poly_at_max_range(-10)
         assert mode.poly_at_max_range == 0
-        
+
         mode.set_poly_at_max_range(200)
         assert mode.poly_at_max_range == 127
-        
+
         mode.set_poly_at_max_range(50)
         assert mode.poly_at_max_range == 50
-        
+
         # Test poly_at_curve_bending
         mode.set_poly_at_curve_bending(-50)
         assert mode.poly_at_curve_bending == 0
-        
+
         mode.set_poly_at_curve_bending(150)
         assert mode.poly_at_curve_bending == 100
-        
+
         mode.set_poly_at_curve_bending(75)
         assert mode.poly_at_curve_bending == 75
 
@@ -264,7 +276,7 @@ class TestMelodicMode:
         mode.root_midi_note = 60
         mode.channel_at_range_start = 401
         mode.channel_at_range_end = 800
-        
+
         # Should not raise exceptions
         mode.activate()
         mode.deactivate()
@@ -273,7 +285,7 @@ class TestMelodicMode:
         """Test delayed actions apply after time threshold."""
         mode = MelodicMode(mock_app)
         mode.last_time_at_params_edited = 0  # Set long ago
-        
+
         # Should call push methods to apply settings
         mode.check_for_delayed_actions()
         # No exception = pass
@@ -282,7 +294,7 @@ class TestMelodicMode:
         """Test on_pad_pressed returns True when it handles the event."""
         mode = MelodicMode(mock_app)
         mode.root_midi_note = 60
-        
+
         result = mode.on_pad_pressed(pad_n=0, pad_ij=(0, 0), velocity=100)
         assert result is True
 
@@ -290,7 +302,7 @@ class TestMelodicMode:
         """Test on_pad_released returns True when it handles the event."""
         mode = MelodicMode(mock_app)
         mode.root_midi_note = 60
-        
+
         result = mode.on_pad_released(pad_n=0, pad_ij=(0, 0), velocity=0)
         assert result is True
 
@@ -306,6 +318,41 @@ class TestMelodicMode:
         result = mode.on_touchstrip(64)
         assert result is True
 
+    def test_pitch_bend_forwarded_to_device(self, mock_app):
+        """Test touchstrip bend is forwarded to selected track's device."""
+        mode = MelodicMode(mock_app)
+        mock_track = MagicMock()
+        mock_track.output_device_name = "Test Out"
+        mock_app.track_selection_mode.get_selected_track.return_value = mock_track
+
+        result = mode.on_touchstrip(1000)
+
+        assert result is True
+        mock_app.session.send_pitch_bend.assert_called_once_with("Test Out", 1000, 0)
+
+    def test_no_selected_track_no_send(self, mock_app):
+        """Test no send when no track or device is selected."""
+        mode = MelodicMode(mock_app)
+        mock_app.track_selection_mode.get_selected_track.return_value = None
+
+        result = mode.on_touchstrip(1000)
+
+        assert result is True
+        mock_app.session.send_pitch_bend.assert_not_called()
+
+    def test_modulation_wheel_mode_no_send(self, mock_app):
+        """Test no pitch bend send when modulation wheel mode is active."""
+        mode = MelodicMode(mock_app)
+        mode.modulation_wheel_mode = True
+        mock_track = MagicMock()
+        mock_track.output_device_name = "Test Out"
+        mock_app.track_selection_mode.get_selected_track.return_value = mock_track
+
+        result = mode.on_touchstrip(1000)
+
+        assert result is True
+        mock_app.session.send_pitch_bend.assert_not_called()
+
     def test_on_sustain_pedal_returns_true(self, mock_app):
         """Test on_sustain_pedal returns True."""
         mode = MelodicMode(mock_app)
@@ -317,7 +364,7 @@ class TestMelodicMode:
         mode = MelodicMode(mock_app)
         mode.root_midi_note = 60
 
-        result = mode.on_button_pressed('octave_up')
+        result = mode.on_button_pressed("octave_up")
         assert result is True
         assert mode.root_midi_note == 72
 
@@ -326,7 +373,7 @@ class TestMelodicMode:
         mode = MelodicMode(mock_app)
         mode.root_midi_note = 60
 
-        result = mode.on_button_pressed('octave_down')
+        result = mode.on_button_pressed("octave_down")
         assert result is True
         assert mode.root_midi_note == 48
 
@@ -335,11 +382,11 @@ class TestMelodicMode:
         mode = MelodicMode(mock_app)
         assert mode.fixed_velocity_mode is False
 
-        result = mode.on_button_pressed('accent')
+        result = mode.on_button_pressed("accent")
         assert result is True
         assert mode.fixed_velocity_mode is True
 
-        result = mode.on_button_pressed('accent')
+        result = mode.on_button_pressed("accent")
         assert result is True
         assert mode.fixed_velocity_mode is False
 
@@ -360,5 +407,5 @@ class TestMelodicMode:
     def test_unknown_button_pressed(self, mock_app):
         """Test unknown button returns None."""
         mode = MelodicMode(mock_app)
-        result = mode.on_button_pressed('unknown_button')
+        result = mode.on_button_pressed("unknown_button")
         assert result is None
