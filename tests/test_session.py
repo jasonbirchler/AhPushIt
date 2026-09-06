@@ -19,7 +19,9 @@ class TestSession:
         assert session is not None
         assert session.app is mock_app
         assert session.global_timeline is mock_app.global_timeline
-        assert session.global_timeline.max_tracks == definitions.GLOBAL_TIMELINE_MAX_TRACKS
+        assert (
+            session.global_timeline.max_tracks == definitions.GLOBAL_TIMELINE_MAX_TRACKS
+        )
 
     def test_session_tracks_initialization(self, mock_app):
         """Test tracks are initialized to 8 empty slots."""
@@ -66,7 +68,7 @@ class TestSession:
 
         # Fill slots 0-6
         for i in range(1, 7):
-            session.create_track(output_device_name=f"Out{i+1}", channel=i)
+            session.create_track(output_device_name=f"Out{i + 1}", channel=i)
         assert session.get_next_free_track_index() == 7
 
         # Fill last slot
@@ -82,7 +84,7 @@ class TestSession:
             output_device_name="My Device",
             channel=5,
             input_device_name="Input Device",
-            input_channel=3
+            input_channel=3,
         )
 
         assert track is not None
@@ -134,6 +136,7 @@ class TestSession:
         session = Session(mock_app)
 
         from clip import Clip
+
         track = session.create_track(output_device_name="Test", channel=0)
         clip = Clip(parent=track)
         clip.playing = True
@@ -149,6 +152,7 @@ class TestSession:
         session = Session(mock_app)
 
         from clip import Clip
+
         track = session.create_track(output_device_name="Test", channel=0)
         other = session.create_track(output_device_name="Other", channel=1)
         clip = Clip(parent=track)
@@ -197,6 +201,7 @@ class TestSession:
 
         # Create track and clip
         from clip import Clip
+
         track = session.create_track(output_device_name="Test", channel=0)
         clip = Clip()
         track.add_clip(clip, position=0)
@@ -219,6 +224,7 @@ class TestSession:
         session = Session(mock_app)
 
         from clip import Clip
+
         track = session.create_track(output_device_name="Test", channel=0)
         Clip()
         track.add_clip(Clip(), position=0)
@@ -247,7 +253,7 @@ class TestSession:
         mock_app.global_timeline = iso.Timeline()
         session = Session(mock_app)
 
-        session.set_key('D')
+        session.set_key("D")
         # Note: set_key just sets self.key, should be Key object
         assert session.key is not None
 
@@ -266,10 +272,10 @@ class TestSession:
 
         # Mock the output device
         mock_device = MagicMock()
-        session.output_devices['Test Device'] = mock_device
-        session.output_device_names = ['Test Device']
+        session.output_devices["Test Device"] = mock_device
+        session.output_device_names = ["Test Device"]
 
-        session.send_note('Test Device', note=60, velocity=100)
+        session.send_note("Test Device", note=60, velocity=100)
         mock_device.note_on.assert_called_once_with(60, 100, 0)
 
     def test_send_note_note_off(self, mock_app):
@@ -278,10 +284,10 @@ class TestSession:
         session = Session(mock_app)
 
         mock_device = MagicMock()
-        session.output_devices['Test'] = mock_device
-        session.output_device_names = ['Test']
+        session.output_devices["Test"] = mock_device
+        session.output_device_names = ["Test"]
 
-        session.send_note('Test', note=60, velocity=0)
+        session.send_note("Test", note=60, velocity=0)
         mock_device.note_off.assert_called_once_with(60, 0)
 
     def test_send_note_invalid_device(self, mock_app):
@@ -290,7 +296,7 @@ class TestSession:
         session = Session(mock_app)
 
         # Should not raise, just print message
-        session.send_note('Nonexistent', note=60, velocity=100)
+        session.send_note("Nonexistent", note=60, velocity=100)
 
     def test_send_cc_with_valid_device(self, mock_app):
         """Test sending CC to valid device."""
@@ -298,10 +304,10 @@ class TestSession:
         session = Session(mock_app)
 
         mock_device = MagicMock()
-        session.output_devices['Test'] = mock_device
-        session.output_device_names = ['Test']
+        session.output_devices["Test"] = mock_device
+        session.output_device_names = ["Test"]
 
-        session.send_cc('Test', cc_number=1, value=64)
+        session.send_cc("Test", cc_number=1, value=64)
         mock_device.control.assert_called_once_with(control=1, value=64, channel=0)
 
     def test_send_cc_invalid_device(self, mock_app):
@@ -309,17 +315,36 @@ class TestSession:
         mock_app.global_timeline = iso.Timeline()
         session = Session(mock_app)
 
-        session.send_cc('Nonexistent', cc_number=1, value=64)
+        session.send_cc("Nonexistent", cc_number=1, value=64)
+
+    def test_send_pitch_bend_with_valid_device(self, mock_app):
+        """Test sending pitch bend to valid device."""
+        mock_app.global_timeline = iso.Timeline()
+        session = Session(mock_app)
+
+        mock_device = MagicMock()
+        session.output_devices["Test"] = mock_device
+        session.output_device_names = ["Test"]
+
+        session.send_pitch_bend("Test", value=2000, channel=0)
+        mock_device.pitch_bend.assert_called_once_with(2000, 0)
+
+    def test_send_pitch_bend_invalid_device(self, mock_app):
+        """Test sending pitch bend to non-existent device."""
+        mock_app.global_timeline = iso.Timeline()
+        session = Session(mock_app)
+
+        session.send_pitch_bend("Nonexistent", value=100, channel=0)
 
     def test_device_management_methods_exist(self, mock_app):
         """Test device management methods exist."""
         mock_app.global_timeline = iso.Timeline()
         session = Session(mock_app)
 
-        assert hasattr(session, 'initialize_devices')
-        assert hasattr(session, 'update_midi_devices')
-        assert hasattr(session, '_get_safe_input_device_names')
-        assert hasattr(session, '_get_safe_output_device_names')
+        assert hasattr(session, "initialize_devices")
+        assert hasattr(session, "update_midi_devices")
+        assert hasattr(session, "_get_safe_input_device_names")
+        assert hasattr(session, "_get_safe_output_device_names")
 
     def test_timeline_start_stop(self, mock_app):
         """Test timeline start and stop."""

@@ -38,16 +38,7 @@ class MelodicMode(definitions.PushItMode):
     last_time_at_params_edited = None
     modulation_wheel_mode = False
 
-    PITCH_BEND_RANGES: ClassVar[list] = [
-        2,
-        7,
-        12,
-    ]  # semitones: whole tone, fifth, octave
-    pitch_bend_range = 2  # default redefined in initialize
-    _pb_rpn_sent = None  # cache of (device_name, channel, semitones) last configured
-
     def initialize(self, settings=None):
-        # Reset instance-specific mutable state
         self.notes_being_played = []
         if settings is not None:
             self.use_poly_at = settings.get("use_poly_at", True)
@@ -56,8 +47,6 @@ class MelodicMode(definitions.PushItMode):
             self.channel_at_range_end = settings.get("channel_at_range_end", 800)
             self.poly_at_max_range = settings.get("poly_at_max_range", 40)
             self.poly_at_curve_bending = settings.get("poly_at_curve_bending", 50)
-            self.set_pitch_bend_range(settings.get("pitch_bend_range", 2))
-        self._pb_rpn_sent = None
 
     def get_settings_to_save(self):
         return {
@@ -67,7 +56,6 @@ class MelodicMode(definitions.PushItMode):
             "channel_at_range_end": self.channel_at_range_end,
             "poly_at_max_range": self.poly_at_max_range,
             "poly_at_curve_bending": self.poly_at_curve_bending,
-            "pitch_bend_range": self.pitch_bend_range,
         }
 
     def set_channel_at_range_start(self, value):
@@ -105,35 +93,6 @@ class MelodicMode(definitions.PushItMode):
             value = 100
         self.poly_at_curve_bending = value
         self.last_time_at_params_edited = time.time()
-
-    def set_pitch_bend_range(self, value):
-        # Snap to the nearest allowed value in PITCH_BEND_RANGES
-        if value not in self.PITCH_BEND_RANGES:
-            value = min(self.PITCH_BEND_RANGES, key=lambda r: abs(r - value))
-        self.pitch_bend_range = value
-        # Invalidate the RPN cache so the new range is sent on next touch
-        self._pb_rpn_sent = None
-
-    def cycle_pitch_bend_range(self, direction=1):
-        # Cycle through PITCH_BEND_RANGES with wraparound
-        if self.pitch_bend_range in self.PITCH_BEND_RANGES:
-            index = self.PITCH_BEND_RANGES.index(self.pitch_bend_range)
-        else:
-            index = 0
-        new_index = (index + direction) % len(self.PITCH_BEND_RANGES)
-        self.set_pitch_bend_range(self.PITCH_BEND_RANGES[new_index])
-
-    def _send_pitch_bend_sensitivity(self, track, semitones):
-        # RPN 0 = Pitch Bend Sensitivity. Devices that ignore RPN keep their
-        # own range, so this degrades gracefully.
-        device_name = track.output_device_name
-        self.app.session.send_cc(device_name, 101, 0)  # RPN MSB
-        self.app.session.send_cc(device_name, 100, 0)  # RPN LSB
-        self.app.session.send_cc(device_name, 6, semitones)  # Data Entry MSB
-        self.app.session.send_cc(device_name, 38, 0)  # Data Entry LSB
-        self.app.session.send_cc(device_name, 101, 127)  # RPN deselect
-        self.app.session.send_cc(device_name, 100, 127)  # RPN deselect
-        self._pb_rpn_sent = (device_name, 0, semitones)
 
     def get_poly_at_curve(self):
         pow_curve = [
@@ -394,16 +353,10 @@ class MelodicMode(definitions.PushItMode):
 
     def on_touchstrip(self, value):
         if self.modulation_wheel_mode:
-            # Strip is sending CC values rather than pitch bend; no handling yet
             return True
         track = self.app.track_selection_mode.get_selected_track()
         if track is None or not track.output_device_name:
             return True
-        # Configure the device's pitch bend sensitivity lazily so we cover
-        # track switches and range changes without extra hooks
-        cache_key = (track.output_device_name, 0, self.pitch_bend_range)
-        if self._pb_rpn_sent != cache_key:
-            self._send_pitch_bend_sensitivity(track, self.pitch_bend_range)
         self.app.session.send_pitch_bend(track.output_device_name, value, 0)
         return True
 

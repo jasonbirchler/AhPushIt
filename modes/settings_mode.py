@@ -11,12 +11,14 @@ import push2_python.constants
 import definitions
 from utils import ScrollableList, draw_text_at, show_text, show_title, show_value
 
-IS_RUNNING_SW_UPDATE = ''
+IS_RUNNING_SW_UPDATE = ""
 
 """
 This enum determines the order in which the settings pages display
 The order is arbitrary and can be arranged by personal preference
 """
+
+
 class Pages(IntEnum):
     PROJECT = 0
     PERFORMANCE = 1
@@ -24,9 +26,8 @@ class Pages(IntEnum):
 
 
 class SettingsMode(definitions.PushItMode):
-
-    xor_group = 'buttons'
-    buttons_used: ClassVar[list] = ['setup']
+    xor_group = "buttons"
+    buttons_used: ClassVar[list] = ["setup"]
 
     # Performance page
     # - Root note
@@ -76,7 +77,7 @@ class SettingsMode(definitions.PushItMode):
         current_time = time.time()
         for encoder_name in self.push.encoders.available_names:
             self.encoders_state[encoder_name] = {
-                'last_message_received': current_time,
+                "last_message_received": current_time,
             }
 
         for encoder_name in self.push.encoders.available_names:
@@ -105,9 +106,7 @@ class SettingsMode(definitions.PushItMode):
         self.auto_open_last_project = settings.get("auto_open_last_project", False)
 
     def get_settings_to_save(self):
-        return {
-            "auto_open_last_project": self.auto_open_last_project
-        }
+        return {"auto_open_last_project": self.auto_open_last_project}
 
     def activate(self):
         self.midi_in_list.items = []
@@ -135,11 +134,20 @@ class SettingsMode(definitions.PushItMode):
             return item
 
         current_time = time.time()
-        if current_time - self.project_list.last_scroll_time > self.project_list.pause_before_scroll:
-            self.project_list.scroll_text_offset += self.project_list.scroll_text_direction
+        if (
+            current_time - self.project_list.last_scroll_time
+            > self.project_list.pause_before_scroll
+        ):
+            self.project_list.scroll_text_offset += (
+                self.project_list.scroll_text_direction
+            )
 
         text_width = len(item) * 6
-        visible_width = self.project_list.x_part * (push2_python.constants.DISPLAY_LINE_PIXELS // definitions.GRID_WIDTH) - 10
+        visible_width = (
+            self.project_list.x_part
+            * (push2_python.constants.DISPLAY_LINE_PIXELS // definitions.GRID_WIDTH)
+            - 10
+        )
         if text_width > visible_width:
             start_pos = (self.project_list.scroll_text_offset // 6) % len(item)
             display_text = item[start_pos:] + " " + item[:start_pos]
@@ -148,19 +156,45 @@ class SettingsMode(definitions.PushItMode):
         return display_text
 
     def deactivate(self):
-        self.push.buttons.set_button_color(push2_python.constants.BUTTON_UPPER_ROW_1, definitions.BLACK)
-        self.push.buttons.set_button_color(push2_python.constants.BUTTON_UPPER_ROW_2, definitions.BLACK)
-        self.push.buttons.set_button_color(push2_python.constants.BUTTON_UPPER_ROW_3, definitions.BLACK)
-        self.push.buttons.set_button_color(push2_python.constants.BUTTON_UPPER_ROW_4, definitions.BLACK)
-        self.push.buttons.set_button_color(push2_python.constants.BUTTON_UPPER_ROW_5, definitions.BLACK)
-        self.push.buttons.set_button_color(push2_python.constants.BUTTON_UPPER_ROW_6, definitions.BLACK)
-        self.push.buttons.set_button_color(push2_python.constants.BUTTON_UPPER_ROW_7, definitions.BLACK)
-        self.push.buttons.set_button_color(push2_python.constants.BUTTON_UPPER_ROW_8, definitions.BLACK)
-        self.push.buttons.set_button_color(push2_python.constants.BUTTON_LOWER_ROW_1, definitions.BLACK)
-        self.push.buttons.set_button_color(push2_python.constants.BUTTON_LOWER_ROW_2, definitions.BLACK)
-        self.push.buttons.set_button_color(push2_python.constants.BUTTON_LOWER_ROW_3, definitions.BLACK)
-        self.push.buttons.set_button_color(push2_python.constants.BUTTON_UP, definitions.BLACK)
-        self.push.buttons.set_button_color(push2_python.constants.BUTTON_DOWN, definitions.BLACK)
+        self.push.buttons.set_button_color(
+            push2_python.constants.BUTTON_UPPER_ROW_1, definitions.BLACK
+        )
+        self.push.buttons.set_button_color(
+            push2_python.constants.BUTTON_UPPER_ROW_2, definitions.BLACK
+        )
+        self.push.buttons.set_button_color(
+            push2_python.constants.BUTTON_UPPER_ROW_3, definitions.BLACK
+        )
+        self.push.buttons.set_button_color(
+            push2_python.constants.BUTTON_UPPER_ROW_4, definitions.BLACK
+        )
+        self.push.buttons.set_button_color(
+            push2_python.constants.BUTTON_UPPER_ROW_5, definitions.BLACK
+        )
+        self.push.buttons.set_button_color(
+            push2_python.constants.BUTTON_UPPER_ROW_6, definitions.BLACK
+        )
+        self.push.buttons.set_button_color(
+            push2_python.constants.BUTTON_UPPER_ROW_7, definitions.BLACK
+        )
+        self.push.buttons.set_button_color(
+            push2_python.constants.BUTTON_UPPER_ROW_8, definitions.BLACK
+        )
+        self.push.buttons.set_button_color(
+            push2_python.constants.BUTTON_LOWER_ROW_1, definitions.BLACK
+        )
+        self.push.buttons.set_button_color(
+            push2_python.constants.BUTTON_LOWER_ROW_2, definitions.BLACK
+        )
+        self.push.buttons.set_button_color(
+            push2_python.constants.BUTTON_LOWER_ROW_3, definitions.BLACK
+        )
+        self.push.buttons.set_button_color(
+            push2_python.constants.BUTTON_UP, definitions.BLACK
+        )
+        self.push.buttons.set_button_color(
+            push2_python.constants.BUTTON_DOWN, definitions.BLACK
+        )
         self.current_page = 0
         self.setup_button_pressing_time = None
 
@@ -184,7 +218,7 @@ class SettingsMode(definitions.PushItMode):
                 push2_python.constants.BUTTON_UPPER_ROW_1, definitions.WHITE
             )
             self.push.buttons.set_button_color(
-                push2_python.constants.BUTTON_UPPER_ROW_2, definitions.WHITE
+                push2_python.constants.BUTTON_UPPER_ROW_2, definitions.OFF_BTN_COLOR
             )
             self.push.buttons.set_button_color(
                 push2_python.constants.BUTTON_UPPER_ROW_3, definitions.OFF_BTN_COLOR
@@ -206,56 +240,56 @@ class SettingsMode(definitions.PushItMode):
             )
 
         elif self.current_page == Pages.SESSION:
-            self.push.buttons.set_button_color( # Last session on boot
+            self.push.buttons.set_button_color(  # Last session on boot
                 push2_python.constants.BUTTON_UPPER_ROW_1, definitions.WHITE
             )
-            self.push.buttons.set_button_color( # Save settings
+            self.push.buttons.set_button_color(  # Save settings
                 push2_python.constants.BUTTON_UPPER_ROW_3, definitions.GREEN
             )
-            self.push.buttons.set_button_color( # Empty
+            self.push.buttons.set_button_color(  # Empty
                 push2_python.constants.BUTTON_UPPER_ROW_4, definitions.BLACK
             )
-            self.push.buttons.set_button_color( # Update MIDI Definitions
+            self.push.buttons.set_button_color(  # Update MIDI Definitions
                 push2_python.constants.BUTTON_UPPER_ROW_5, definitions.CYAN
             )
-            self.push.buttons.set_button_color( # Reset MIDI
+            self.push.buttons.set_button_color(  # Reset MIDI
                 push2_python.constants.BUTTON_UPPER_ROW_6,
                 definitions.GREEN,
-                animation=definitions.DEFAULT_ANIMATION
+                animation=definitions.DEFAULT_ANIMATION,
             )
-            self.push.buttons.set_button_color( # Software Update
+            self.push.buttons.set_button_color(  # Software Update
                 push2_python.constants.BUTTON_UPPER_ROW_7,
                 definitions.RED,
-                animation=definitions.DEFAULT_ANIMATION
+                animation=definitions.DEFAULT_ANIMATION,
             )
-            self.push.buttons.set_button_color( # Restart
+            self.push.buttons.set_button_color(  # Restart
                 push2_python.constants.BUTTON_UPPER_ROW_8,
                 definitions.RED,
-                animation=definitions.DEFAULT_ANIMATION
+                animation=definitions.DEFAULT_ANIMATION,
             )
         elif self.current_page == Pages.PROJECT:
-            self.push.buttons.set_button_color( # Save session
+            self.push.buttons.set_button_color(  # Save session
                 push2_python.constants.BUTTON_UPPER_ROW_1, definitions.WHITE
             )
-            self.push.buttons.set_button_color( # Empty
+            self.push.buttons.set_button_color(  # Empty
                 push2_python.constants.BUTTON_UPPER_ROW_2, definitions.BLACK
             )
-            self.push.buttons.set_button_color( # Load session
+            self.push.buttons.set_button_color(  # Load session
                 push2_python.constants.BUTTON_UPPER_ROW_3, definitions.WHITE
             )
-            self.push.buttons.set_button_color( # Empty
+            self.push.buttons.set_button_color(  # Empty
                 push2_python.constants.BUTTON_UPPER_ROW_4, definitions.BLACK
             )
-            self.push.buttons.set_button_color( # Empty
+            self.push.buttons.set_button_color(  # Empty
                 push2_python.constants.BUTTON_UPPER_ROW_5, definitions.BLACK
             )
-            self.push.buttons.set_button_color( # Empty
+            self.push.buttons.set_button_color(  # Empty
                 push2_python.constants.BUTTON_UPPER_ROW_6, definitions.BLACK
             )
-            self.push.buttons.set_button_color( # Empty
+            self.push.buttons.set_button_color(  # Empty
                 push2_python.constants.BUTTON_UPPER_ROW_7, definitions.BLACK
             )
-            self.push.buttons.set_button_color( # Empty
+            self.push.buttons.set_button_color(  # Empty
                 push2_python.constants.BUTTON_UPPER_ROW_8, definitions.BLACK
             )
 
@@ -283,8 +317,12 @@ class SettingsMode(definitions.PushItMode):
                     i,
                     h - 24,
                     "Project",
-                    font_color=definitions.BLACK if self.current_page == Pages.PROJECT else definitions.WHITE,
-                    background_color=definitions.WHITE if self.current_page == Pages.PROJECT else definitions.BLACK
+                    font_color=definitions.BLACK
+                    if self.current_page == Pages.PROJECT
+                    else definitions.WHITE,
+                    background_color=definitions.WHITE
+                    if self.current_page == Pages.PROJECT
+                    else definitions.BLACK,
                 )
             elif i == 1:
                 show_text(
@@ -292,8 +330,12 @@ class SettingsMode(definitions.PushItMode):
                     i,
                     h - 24,
                     "Performance",
-                    font_color=definitions.BLACK if self.current_page == Pages.PERFORMANCE else definitions.WHITE,
-                    background_color=definitions.WHITE if self.current_page == Pages.PERFORMANCE else definitions.BLACK
+                    font_color=definitions.BLACK
+                    if self.current_page == Pages.PERFORMANCE
+                    else definitions.WHITE,
+                    background_color=definitions.WHITE
+                    if self.current_page == Pages.PERFORMANCE
+                    else definitions.BLACK,
                 )
             elif i == 2:
                 show_text(
@@ -301,8 +343,12 @@ class SettingsMode(definitions.PushItMode):
                     i,
                     h - 24,
                     "Session",
-                    font_color=definitions.BLACK if self.current_page == Pages.SESSION else definitions.WHITE,
-                    background_color=definitions.WHITE if self.current_page == Pages.SESSION else definitions.BLACK
+                    font_color=definitions.BLACK
+                    if self.current_page == Pages.SESSION
+                    else definitions.WHITE,
+                    background_color=definitions.WHITE
+                    if self.current_page == Pages.SESSION
+                    else definitions.BLACK,
                 )
 
             if self.current_page == Pages.PERFORMANCE:
@@ -316,21 +362,7 @@ class SettingsMode(definitions.PushItMode):
                         color,
                     )
 
-                elif i == 1:  # Pitch bend range
-                    show_title(ctx, part_x, h, "PITCH BEND")
-                    pb_labels = {2: "±1 TONE", 7: "±5TH", 12: "±1 OCT"}
-                    show_value(
-                        ctx,
-                        part_x,
-                        h,
-                        pb_labels.get(
-                            self.app.melodic_mode.pitch_bend_range,
-                            self.app.melodic_mode.pitch_bend_range,
-                        ),
-                        color,
-                    )
-
-                elif i == 2:  # Channel AT range start
+                elif i == 1:  # Channel AT range start
                     if self.app.melodic_mode.last_time_at_params_edited is not None:
                         color = definitions.get_color_rgb_float(
                             definitions.FONT_COLOR_DELAYED_ACTIONS
@@ -344,7 +376,7 @@ class SettingsMode(definitions.PushItMode):
                         color,
                     )
 
-                elif i == 3:  # Channel AT range end
+                elif i == 2:  # Channel AT range end
                     if self.app.melodic_mode.last_time_at_params_edited is not None:
                         color = definitions.get_color_rgb_float(
                             definitions.FONT_COLOR_DELAYED_ACTIONS
@@ -358,7 +390,7 @@ class SettingsMode(definitions.PushItMode):
                         color,
                     )
 
-                elif i == 4:  # Poly AT range
+                elif i == 3:  # Poly AT range
                     if self.app.melodic_mode.last_time_at_params_edited is not None:
                         color = definitions.get_color_rgb_float(
                             definitions.FONT_COLOR_DELAYED_ACTIONS
@@ -368,7 +400,7 @@ class SettingsMode(definitions.PushItMode):
                         ctx, part_x, h, self.app.melodic_mode.poly_at_max_range, color
                     )
 
-                elif i == 5:  # Poly AT curve
+                elif i == 4:  # Poly AT curve
                     if self.app.melodic_mode.last_time_at_params_edited is not None:
                         color = definitions.get_color_rgb_float(
                             definitions.FONT_COLOR_DELAYED_ACTIONS
@@ -382,7 +414,7 @@ class SettingsMode(definitions.PushItMode):
                         color,
                     )
 
-                elif i == 6:  # Root note
+                elif i == 5:  # Root note
                     show_title(ctx, part_x, h, "ROOT NOTE")
                     root_name = self.app.melodic_mode.note_number_to_name(
                         self.app.melodic_mode.root_midi_note
@@ -393,108 +425,155 @@ class SettingsMode(definitions.PushItMode):
 
             elif self.current_page == Pages.SESSION:
                 if i == 0:  # Last session on boot
-                    show_title(ctx, part_x, h, 'BOOT WITH')
+                    show_title(ctx, part_x, h, "BOOT WITH")
                     show_value(
                         ctx,
                         part_x,
                         h,
-                        'Last Session' if self.auto_open_last_project else 'Empty Session'
+                        "Last Session"
+                        if self.auto_open_last_project
+                        else "Empty Session",
                     )
                 elif i == 1:  # MIDI Input Device
                     show_title(ctx, part_x, h, "MIDI IN")
 
                     if not self.midi_in_list.items:
-                        self.midi_in_list.items = self.app.session._get_safe_input_device_names()
-                        if self.midi_in_list.selected_index >= len(self.midi_in_list.items):
-                            self.midi_in_list.selected_index = max(0, len(self.midi_in_list.items) - 1)
-                            self.midi_in_list.scroll_offset = self.midi_in_list.selected_index
+                        self.midi_in_list.items = (
+                            self.app.session._get_safe_input_device_names()
+                        )
+                        if self.midi_in_list.selected_index >= len(
+                            self.midi_in_list.items
+                        ):
+                            self.midi_in_list.selected_index = max(
+                                0, len(self.midi_in_list.items) - 1
+                            )
+                            self.midi_in_list.scroll_offset = (
+                                self.midi_in_list.selected_index
+                            )
 
                     self.midi_in_list.draw(
-                        ctx, h, h - 24,
-                        [1.0, 1.0, 1.0], color,
-                        lambda item, is_selected: self.midi_in_list.truncate_text(ctx, item),
-                        "No inputs found"
+                        ctx,
+                        h,
+                        h - 24,
+                        [1.0, 1.0, 1.0],
+                        color,
+                        lambda item, is_selected: self.midi_in_list.truncate_text(
+                            ctx, item
+                        ),
+                        "No inputs found",
                     )
                 elif i == 2:  # Save settings
-                    show_title(ctx, part_x, h, 'SAVE SETTINGS')
+                    show_title(ctx, part_x, h, "SAVE SETTINGS")
                 elif i == 4:  # Update MIDI Definitions
-                    show_title(ctx, part_x, h, 'UPDATE MIDI')
-                    show_value(ctx, part_x, h, 'DEFS', color)
+                    show_title(ctx, part_x, h, "UPDATE MIDI")
+                    show_value(ctx, part_x, h, "DEFS", color)
                 elif i == 5:  # Re-send MIDI connection established to Push
-                    show_title(
-                        ctx,
-                        part_x,
-                        h,
-                        'RESET MIDI'
-                    )
+                    show_title(ctx, part_x, h, "RESET MIDI")
                 elif i == 6:  # Software update
-                    show_title(ctx, part_x, h, 'SW UPDATE')
+                    show_title(ctx, part_x, h, "SW UPDATE")
                     if IS_RUNNING_SW_UPDATE:
                         show_value(ctx, part_x, h, IS_RUNNING_SW_UPDATE, color)
                 elif i == 7:  # Restart button + FPS indicator / Version info
-                    show_title(ctx, part_x, h, 'RESTART')
-                    draw_text_at(ctx, part_x, h - 32, 'FPS', 12, [0.5,0.5,0.5])
-                    draw_text_at(ctx, part_x + 30, h - 32, self.app.actual_frame_rate, 18, color)
+                    show_title(ctx, part_x, h, "RESTART")
+                    draw_text_at(ctx, part_x, h - 32, "FPS", 12, [0.5, 0.5, 0.5])
+                    draw_text_at(
+                        ctx, part_x + 30, h - 32, self.app.actual_frame_rate, 18, color
+                    )
                     draw_text_at(
                         ctx,
                         part_x,
                         h - 15,
-                        f"Version {definitions.VERSION}", font_size=12, color=color
+                        f"Version {definitions.VERSION}",
+                        font_size=12,
+                        color=color,
                     )
 
             elif self.current_page == Pages.PROJECT:
                 if i == 0:  # Save session
-                    show_title(ctx, part_x, h, 'SAVE PROJECT')
+                    show_title(ctx, part_x, h, "SAVE PROJECT")
                     show_value(ctx, part_x, h, self.app.pm.current_project_file, color)
                 elif i == 2:  # Load session
-                    show_title(ctx, part_x, h, 'LOAD PROJECT')
+                    show_title(ctx, part_x, h, "LOAD PROJECT")
 
                     if not self.project_list.items:
                         self.project_list.items = self.app.pm.list_projects()
-                        if self.project_list.selected_index >= len(self.project_list.items):
-                            self.project_list.selected_index = max(0, len(self.project_list.items) - 1)
-                            self.project_list.scroll_offset = self.project_list.selected_index
+                        if self.project_list.selected_index >= len(
+                            self.project_list.items
+                        ):
+                            self.project_list.selected_index = max(
+                                0, len(self.project_list.items) - 1
+                            )
+                            self.project_list.scroll_offset = (
+                                self.project_list.selected_index
+                            )
 
                     self.project_list.draw(
-                        ctx, h, h - 24,
-                        [1.0, 1.0, 1.0], color,
-                        lambda item, is_selected: self.project_list.truncate_text(ctx, self._get_project_display_text(item, is_selected)),
-                        "No projects found"
+                        ctx,
+                        h,
+                        h - 24,
+                        [1.0, 1.0, 1.0],
+                        color,
+                        lambda item, is_selected: self.project_list.truncate_text(
+                            ctx, self._get_project_display_text(item, is_selected)
+                        ),
+                        "No projects found",
                     )
         # After drawing all labels and values, draw other stuff if required
         if self.current_page == Pages.PERFORMANCE:
-
             # Draw polyAT velocity curve
-            ctx.set_source_rgb(1,0.5,0)
+            ctx.set_source_rgb(1, 0.5, 0)
             ctx.set_line_width(1)
             data = self.app.melodic_mode.get_poly_at_curve()
             n = len(data)
-            curve_x = 5 * part_w + 3  # Start x point of curve
+            curve_x = 4 * part_w + 3  # Start x point of curve
             curve_y = part_h - 10  # Start y point of curve
             curve_height = 50
             curve_length = part_w * 3 - 6
             ctx.move_to(curve_x, curve_y)
             for i, value in enumerate(data):
-                x = curve_x + i * curve_length/n
-                y = curve_y - curve_height * value/127
+                x = curve_x + i * curve_length / n
+                y = curve_y - curve_height * value / 127
                 ctx.line_to(x, y)
             ctx.line_to(x, curve_y)
             ctx.fill()
 
             current_time = time.time()
-            if current_time - self.app.melodic_mode.latest_channel_at_value[0] < 3 and not self.app.melodic_mode.use_poly_at:
+            if (
+                current_time - self.app.melodic_mode.latest_channel_at_value[0] < 3
+                and not self.app.melodic_mode.use_poly_at
+            ):
                 # Lastest channel AT value received less than 3 seconds ago
-                draw_text_at(ctx, 3, part_h - 3, f'Latest cAT: {self.app.melodic_mode.latest_channel_at_value[1]}', font_size=20)
-            if current_time - self.app.melodic_mode.latest_poly_at_value[0] < 3 and self.app.melodic_mode.use_poly_at:
+                draw_text_at(
+                    ctx,
+                    3,
+                    part_h - 3,
+                    f"Latest cAT: {self.app.melodic_mode.latest_channel_at_value[1]}",
+                    font_size=20,
+                )
+            if (
+                current_time - self.app.melodic_mode.latest_poly_at_value[0] < 3
+                and self.app.melodic_mode.use_poly_at
+            ):
                 # Lastest channel AT value received less than 3 seconds ago
-                draw_text_at(ctx, 3, part_h - 3, f'Latest pAT: {self.app.melodic_mode.latest_poly_at_value[1]}', font_size=20)
+                draw_text_at(
+                    ctx,
+                    3,
+                    part_h - 3,
+                    f"Latest pAT: {self.app.melodic_mode.latest_poly_at_value[1]}",
+                    font_size=20,
+                )
             if current_time - self.app.melodic_mode.latest_velocity_value[0] < 3:
                 # Lastest note on velocity value received less than 3 seconds ago
-                draw_text_at(ctx, 3, part_h - 26, f'Latest velocity: {self.app.melodic_mode.latest_velocity_value[1]}', font_size=20)
-
+                draw_text_at(
+                    ctx,
+                    3,
+                    part_h - 26,
+                    f"Latest velocity: {self.app.melodic_mode.latest_velocity_value[1]}",
+                    font_size=20,
+                )
 
     def on_encoder_rotated(self, encoder_name, increment):
-        self.encoders_state[encoder_name]['last_message_received'] = time.time()
+        self.encoders_state[encoder_name]["last_message_received"] = time.time()
         # Lists are scrolled with the "slow" profile for precise one-item
         # movement; numeric value edits use the default "fast" profile. The
         # list encoders differ per settings page.
@@ -517,25 +596,29 @@ class SettingsMode(definitions.PushItMode):
                     self.app.melodic_mode.use_poly_at = False
                     self.app.push.pads.set_channel_aftertouch()
 
-            elif encoder_name == push2_python.constants.ENCODER_TRACK2_ENCODER:
-                if delta != 0:
-                    self.app.melodic_mode.cycle_pitch_bend_range(1 if delta > 0 else -1)
-
             elif encoder_name == push2_python.constants.ENCODER_TRACK3_ENCODER:
                 if delta != 0:
-                    self.app.melodic_mode.set_channel_at_range_start(self.app.melodic_mode.channel_at_range_start + delta)
+                    self.app.melodic_mode.set_channel_at_range_start(
+                        self.app.melodic_mode.channel_at_range_start + delta
+                    )
 
             elif encoder_name == push2_python.constants.ENCODER_TRACK4_ENCODER:
                 if delta != 0:
-                    self.app.melodic_mode.set_channel_at_range_end(self.app.melodic_mode.channel_at_range_end + delta)
+                    self.app.melodic_mode.set_channel_at_range_end(
+                        self.app.melodic_mode.channel_at_range_end + delta
+                    )
 
             elif encoder_name == push2_python.constants.ENCODER_TRACK5_ENCODER:
                 if delta != 0:
-                    self.app.melodic_mode.set_poly_at_max_range(self.app.melodic_mode.poly_at_max_range + delta)
+                    self.app.melodic_mode.set_poly_at_max_range(
+                        self.app.melodic_mode.poly_at_max_range + delta
+                    )
 
             elif encoder_name == push2_python.constants.ENCODER_TRACK6_ENCODER:
                 if delta != 0:
-                    self.app.melodic_mode.set_poly_at_curve_bending(self.app.melodic_mode.poly_at_curve_bending + delta)
+                    self.app.melodic_mode.set_poly_at_curve_bending(
+                        self.app.melodic_mode.poly_at_curve_bending + delta
+                    )
             elif encoder_name == push2_python.constants.ENCODER_TRACK7_ENCODER:
                 if delta != 0:
                     self.app.melodic_mode.set_root_midi_note(
@@ -546,19 +629,36 @@ class SettingsMode(definitions.PushItMode):
         elif self.current_page == Pages.SESSION:
             if encoder_name == push2_python.constants.ENCODER_TRACK2_ENCODER:
                 if not self.midi_in_list.items:
-                    self.midi_in_list.items = self.app.session._get_safe_input_device_names()
-                if self.midi_in_list.items and delta != 0 and self.midi_in_list.select_index(delta):
-                    visible_items = self.midi_in_list.get_visible_count(push2_python.constants.DISPLAY_N_LINES)
+                    self.midi_in_list.items = (
+                        self.app.session._get_safe_input_device_names()
+                    )
+                if (
+                    self.midi_in_list.items
+                    and delta != 0
+                    and self.midi_in_list.select_index(delta)
+                ):
+                    visible_items = self.midi_in_list.get_visible_count(
+                        push2_python.constants.DISPLAY_N_LINES
+                    )
                     self.midi_in_list.adjust_scroll_offset(visible_items)
 
         elif self.current_page == Pages.PROJECT:
             if encoder_name == push2_python.constants.ENCODER_TRACK1_ENCODER:
                 if delta != 0:
                     self.current_preset_save_number += delta
-                    self.current_preset_save_number = max(self.current_preset_save_number, 0)
+                    self.current_preset_save_number = max(
+                        self.current_preset_save_number, 0
+                    )
 
-            elif encoder_name == push2_python.constants.ENCODER_TRACK3_ENCODER and self.project_list.items and delta != 0 and self.project_list.select_index(delta):
-                visible_items = self.project_list.get_visible_count(push2_python.constants.DISPLAY_N_LINES)
+            elif (
+                encoder_name == push2_python.constants.ENCODER_TRACK3_ENCODER
+                and self.project_list.items
+                and delta != 0
+                and self.project_list.select_index(delta)
+            ):
+                visible_items = self.project_list.get_visible_count(
+                    push2_python.constants.DISPLAY_N_LINES
+                )
                 self.project_list.adjust_scroll_offset(visible_items)
                 self.waiting_for_confirmation = False
                 self.project_to_confirm = None
@@ -567,7 +667,7 @@ class SettingsMode(definitions.PushItMode):
         # if this is active first
         return True
 
-    def on_button_pressed(self, button_name, shift = False):
+    def on_button_pressed(self, button_name, shift=False):
         if button_name == push2_python.constants.BUTTON_SETUP:
             self.setup_button_pressing_time = time.time()
             # Toggle settings mode on/off without cycling pages
@@ -598,28 +698,30 @@ class SettingsMode(definitions.PushItMode):
 
         if self.current_page == Pages.PERFORMANCE:
             if button_name == push2_python.constants.BUTTON_UPPER_ROW_1:
-                self.app.melodic_mode.use_poly_at = not self.app.melodic_mode.use_poly_at
+                self.app.melodic_mode.use_poly_at = (
+                    not self.app.melodic_mode.use_poly_at
+                )
                 if self.app.melodic_mode.use_poly_at:
                     self.app.push.pads.set_polyphonic_aftertouch()
                 else:
                     self.app.push.pads.set_channel_aftertouch()
                 return True
 
-            if button_name == push2_python.constants.BUTTON_UPPER_ROW_2:
-                self.app.melodic_mode.cycle_pitch_bend_range(1)
-                return True
-
         elif self.current_page == Pages.SESSION:
             if button_name == push2_python.constants.BUTTON_UPPER_ROW_1:
                 self.auto_open_last_project = not self.auto_open_last_project
                 # Also update the app's settings dict to reflect the change immediately
-                self.app.settings['auto_open_last_project'] = self.auto_open_last_project
+                self.app.settings["auto_open_last_project"] = (
+                    self.auto_open_last_project
+                )
                 self.app.save_current_settings_to_file()
                 return True
             if button_name == push2_python.constants.BUTTON_UPPER_ROW_3:
                 # Apply selected MIDI In device if changed, then save settings
                 if self.midi_in_list.items:
-                    selected_name = self.midi_in_list.items[self.midi_in_list.selected_index]
+                    selected_name = self.midi_in_list.items[
+                        self.midi_in_list.selected_index
+                    ]
                     if selected_name != self.app.midi_in_device_name:
                         self.app.start_midi_input(selected_name)
                 self.app.save_current_settings_to_file()
@@ -629,20 +731,26 @@ class SettingsMode(definitions.PushItMode):
                 try:
                     # Update submodule and conversion scripts
                     subprocess.run(
-                        ['git', 'submodule', 'update', '--remote', 'midi-dataset'],
-                        capture_output=True, text=True, cwd=os.getcwd(), check=False
+                        ["git", "submodule", "update", "--remote", "midi-dataset"],
+                        capture_output=True,
+                        text=True,
+                        cwd=os.getcwd(),
+                        check=False,
                     )
                     subprocess.run(
-                        ['python3', 'scripts/convert_midi_csv.py'],
-                        capture_output=True, text=True, cwd=os.getcwd(), check=False
+                        ["python3", "scripts/convert_midi_csv.py"],
+                        capture_output=True,
+                        text=True,
+                        cwd=os.getcwd(),
+                        check=False,
                     )
-                    
+
                     # Load all hardware definitions
                     self.app.track_selection_mode.load_hardware_devices_info()
-                    
+
                     # Reload all MIDI CC mappings
                     self.app.midi_cc_mode.reload_all_instrument_midi_control_ccs()
-                    
+
                     self.app.add_display_notification("MIDI defs updated!")
                 except (FileNotFoundError, json.JSONDecodeError) as e:
                     self.app.add_display_notification(f"Update failed: {str(e)[:35]}")
@@ -666,7 +774,9 @@ class SettingsMode(definitions.PushItMode):
 
         elif self.current_page == Pages.PROJECT:
             if button_name == push2_python.constants.BUTTON_UPPER_ROW_1:
-                filename = datetime.now(tz=datetime.now().astimezone().tzinfo).strftime("%Y-%m-%d_%H-%M-%S")
+                filename = datetime.now(tz=datetime.now().astimezone().tzinfo).strftime(
+                    "%Y-%m-%d_%H-%M-%S"
+                )
                 self.app.pm.save_project(filename)
                 self.app.add_display_notification(f"Saved session as: {filename}")
 
@@ -680,7 +790,9 @@ class SettingsMode(definitions.PushItMode):
                     if not self.waiting_for_confirmation:
                         # First press: show confirmation
                         self.waiting_for_confirmation = True
-                        self.project_to_confirm = self.project_list.items[self.project_list.selected_index]
+                        self.project_to_confirm = self.project_list.items[
+                            self.project_list.selected_index
+                        ]
                         self.app.add_display_notification(
                             f"Press again to load: {self.project_to_confirm}"
                         )
@@ -717,25 +829,28 @@ class SettingsMode(definitions.PushItMode):
                         self.project_to_confirm = None
                 return True
 
+
 def restart_apps():
-    print('- restarting apps')
-    os.system('sudo systemctl restart shepherd')
-    os.system('sudo systemctl restart shepherd_controller')
+    print("- restarting apps")
+    os.system("sudo systemctl restart shepherd")
+    os.system("sudo systemctl restart shepherd_controller")
 
 
 def run_sw_update(do_pip_install=True):
     global IS_RUNNING_SW_UPDATE
-    print('Running SW update...')
-    print('- pulling from repository')
-    IS_RUNNING_SW_UPDATE = 'Pulling'
-    os.system('git pull')
+    print("Running SW update...")
+    print("- pulling from repository")
+    IS_RUNNING_SW_UPDATE = "Pulling"
+    os.system("git pull")
     if do_pip_install:
-        print('- installing dependencies')
-        IS_RUNNING_SW_UPDATE = 'PIP install'
-        os.system('pip3 install -r requirements.txt --no-cache')
-    print('Building Shepherd backend')
-    IS_RUNNING_SW_UPDATE = 'Building'
-    os.system('cd /home/patch/shepherd/Shepherd/Builds/LinuxMakefile; git pull; make CONFIG=Release -j4;')
-    IS_RUNNING_SW_UPDATE = 'Restarting'
-    os.system('sudo systemctl restart shepherd')
+        print("- installing dependencies")
+        IS_RUNNING_SW_UPDATE = "PIP install"
+        os.system("pip3 install -r requirements.txt --no-cache")
+    print("Building Shepherd backend")
+    IS_RUNNING_SW_UPDATE = "Building"
+    os.system(
+        "cd /home/patch/shepherd/Shepherd/Builds/LinuxMakefile; git pull; make CONFIG=Release -j4;"
+    )
+    IS_RUNNING_SW_UPDATE = "Restarting"
+    os.system("sudo systemctl restart shepherd")
     restart_apps()
