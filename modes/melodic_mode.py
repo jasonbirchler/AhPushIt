@@ -7,7 +7,6 @@ import definitions
 
 
 class MelodicMode(definitions.PushItMode):
-
     xor_group = "pads"
 
     notes_being_played: ClassVar[list] = []
@@ -39,6 +38,14 @@ class MelodicMode(definitions.PushItMode):
     last_time_at_params_edited = None
     modulation_wheel_mode = False
 
+    PITCH_BEND_RANGES: ClassVar[list] = [
+        2,
+        7,
+        12,
+    ]  # semitones: whole tone, fifth, octave
+    pitch_bend_range = 2  # default redefined in initialize
+    _pb_rpn_sent = None  # cache of (device_name, channel, semitones) last configured
+
     def initialize(self, settings=None):
         # Reset instance-specific mutable state
         self.notes_being_played = []
@@ -49,6 +56,8 @@ class MelodicMode(definitions.PushItMode):
             self.channel_at_range_end = settings.get("channel_at_range_end", 800)
             self.poly_at_max_range = settings.get("poly_at_max_range", 40)
             self.poly_at_curve_bending = settings.get("poly_at_curve_bending", 50)
+            self.set_pitch_bend_range(settings.get("pitch_bend_range", 2))
+        self._pb_rpn_sent = None
 
     def get_settings_to_save(self):
         return {
@@ -58,6 +67,7 @@ class MelodicMode(definitions.PushItMode):
             "channel_at_range_end": self.channel_at_range_end,
             "poly_at_max_range": self.poly_at_max_range,
             "poly_at_curve_bending": self.poly_at_curve_bending,
+            "pitch_bend_range": self.pitch_bend_range,
         }
 
     def set_channel_at_range_start(self, value):
@@ -96,12 +106,39 @@ class MelodicMode(definitions.PushItMode):
         self.poly_at_curve_bending = value
         self.last_time_at_params_edited = time.time()
 
+    def set_pitch_bend_range(self, value):
+        # Snap to the nearest allowed value in PITCH_BEND_RANGES
+        if value not in self.PITCH_BEND_RANGES:
+            value = min(self.PITCH_BEND_RANGES, key=lambda r: abs(r - value))
+        self.pitch_bend_range = value
+        # Invalidate the RPN cache so the new range is sent on next touch
+        self._pb_rpn_sent = None
+
+    def cycle_pitch_bend_range(self, direction=1):
+        # Cycle through PITCH_BEND_RANGES with wraparound
+        if self.pitch_bend_range in self.PITCH_BEND_RANGES:
+            index = self.PITCH_BEND_RANGES.index(self.pitch_bend_range)
+        else:
+            index = 0
+        new_index = (index + direction) % len(self.PITCH_BEND_RANGES)
+        self.set_pitch_bend_range(self.PITCH_BEND_RANGES[new_index])
+
+    def _send_pitch_bend_sensitivity(self, track, semitones):
+        # RPN 0 = Pitch Bend Sensitivity. Devices that ignore RPN keep their
+        # own range, so this degrades gracefully.
+        device_name = track.output_device_name
+        self.app.session.send_cc(device_name, 101, 0)  # RPN MSB
+        self.app.session.send_cc(device_name, 100, 0)  # RPN LSB
+        self.app.session.send_cc(device_name, 6, semitones)  # Data Entry MSB
+        self.app.session.send_cc(device_name, 38, 0)  # Data Entry LSB
+        self.app.session.send_cc(device_name, 101, 127)  # RPN deselect
+        self.app.session.send_cc(device_name, 100, 127)  # RPN deselect
+        self._pb_rpn_sent = (device_name, 0, semitones)
+
     def get_poly_at_curve(self):
         pow_curve = [
             pow(e, 3 * self.poly_at_curve_bending / 100)
-            for e in [
-                i / self.poly_at_max_range for i in range(self.poly_at_max_range)
-            ]
+            for e in [i / self.poly_at_max_range for i in range(self.poly_at_max_range)]
         ]
         return [
             int(127 * pow_curve[i]) if i < self.poly_at_max_range else 127
@@ -126,7 +163,9 @@ class MelodicMode(definitions.PushItMode):
             return self.root_midi_note + ((7 - pad_ij[0]) * 5 + pad_ij[1])
         scale_degrees = self.get_scale_degrees()
         num_degrees = len(scale_degrees)
-        pos = (definitions.GRID_WIDTH - 1 - pad_ij[0]) * definitions.GRID_HEIGHT + pad_ij[1]
+        pos = (
+            definitions.GRID_WIDTH - 1 - pad_ij[0]
+        ) * definitions.GRID_HEIGHT + pad_ij[1]
         octave = pos // num_degrees
         degree = pos % num_degrees
         midi_note = self.root_midi_note + scale_degrees[degree] + 12 * octave
@@ -310,13 +349,11 @@ class MelodicMode(definitions.PushItMode):
             velocity_to_send = velocity if not self.fixed_velocity_mode else 127
 
             # Send via MIDI manager to selected track's output device
-            if hasattr(self.app, 'session'):
+            if hasattr(self.app, "session"):
                 track = self.app.track_selection_mode.get_selected_track()
                 if track:
                     self.app.session.send_note(
-                        track.output_device_name,
-                        midi_note,
-                        velocity_to_send
+                        track.output_device_name, midi_note, velocity_to_send
                     )
 
             # Directly calling update pads method
@@ -336,17 +373,17 @@ class MelodicMode(definitions.PushItMode):
             ):
                 # see comment in "on_pad_pressed" above
                 self.remove_note_being_played(midi_note, "push")
-            
+
             # Send via MIDI manager to selected track's output device
-            if hasattr(self.app, 'session'):
+            if hasattr(self.app, "session"):
                 track = self.app.track_selection_mode.get_selected_track()
                 if track:
                     self.app.session.send_note(
                         track.output_device_name,
                         midi_note,
-                        0  # velocity 0 = note off
+                        0,  # velocity 0 = note off
                     )
-            
+
             # Directly calling update pads method because we want user to feel feedback as quick as possible
             self.update_pads()
             return True
@@ -356,7 +393,18 @@ class MelodicMode(definitions.PushItMode):
         return True
 
     def on_touchstrip(self, value):
-        # TODO: implement handler that sends touchstrip to correct device
+        if self.modulation_wheel_mode:
+            # Strip is sending CC values rather than pitch bend; no handling yet
+            return True
+        track = self.app.track_selection_mode.get_selected_track()
+        if track is None or not track.output_device_name:
+            return True
+        # Configure the device's pitch bend sensitivity lazily so we cover
+        # track switches and range changes without extra hooks
+        cache_key = (track.output_device_name, 0, self.pitch_bend_range)
+        if self._pb_rpn_sent != cache_key:
+            self._send_pitch_bend_sensitivity(track, self.pitch_bend_range)
+        self.app.session.send_pitch_bend(track.output_device_name, value, 0)
         return True
 
     def on_sustain_pedal(self, sustain_on):

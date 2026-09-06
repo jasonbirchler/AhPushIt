@@ -184,7 +184,7 @@ class SettingsMode(definitions.PushItMode):
                 push2_python.constants.BUTTON_UPPER_ROW_1, definitions.WHITE
             )
             self.push.buttons.set_button_color(
-                push2_python.constants.BUTTON_UPPER_ROW_2, definitions.OFF_BTN_COLOR
+                push2_python.constants.BUTTON_UPPER_ROW_2, definitions.WHITE
             )
             self.push.buttons.set_button_color(
                 push2_python.constants.BUTTON_UPPER_ROW_3, definitions.OFF_BTN_COLOR
@@ -307,33 +307,89 @@ class SettingsMode(definitions.PushItMode):
 
             if self.current_page == Pages.PERFORMANCE:
                 if i == 0:  # Poly AT/channel AT
-                    show_title(ctx, part_x, h, 'AFTERTOUCH')
-                    show_value(ctx, part_x, h, 'polyAT' if self.app.melodic_mode.use_poly_at else 'channel', color)
+                    show_title(ctx, part_x, h, "AFTERTOUCH")
+                    show_value(
+                        ctx,
+                        part_x,
+                        h,
+                        "polyAT" if self.app.melodic_mode.use_poly_at else "channel",
+                        color,
+                    )
 
+                elif i == 1:  # Pitch bend range
+                    show_title(ctx, part_x, h, "PITCH BEND")
+                    pb_labels = {2: "±1 TONE", 7: "±5TH", 12: "±1 OCT"}
+                    show_value(
+                        ctx,
+                        part_x,
+                        h,
+                        pb_labels.get(
+                            self.app.melodic_mode.pitch_bend_range,
+                            self.app.melodic_mode.pitch_bend_range,
+                        ),
+                        color,
+                    )
 
-                elif i == 1:  # Channel AT range start
+                elif i == 2:  # Channel AT range start
                     if self.app.melodic_mode.last_time_at_params_edited is not None:
-                        color = definitions.get_color_rgb_float(definitions.FONT_COLOR_DELAYED_ACTIONS)
-                    show_title(ctx, part_x, h, 'cAT START')
-                    show_value(ctx, part_x, h, self.app.melodic_mode.channel_at_range_start, color)
+                        color = definitions.get_color_rgb_float(
+                            definitions.FONT_COLOR_DELAYED_ACTIONS
+                        )
+                    show_title(ctx, part_x, h, "cAT START")
+                    show_value(
+                        ctx,
+                        part_x,
+                        h,
+                        self.app.melodic_mode.channel_at_range_start,
+                        color,
+                    )
 
-                elif i == 2:  # Channel AT range end
+                elif i == 3:  # Channel AT range end
                     if self.app.melodic_mode.last_time_at_params_edited is not None:
-                        color = definitions.get_color_rgb_float(definitions.FONT_COLOR_DELAYED_ACTIONS)
-                    show_title(ctx, part_x, h, 'cAT END')
-                    show_value(ctx, part_x, h, self.app.melodic_mode.channel_at_range_end, color)
+                        color = definitions.get_color_rgb_float(
+                            definitions.FONT_COLOR_DELAYED_ACTIONS
+                        )
+                    show_title(ctx, part_x, h, "cAT END")
+                    show_value(
+                        ctx,
+                        part_x,
+                        h,
+                        self.app.melodic_mode.channel_at_range_end,
+                        color,
+                    )
 
-                elif i == 3:  # Poly AT range
+                elif i == 4:  # Poly AT range
                     if self.app.melodic_mode.last_time_at_params_edited is not None:
-                        color = definitions.get_color_rgb_float(definitions.FONT_COLOR_DELAYED_ACTIONS)
-                    show_title(ctx, part_x, h, 'pAT RANGE')
-                    show_value(ctx, part_x, h, self.app.melodic_mode.poly_at_max_range, color)
+                        color = definitions.get_color_rgb_float(
+                            definitions.FONT_COLOR_DELAYED_ACTIONS
+                        )
+                    show_title(ctx, part_x, h, "pAT RANGE")
+                    show_value(
+                        ctx, part_x, h, self.app.melodic_mode.poly_at_max_range, color
+                    )
 
-                elif i == 4:  # Poly AT curve
+                elif i == 5:  # Poly AT curve
                     if self.app.melodic_mode.last_time_at_params_edited is not None:
-                        color = definitions.get_color_rgb_float(definitions.FONT_COLOR_DELAYED_ACTIONS)
-                    show_title(ctx, part_x, h, 'pAT CURVE')
-                    show_value(ctx, part_x, h, self.app.melodic_mode.poly_at_curve_bending, color)
+                        color = definitions.get_color_rgb_float(
+                            definitions.FONT_COLOR_DELAYED_ACTIONS
+                        )
+                    show_title(ctx, part_x, h, "pAT CURVE")
+                    show_value(
+                        ctx,
+                        part_x,
+                        h,
+                        self.app.melodic_mode.poly_at_curve_bending,
+                        color,
+                    )
+
+                elif i == 6:  # Root note
+                    show_title(ctx, part_x, h, "ROOT NOTE")
+                    root_name = self.app.melodic_mode.note_number_to_name(
+                        self.app.melodic_mode.root_midi_note
+                    )
+                    if not isinstance(root_name, str):
+                        root_name = self.app.melodic_mode.root_midi_note
+                    show_value(ctx, part_x, h, root_name, color)
 
             elif self.current_page == Pages.SESSION:
                 if i == 0:  # Last session on boot
@@ -413,10 +469,10 @@ class SettingsMode(definitions.PushItMode):
             ctx.set_line_width(1)
             data = self.app.melodic_mode.get_poly_at_curve()
             n = len(data)
-            curve_x = 4 * part_w + 3  # Start x point of curve
+            curve_x = 5 * part_w + 3  # Start x point of curve
             curve_y = part_h - 10  # Start y point of curve
             curve_height = 50
-            curve_length = part_w * 4 - 6
+            curve_length = part_w * 3 - 6
             ctx.move_to(curve_x, curve_y)
             for i, value in enumerate(data):
                 x = curve_x + i * curve_length/n
@@ -454,17 +510,16 @@ class SettingsMode(definitions.PushItMode):
 
         if self.current_page == Pages.PERFORMANCE:
             if encoder_name == push2_python.constants.ENCODER_TRACK1_ENCODER:
-                if delta != 0:
-                    self.app.melodic_mode.set_root_midi_note(self.app.melodic_mode.root_midi_note + delta)
-                self.app.pads_need_update = True  # Using async update method because we don't really need immediate response here
-
-            elif encoder_name == push2_python.constants.ENCODER_TRACK2_ENCODER:
                 if delta >= 1 and not self.app.melodic_mode.use_poly_at:
                     self.app.melodic_mode.use_poly_at = True
                     self.app.push.pads.set_polyphonic_aftertouch()
                 elif delta <= -1 and self.app.melodic_mode.use_poly_at:
                     self.app.melodic_mode.use_poly_at = False
                     self.app.push.pads.set_channel_aftertouch()
+
+            elif encoder_name == push2_python.constants.ENCODER_TRACK2_ENCODER:
+                if delta != 0:
+                    self.app.melodic_mode.cycle_pitch_bend_range(1 if delta > 0 else -1)
 
             elif encoder_name == push2_python.constants.ENCODER_TRACK3_ENCODER:
                 if delta != 0:
@@ -481,6 +536,12 @@ class SettingsMode(definitions.PushItMode):
             elif encoder_name == push2_python.constants.ENCODER_TRACK6_ENCODER:
                 if delta != 0:
                     self.app.melodic_mode.set_poly_at_curve_bending(self.app.melodic_mode.poly_at_curve_bending + delta)
+            elif encoder_name == push2_python.constants.ENCODER_TRACK7_ENCODER:
+                if delta != 0:
+                    self.app.melodic_mode.set_root_midi_note(
+                        self.app.melodic_mode.root_midi_note + delta
+                    )
+                self.app.pads_need_update = True  # Using async update method because we don't really need immediate response here
 
         elif self.current_page == Pages.SESSION:
             if encoder_name == push2_python.constants.ENCODER_TRACK2_ENCODER:
@@ -542,6 +603,10 @@ class SettingsMode(definitions.PushItMode):
                     self.app.push.pads.set_polyphonic_aftertouch()
                 else:
                     self.app.push.pads.set_channel_aftertouch()
+                return True
+
+            if button_name == push2_python.constants.BUTTON_UPPER_ROW_2:
+                self.app.melodic_mode.cycle_pitch_bend_range(1)
                 return True
 
         elif self.current_page == Pages.SESSION:
