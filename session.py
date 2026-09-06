@@ -437,3 +437,11 @@ class Session(BaseClass):
         else:
             print(f"Sending CC: {cc_number} val={value} to {device_name}")
             output_device.control(control=cc_number, value=value, channel=channel)
+
+    def send_pitch_bend(self, device_name: str, value: int, channel: int = 0):
+        """Send a MIDI pitch bend message to an output device"""
+        output_device = self.get_output_device(device_name)
+        if output_device is None:
+            print(f"No output device found: {device_name}")
+        else:
+            output_device.pitch_bend(int(value), channel)
